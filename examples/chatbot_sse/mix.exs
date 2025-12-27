@@ -5,7 +5,7 @@ defmodule ChatbotSse.MixProject do
     [
       app: :chatbot_sse,
       version: "0.1.0",
-      elixir: "~> 1.16",
+      elixir: "~> 1.18",
       elixirc_paths: ["src"],
       start_permanent: Mix.env() == :prod,
       deps: deps()
