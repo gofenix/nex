@@ -186,7 +186,7 @@ defmodule Todos.Layouts do
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>{@title}</title>
-        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio"></script>
         <script src="https://unpkg.com/htmx.org@2.0.4"></script>
       </head>
       <body class="bg-gray-100 min-h-screen">
@@ -260,7 +260,7 @@ defmodule MyExample.Layouts do
     <html>
       <head>
         <title>{@title || "My Example"}</title>
-        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio"></script>
         <script src="https://unpkg.com/htmx.org@2.0.4"></script>
       </head>
       <body>

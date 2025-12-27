@@ -25,6 +25,9 @@ defmodule Mix.Tasks.Nex.Dev do
     # Ensure dependencies are compiled
     Mix.Task.run("compile")
 
+    # Set Nex environment to dev for hot reload
+    Application.put_env(:nex, :env, :dev)
+
     # Load environment
     Nex.Env.init()
 
