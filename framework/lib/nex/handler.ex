@@ -21,9 +21,13 @@ defmodule Nex.Handler do
         path == ["nex", "live-reload"] ->
           handle_live_reload(conn)
 
-        # API routes: /api/*
+        # API routes: /api/* (check for SSE endpoints first)
         match?(["api" | _], path) ->
-          handle_api(conn, method, path)
+          handle_api_or_sse(conn, method, path)
+
+        # Legacy SSE endpoint: /sse/* (for backward compatibility)
+        match?(["sse" | _], path) ->
+          handle_sse(conn, method, path)
 
         # Page routes
         true ->
@@ -38,6 +42,185 @@ defmodule Nex.Handler do
         Logger.error("Caught #{kind}: #{inspect(reason)}")
         send_error_page(conn, 500, "Internal Server Error", reason)
     end
+  end
+
+  # API or SSE handlers - check if module uses Nex.SSE
+  defp handle_api_or_sse(conn, method, path) do
+    api_path = case path do
+      ["api" | rest] -> rest
+      _ -> path
+    end
+
+    case resolve_api_module(api_path) do
+      {:ok, module, params} ->
+        # Check if this is an SSE endpoint (has __sse_endpoint__ function)
+        is_sse = Code.ensure_loaded?(module) and function_exported?(module, :__sse_endpoint__, 0)
+
+        if is_sse do
+          # Handle as SSE endpoint
+          handle_sse_endpoint(conn, module, Map.merge(conn.params, params))
+        else
+          # Handle as regular API endpoint
+          handle_api_endpoint(conn, method, module, Map.merge(conn.params, params))
+        end
+
+      :error ->
+        send_json_error(conn, 404, "Not Found")
+    end
+  end
+
+  # Handle SSE endpoint (module uses Nex.SSE)
+  defp handle_sse_endpoint(conn, module, params) do
+    page_id = params["_page_id"] || "sse"
+    Nex.Store.set_page_id(page_id)
+
+    # Check for stream/2 callback function
+    has_stream = function_exported?(module, :stream, 2)
+
+    if has_stream do
+      conn
+      |> put_resp_header("content-type", "text/event-stream")
+      |> put_resp_header("cache-control", "no-cache")
+      |> put_resp_header("connection", "keep-alive")
+      |> send_chunked(200)
+      |> send_sse_stream(module, params)
+    else
+      send_json_error(conn, 500, "SSE endpoint must implement stream/2")
+    end
+  end
+
+  # Handle regular API endpoint
+  defp handle_api_endpoint(conn, method, module, params) do
+    page_id = params["_page_id"] || "api"
+    Nex.Store.set_page_id(page_id)
+
+    # Try arity 1 first (with params), then arity 0 (no params)
+    result = cond do
+      function_exported?(module, method, 1) ->
+        apply(module, method, [params])
+      function_exported?(module, method, 0) ->
+        apply(module, method, [])
+      true ->
+        :method_not_allowed
+    end
+
+    send_api_response(conn, result)
+  end
+
+  # SSE handlers
+  defp handle_sse(conn, _method, path) do
+    sse_path = case path do
+      ["sse" | rest] -> rest
+      _ -> path
+    end
+
+    app_module = get_app_module()
+    # Convert path segments to PascalCase (e.g., "stream" -> "Stream")
+    camelized_path = Enum.map(sse_path, &Macro.camelize/1)
+    module_name = [app_module, "Sse" | camelized_path] |> Enum.join(".")
+    module = String.to_atom("Elixir.#{module_name}")
+
+    # Check for stream/2 (callback) or stream/1 (list return)
+    has_stream = Code.ensure_loaded?(module) and
+      (function_exported?(module, :stream, 2) or function_exported?(module, :stream, 1))
+
+    cond do
+      has_stream ->
+        page_id = conn.params["_page_id"] || "sse"
+        Nex.Store.set_page_id(page_id)
+        params = conn.params
+
+        # Send SSE headers and stream response
+        conn
+        |> put_resp_header("content-type", "text/event-stream")
+        |> put_resp_header("cache-control", "no-cache")
+        |> put_resp_header("connection", "keep-alive")
+        |> send_chunked(200)
+        |> send_sse_stream(module, params)
+
+      true ->
+        # Try Index submodule
+        index_module = String.to_atom("Elixir.#{module_name}.Index")
+        has_index_stream = Code.ensure_loaded?(index_module) and
+          (function_exported?(index_module, :stream, 2) or function_exported?(index_module, :stream, 1))
+
+        if has_index_stream do
+          page_id = conn.params["_page_id"] || "sse"
+          Nex.Store.set_page_id(page_id)
+          params = conn.params
+
+          conn
+          |> put_resp_header("content-type", "text/event-stream")
+          |> put_resp_header("cache-control", "no-cache")
+          |> put_resp_header("connection", "keep-alive")
+          |> send_chunked(200)
+          |> send_sse_stream(index_module, params)
+        else
+          send_json_error(conn, 404, "SSE endpoint not found")
+        end
+    end
+  end
+
+  defp send_sse_stream(conn, module, params) do
+    # Check if module supports callback-based streaming
+    if function_exported?(module, :stream, 2) do
+      # Callback-based streaming: stream(params, send_fn)
+      # send_fn is called for each event to send immediately
+      apply(module, :stream, [params, fn event ->
+        sse_data = format_sse_event(event)
+        case chunk(conn, sse_data) do
+          {:ok, _} -> :ok
+          {:error, _} -> throw(:closed)
+        end
+      end])
+      conn
+    else
+      # Legacy: return list of events
+      events = apply(module, :stream, [params])
+
+      Enum.reduce(events, conn, fn event, conn ->
+        sse_data = format_sse_event(event)
+        case chunk(conn, sse_data) do
+          {:ok, conn} -> conn
+          {:error, _} -> throw(:closed)
+        end
+      end)
+    end
+  catch
+    :closed ->
+      # Connection was closed by client
+      :ok
+  end
+
+  defp format_sse_event(%{event: event_type, data: data, id: id}) do
+    # For HTMX SSE extension compatibility: send plain text for "message" event
+    if event_type == "message" do
+      "event: #{event_type}\ndata: #{data}\nid: #{id}\n\n"
+    else
+      # Send JSON-encoded data for custom events
+      json_data = Jason.encode!(%{event: event_type, data: data, id: id})
+      "data: #{json_data}\n\n"
+    end
+  end
+
+  defp format_sse_event(%{event: event_type, data: data}) do
+    # For HTMX SSE extension compatibility: send plain text for "message" event
+    if event_type == "message" do
+      "event: #{event_type}\ndata: #{data}\n\n"
+    else
+      # Send JSON-encoded data for custom events
+      json_data = Jason.encode!(%{event: event_type, data: data})
+      "data: #{json_data}\n\n"
+    end
+  end
+
+  defp format_sse_event(event) when is_map(event) do
+    "data: #{Jason.encode!(event)}\n\n"
+  end
+
+  defp format_sse_event(event) when is_binary(event) do
+    # Plain text fallback
+    "data: #{Jason.encode!(event)}\n\n"
   end
 
   defp handle_api(conn, method, path) do
@@ -262,7 +445,7 @@ defmodule Nex.Handler do
     # Resolve POST action: find module and action function
     # e.g., POST /create_todo → Index.create_todo/2
     # e.g., POST /todos/toggle_todo → Todos.Index.toggle_todo/2
-    # e.g., POST /todos/123/delete → Todos.Id.delete/2
+    # e.g., POST /todos/123/delete → resolve module path, last segment is action
 
     app_module = get_app_module()
 
@@ -274,8 +457,17 @@ defmodule Nex.Handler do
 
       [action] ->
         # POST /create_todo → Index.create_todo
-        module = String.to_atom("Elixir.#{app_module}.Pages.Index")
-        if Code.ensure_loaded?(module), do: {:ok, module, action, %{}}, else: :error
+        # Also try: POST /stream → Stream.stream
+        action_module_name = [app_module, "Pages", Macro.camelize(action)] |> Enum.join(".")
+        action_module = String.to_atom("Elixir.#{action_module_name}")
+
+        cond do
+          Code.ensure_loaded?(action_module) and function_exported?(action_module, String.to_atom(action), 1) ->
+            {:ok, action_module, action, %{}}
+          true ->
+            module = String.to_atom("Elixir.#{app_module}.Pages.Index")
+            if Code.ensure_loaded?(module), do: {:ok, module, action, %{}}, else: :error
+        end
 
       segments ->
         # POST /todos/123/delete → resolve module path, last segment is action
