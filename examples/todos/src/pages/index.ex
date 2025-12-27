@@ -2,15 +2,10 @@ defmodule Todos.Pages.Index do
   use Nex.Page
   import Todos.Partials.Todos.Item
 
-  # In-memory todo storage (for demo purposes)
-  @todos_agent :todos_agent
-
-  def mount(_conn, _params) do
-    ensure_agent_started()
-
+  def mount(conn, _params) do
     %{
       title: "Todo App",
-      todos: get_todos()
+      todos: Nex.Store.get(conn, :todos, [])
     }
   end
 
@@ -43,25 +38,22 @@ defmodule Todos.Pages.Index do
   end
 
   def create_todo(conn, %{"text" => text}) do
-    ensure_agent_started()
-
     todo = %{
       id: System.unique_integer([:positive]),
       text: text,
       completed: false
     }
 
-    Agent.update(@todos_agent, fn todos -> [todo | todos] end)
+    Nex.Store.update(conn, :todos, [], &[todo | &1])
 
     assigns = %{todo: todo}
     render_fragment(conn, ~H"<.todo_item todo={@todo} />")
   end
 
   def toggle_todo(conn, %{"id" => id}) do
-    ensure_agent_started()
     id = String.to_integer(id)
 
-    Agent.update(@todos_agent, fn todos ->
+    Nex.Store.update(conn, :todos, [], fn todos ->
       Enum.map(todos, fn todo ->
         if todo.id == id do
           %{todo | completed: !todo.completed}
@@ -71,36 +63,19 @@ defmodule Todos.Pages.Index do
       end)
     end)
 
-    todo = Agent.get(@todos_agent, fn todos ->
-      Enum.find(todos, &(&1.id == id))
-    end)
+    todo = Nex.Store.get(conn, :todos, []) |> Enum.find(&(&1.id == id))
 
     assigns = %{todo: todo}
     render_fragment(conn, ~H"<.todo_item todo={@todo} />")
   end
 
   def delete_todo(conn, %{"id" => id}) do
-    ensure_agent_started()
     id = String.to_integer(id)
 
-    Agent.update(@todos_agent, fn todos ->
+    Nex.Store.update(conn, :todos, [], fn todos ->
       Enum.reject(todos, &(&1.id == id))
     end)
 
     empty(conn)
-  end
-
-  # Helper functions
-  defp ensure_agent_started do
-    case Process.whereis(@todos_agent) do
-      nil -> Agent.start_link(fn -> [] end, name: @todos_agent)
-      _pid -> :ok
-    end
-  end
-
-  defp get_todos do
-    Agent.get(@todos_agent, & &1)
-  rescue
-    _ -> []
   end
 end
