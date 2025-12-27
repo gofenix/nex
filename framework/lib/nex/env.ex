@@ -1,7 +1,7 @@
 defmodule Nex.Env do
   @moduledoc """
   Environment variable management.
-  
+
   Loads from .env files and system environment.
   """
 
@@ -9,12 +9,41 @@ defmodule Nex.Env do
   def init do
     env = Mix.env() |> to_string()
 
+    # Get project root directory (parent of _build)
+    project_root =
+      case Mix.Project.app_path() do
+        nil -> File.cwd!()
+        app_path ->
+          # app_path is like "_build/dev/lib/chatbot"
+          # We need to go up to project root
+          app_path
+          |> Path.dirname()  # _build/dev/lib
+          |> Path.dirname()  # _build/dev
+          |> Path.dirname()  # _build
+          |> Path.dirname()  # project root
+      end
+
     files =
       [".env", ".env.#{env}"]
+      |> Enum.map(&Path.join(project_root, &1))
       |> Enum.filter(&File.exists?/1)
 
     if files != [] do
-      Dotenvy.source(files)
+      IO.puts("[Nex.Env] Loading environment from: #{Enum.join(files, ", ")}")
+
+      case Dotenvy.source(files) do
+        {:ok, vars} ->
+          # Set all loaded variables to system environment
+          Enum.each(vars, fn {key, value} ->
+            System.put_env(key, value)
+          end)
+          IO.puts("[Nex.Env] ✓ Environment loaded successfully (#{map_size(vars)} variables)")
+
+        {:error, reason} ->
+          IO.puts("[Nex.Env] ✗ Failed to load environment: #{inspect(reason)}")
+      end
+    else
+      IO.puts("[Nex.Env] ⚠ No .env files found in: #{project_root}")
     end
 
     :ok
