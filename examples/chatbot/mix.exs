@@ -14,14 +14,15 @@ defmodule Chatbot.MixProject do
 
   def application do
     [
-      extra_applications: [:logger]
+      extra_applications: [:logger],
+      mod: {Chatbot.Application, []}
     ]
   end
 
   defp deps do
     [
       {:nex, path: "../../framework"},
-      {:hackney, "~> 1.20"}  # HTTP client for OpenAI API
+      {:req, "~> 0.5"}  # Elixir HTTP client
     ]
   end
 end

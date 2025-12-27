@@ -76,14 +76,9 @@ defmodule Chatbot.Pages.Index do
     api_key = Nex.Env.get(:OPENAI_API_KEY)
     base_url = Nex.Env.get(:OPENAI_BASE_URL, "https://api.openai.com/v1")
 
-    IO.puts("[DEBUG] OPENAI_API_KEY: #{inspect(api_key)}")
-    IO.puts("[DEBUG] OPENAI_BASE_URL: #{inspect(base_url)}")
-
     if api_key == nil or api_key == "" do
-      IO.puts("[DEBUG] Using simulated AI response")
       simulate_ai_response(user_message)
     else
-      IO.puts("[DEBUG] Calling OpenAI API")
       call_openai(api_key, base_url, user_message)
     end
   end
@@ -100,24 +95,20 @@ defmodule Chatbot.Pages.Index do
       }
     ]
 
-    body = Jason.encode!(%{
+    body = %{
       "model" => "gpt-3.5-turbo",
       "messages" => messages
-    })
+    }
 
-    headers = [
-      {"Content-Type", "application/json"},
-      {"Authorization", "Bearer #{api_key}"}
-    ]
-
+    # Remove trailing slash from base_url to avoid double slashes
+    base_url = String.trim_trailing(base_url, "/")
     url = "#{base_url}/chat/completions"
 
-    case :hackney.post(url, headers, body, []) do
-      {:ok, 200, _headers, body_ref} ->
-        {:ok, body} = :hackney.body(body_ref)
-        Jason.decode!(body)["choices"] |> List.first() |> get_in(["message", "content"])
+    case Req.post(url, json: body, auth: {:bearer, api_key}, finch: MyFinch) do
+      {:ok, %{status: 200, body: %{"choices" => [%{"message" => %{"content" => content}} | _]}}} ->
+        content
 
-      {:ok, status, _headers, _body_ref} ->
+      {:ok, %{status: status}} ->
         "请求失败 (HTTP #{status})"
 
       {:error, reason} ->
