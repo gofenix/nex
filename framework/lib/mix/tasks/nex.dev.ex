@@ -38,19 +38,10 @@ defmodule Mix.Tasks.Nex.Dev do
     Application.ensure_all_started(:bandit)
     Application.ensure_all_started(:phoenix_html)
     Application.ensure_all_started(:phoenix_live_view)
-
-    # Start Nex.Store for session-scoped state management
-    {:ok, _} = Nex.Store.start_link()
-
-    # Start PubSub for live reload WebSocket communication
-    {:ok, _} = Supervisor.start_link(
-      [{Phoenix.PubSub, name: Nex.PubSub}],
-      strategy: :one_for_one
-    )
-
-    # Start hot reloader (optional, requires :file_system)
     Application.ensure_all_started(:file_system)
-    {:ok, _} = Nex.Reloader.start_link()
+
+    # Start Nex framework supervisor (manages Store, PubSub, Reloader)
+    {:ok, _} = Nex.Supervisor.start_link()
 
     port = opts[:port] || Nex.Env.get_integer(:PORT, 4000)
     host = opts[:host] || Nex.Env.get(:HOST, "localhost")
