@@ -21,12 +21,19 @@ defmodule Nex.Store do
   State is tied to a `_page_id` that is generated on first page render.
   HTMX requests carry this `_page_id` to maintain state within the same page view.
   Refreshing the page generates a new `_page_id`, effectively clearing state.
+
+  ## TTL & Cleanup
+
+  Each page's state has a TTL (default 1 hour). After TTL expires, state is
+  automatically cleaned up to prevent memory leaks.
   """
 
   use GenServer
 
   @table :nex_store
   @page_id_key :nex_page_id
+  @default_ttl :timer.hours(1)
+  @cleanup_interval :timer.minutes(5)
 
   ## Client API
 
@@ -42,6 +49,8 @@ defmodule Nex.Store do
   @doc "Set current page ID in process dictionary (called by framework)"
   def set_page_id(page_id) do
     Process.put(@page_id_key, page_id)
+    # Touch the page to update its last access time
+    touch_page(page_id)
   end
 
   @doc "Get current page ID from process dictionary"
@@ -54,7 +63,7 @@ defmodule Nex.Store do
     page_id = get_page_id()
 
     case :ets.lookup(@table, {page_id, key}) do
-      [{_, value}] -> value
+      [{_, value, _expires_at}] -> value
       [] -> default
     end
   end
@@ -62,7 +71,8 @@ defmodule Nex.Store do
   @doc "Put value into page store"
   def put(key, value) do
     page_id = get_page_id()
-    :ets.insert(@table, {{page_id, key}, value})
+    expires_at = System.system_time(:millisecond) + @default_ttl
+    :ets.insert(@table, {{page_id, key}, value, expires_at})
     value
   end
 
@@ -82,7 +92,7 @@ defmodule Nex.Store do
 
   @doc "Delete all state for a page"
   def clear_page(page_id) do
-    :ets.match_delete(@table, {{page_id, :_}, :_})
+    :ets.match_delete(@table, {{page_id, :_}, :_, :_})
     :ok
   end
 
@@ -91,6 +101,60 @@ defmodule Nex.Store do
   @impl true
   def init(_opts) do
     table = :ets.new(@table, [:named_table, :public, :set])
+    schedule_cleanup()
     {:ok, %{table: table}}
+  end
+
+  @impl true
+  def handle_info(:cleanup, state) do
+    cleanup_expired()
+    schedule_cleanup()
+    {:noreply, state}
+  end
+
+  ## Private
+
+  defp touch_page(page_id) do
+    # Update expiry for all keys of this page
+    expires_at = System.system_time(:millisecond) + @default_ttl
+
+    :ets.foldl(
+      fn
+        {{^page_id, key}, value, _old_expires}, acc ->
+          :ets.insert(@table, {{page_id, key}, value, expires_at})
+          acc
+        _, acc ->
+          acc
+      end,
+      nil,
+      @table
+    )
+  end
+
+  defp schedule_cleanup do
+    Process.send_after(self(), :cleanup, @cleanup_interval)
+  end
+
+  defp cleanup_expired do
+    now = System.system_time(:millisecond)
+
+    # Find and delete expired entries
+    expired =
+      :ets.foldl(
+        fn
+          {key, _value, expires_at}, acc when expires_at < now ->
+            [key | acc]
+          _, acc ->
+            acc
+        end,
+        [],
+        @table
+      )
+
+    Enum.each(expired, &:ets.delete(@table, &1))
+
+    if length(expired) > 0 do
+      IO.puts("[Nex.Store] Cleaned up #{length(expired)} expired entries")
+    end
   end
 end
