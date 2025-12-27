@@ -51,8 +51,14 @@ defmodule Chatbot.Pages.Index do
 
     Nex.Store.update(:chat_messages, [], &[user_msg | &1])
 
+    # 获取当前 page_id，传递给异步任务
+    current_page_id = Nex.Store.get_page_id()
+
     # 启动异步任务生成 AI 响应
     Task.Supervisor.async_nolink(Chatbot.TaskSupervisor, fn ->
+      # 在异步任务中设置 page_id，确保数据存储在同一个隔离空间
+      Nex.Store.set_page_id(current_page_id)
+
       api_key = Nex.Env.get(:OPENAI_API_KEY)
       base_url = Nex.Env.get(:OPENAI_BASE_URL, "https://api.openai.com/v1")
 
@@ -76,7 +82,7 @@ defmodule Chatbot.Pages.Index do
     assigns = %{user_msg: user_msg, msg_id: msg_id}
     ~H"""
     <.chat_message message={@user_msg} />
-    <div id={"ai-loading-#{@msg_id}"} hx-post="/ai_response" hx-vals={Jason.encode!(%{id: @msg_id})} hx-trigger="load, every 500ms" hx-swap="outerHTML" class="flex gap-3">
+    <div id={"ai-loading-#{@msg_id}"} hx-post="/ai_response" hx-vals={Jason.encode!(%{id: @msg_id})} hx-trigger="load delay:500ms, every 500ms" hx-swap="outerHTML" class="flex gap-3">
       <div class="bg-emerald-500 text-white rounded-full w-10 flex items-center justify-center">
         <span class="text-sm">AI</span>
       </div>
@@ -98,16 +104,35 @@ defmodule Chatbot.Pages.Index do
   def ai_response(%{"id" => id}) do
     messages = Nex.Store.get(:chat_messages, [])
     target_id = String.to_integer(id)
+
     ai_msg = Enum.find(messages, fn m ->
       Map.get(m, :parent_id) == target_id and m.role == :assistant
     end)
 
     if ai_msg do
+      # 返回 AI 消息，不带轮询属性，停止轮询
       assigns = %{ai_msg: ai_msg}
       ~H"<.chat_message message={@ai_msg} />"
     else
-      # 还在思考中，返回空让前端继续轮询
-      ""
+      # 还在思考中，返回相同的 loading div 继续轮询
+      assigns = %{msg_id: target_id}
+      ~H"""
+      <div id={"ai-loading-#{@msg_id}"} hx-post="/ai_response" hx-vals={Jason.encode!(%{id: @msg_id})} hx-trigger="load delay:500ms" hx-swap="outerHTML" class="flex gap-3">
+        <div class="bg-emerald-500 text-white rounded-full w-10 flex items-center justify-center">
+          <span class="text-sm">AI</span>
+        </div>
+        <div class="chat-message-ai">
+          <div class="bg-gray-700 text-gray-400 px-4 py-3 rounded-2xl">
+            <span class="inline-flex gap-1">
+              <span class="animate-bounce w-2 h-2 bg-gray-400 rounded-full"></span>
+              <span class="animate-bounce w-2 h-2 bg-gray-400 rounded-full delay-75"></span>
+              <span class="animate-bounce w-2 h-2 bg-gray-400 rounded-full delay-150"></span>
+            </span>
+            正在思考...
+          </div>
+        </div>
+      </div>
+      """
     end
   end
 
