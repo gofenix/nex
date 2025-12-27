@@ -56,17 +56,12 @@ defmodule Chatbot.Pages.Index do
 
     # 启动异步任务生成 AI 响应
     Task.Supervisor.async_nolink(Chatbot.TaskSupervisor, fn ->
-      # 在异步任务中设置 page_id，确保数据存储在同一个隔离空间
       Nex.Store.set_page_id(current_page_id)
 
       api_key = Nex.Env.get(:OPENAI_API_KEY)
       base_url = Nex.Env.get(:OPENAI_BASE_URL, "https://api.openai.com/v1")
 
-      response = if api_key == nil or api_key == "" do
-                    simulate_ai_response(user_message)
-                  else
-                    call_openai(api_key, base_url, user_message)
-                  end
+      response = call_openai(api_key, base_url, user_message)
 
       ai_msg = %{
         id: msg_id + 1,
@@ -165,30 +160,6 @@ defmodule Chatbot.Pages.Index do
 
       {:error, reason} ->
         "请求失败: #{inspect(reason)}"
-    end
-  end
-
-  defp simulate_ai_response(user_input) do
-    input = String.downcase(user_input)
-
-    cond do
-      String.contains?(input, "你好") ->
-        "你好！很高兴见到你。有什么我可以帮助你的吗？"
-
-      String.contains?(input, "名字") ->
-        "我是 Nex 框架演示的 AI 聊天机器人，使用 Elixir 和 HTMX 构建。"
-
-      String.contains?(input, "天气") ->
-        "抱歉，我无法获取实时天气信息。但你可以问我其他问题！"
-
-      String.contains?(input, "你是谁") or String.contains?(input, "是什么") ->
-        "我是一个简单的 AI 聊天机器人演示。Nex 是一个极简的 Elixir HTMX 框架，让服务器端渲染变得简单。"
-
-      String.contains?(input, "帮助") or String.contains?(input, "功能") ->
-        "我可以：\n- 回答简单问题\n- 陪你聊天\n- 介绍 Nex 框架\n\n试着问我更多问题吧！"
-
-      true ->
-        "这是一个模拟回复。在实际应用中，你可以接入 OpenAI API 来获得真正的 AI 能力。"
     end
   end
 
