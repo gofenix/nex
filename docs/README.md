@@ -17,6 +17,7 @@
 - [Partials](./partials.md) - 可复用的 UI 组件
 - [Layouts](./layouts.md) - 页面布局
 - [Store](./store.md) - 页面级状态管理
+- [Application](./application.md) - 应用监督树和生命周期管理
 
 ### 进阶
 
