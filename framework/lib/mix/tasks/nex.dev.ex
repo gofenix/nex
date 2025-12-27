@@ -28,6 +28,12 @@ defmodule Mix.Tasks.Nex.Dev do
     # Load environment
     Nex.Env.init()
 
+    # Start the user's application (this will start any supervision trees defined in Application.start/2)
+    app_name = Mix.Project.config()[:app]
+    if app_name do
+      Application.ensure_all_started(app_name)
+    end
+
     # Start required applications
     Application.ensure_all_started(:bandit)
     Application.ensure_all_started(:phoenix_html)
