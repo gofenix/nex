@@ -5,8 +5,7 @@ defmodule Chatbot.Pages.Index do
   def mount(_params) do
     %{
       title: "AI Chatbot",
-      messages: Nex.Store.get(:chat_messages, []),
-      loading: false
+      messages: Nex.Store.get(:chat_messages, [])
     }
   end
 
@@ -14,33 +13,25 @@ defmodule Chatbot.Pages.Index do
     ~H"""
     <h1 class="text-3xl font-bold text-center text-white mb-6">AI Chatbot</h1>
 
-    <div id="chat-container"
-         class="flex-1 bg-gray-800 rounded-2xl p-4 overflow-y-auto space-y-4 mb-4"
-         hx-ext="ws"
-         ws-connect="/ws/chat">
+    <div id="chat-container" class="flex-1 bg-gray-800 rounded-2xl p-4 overflow-y-auto space-y-4 mb-4">
       <div :if={length(@messages) == 0} class="text-center text-gray-500 py-10">
         <p class="text-lg mb-2">你好！我是 AI 助手</p>
         <p class="text-sm">有什么可以帮助你的吗？</p>
       </div>
       <.chat_message :for={msg <- @messages} message={msg} />
-      <div :if={@loading} id="loading-indicator">
-        <.loading_indicator />
-      </div>
     </div>
 
     <form hx-post="/chat"
           hx-target="#chat-container"
           hx-swap="beforeend"
-          hx-on::before-request="document.getElementById('loading-indicator')?.remove()"
-          hx-on::htmx:after-request="this.reset(); setTimeout(() => document.getElementById('chat-container').scrollTop = document.getElementById('chat-container').scrollHeight, 100)"
+          hx-on::after-request="this.reset()"
           class="flex gap-3">
       <input type="text"
              name="message"
              placeholder="输入消息..."
              required
              class="flex-1 input input-bordered bg-gray-700 text-white border-gray-600 focus:border-emerald-500" />
-      <button type="submit"
-              class="btn btn-emerald">
+      <button type="submit" class="btn btn-emerald">
         发送
       </button>
     </form>
@@ -48,38 +39,75 @@ defmodule Chatbot.Pages.Index do
   end
 
   def chat(%{"message" => user_message} = _params) do
+    msg_id = System.unique_integer([:positive])
+    timestamp = format_time()
+
     user_msg = %{
+      id: msg_id,
       role: :user,
       content: user_message,
-      timestamp: format_time()
+      timestamp: timestamp
     }
 
     Nex.Store.update(:chat_messages, [], &[user_msg | &1])
 
-    # Get AI response from OpenAI
-    ai_response = get_ai_response(user_message)
+    # 启动异步任务生成 AI 响应
+    Task.Supervisor.async_nolink(Chatbot.TaskSupervisor, fn ->
+      api_key = Nex.Env.get(:OPENAI_API_KEY)
+      base_url = Nex.Env.get(:OPENAI_BASE_URL, "https://api.openai.com/v1")
 
-    ai_msg = %{
-      role: :assistant,
-      content: ai_response,
-      timestamp: format_time()
-    }
+      response = if api_key == nil or api_key == "" do
+                    simulate_ai_response(user_message)
+                  else
+                    call_openai(api_key, base_url, user_message)
+                  end
 
-    Nex.Store.update(:chat_messages, [], &[ai_msg | &1])
+      ai_msg = %{
+        id: msg_id + 1,
+        role: :assistant,
+        content: response,
+        parent_id: msg_id,
+        timestamp: format_time()
+      }
 
-    # Return the new messages as HEEx fragment
-    assigns = %{user_msg: user_msg, ai_msg: ai_msg}
-    ~H"<div><.chat_message message={@user_msg} /><.chat_message message={@ai_msg} /></div>"
+      Nex.Store.update(:chat_messages, [], &[ai_msg | &1])
+    end)
+
+    assigns = %{user_msg: user_msg, msg_id: msg_id}
+    ~H"""
+    <.chat_message message={@user_msg} />
+    <div id={"ai-loading-#{@msg_id}"} hx-post="/ai_response" hx-vals={Jason.encode!(%{id: @msg_id})} hx-trigger="load, every 500ms" hx-swap="outerHTML" class="flex gap-3">
+      <div class="bg-emerald-500 text-white rounded-full w-10 flex items-center justify-center">
+        <span class="text-sm">AI</span>
+      </div>
+      <div class="chat-message-ai">
+        <div class="bg-gray-700 text-gray-400 px-4 py-3 rounded-2xl">
+          <span class="inline-flex gap-1">
+            <span class="animate-bounce w-2 h-2 bg-gray-400 rounded-full"></span>
+            <span class="animate-bounce w-2 h-2 bg-gray-400 rounded-full delay-75"></span>
+            <span class="animate-bounce w-2 h-2 bg-gray-400 rounded-full delay-150"></span>
+          </span>
+          正在思考...
+        </div>
+      </div>
+    </div>
+    """
   end
 
-  defp get_ai_response(user_message) do
-    api_key = Nex.Env.get(:OPENAI_API_KEY)
-    base_url = Nex.Env.get(:OPENAI_BASE_URL, "https://api.openai.com/v1")
+  # 轮询获取 AI 响应
+  def ai_response(%{"id" => id}) do
+    messages = Nex.Store.get(:chat_messages, [])
+    target_id = String.to_integer(id)
+    ai_msg = Enum.find(messages, fn m ->
+      Map.get(m, :parent_id) == target_id and m.role == :assistant
+    end)
 
-    if api_key == nil or api_key == "" do
-      simulate_ai_response(user_message)
+    if ai_msg do
+      assigns = %{ai_msg: ai_msg}
+      ~H"<.chat_message message={@ai_msg} />"
     else
-      call_openai(api_key, base_url, user_message)
+      # 还在思考中，返回空让前端继续轮询
+      ""
     end
   end
 
@@ -100,11 +128,10 @@ defmodule Chatbot.Pages.Index do
       "messages" => messages
     }
 
-    # Remove trailing slash from base_url to avoid double slashes
     base_url = String.trim_trailing(base_url, "/")
     url = "#{base_url}/chat/completions"
 
-    case Req.post(url, json: body, auth: {:bearer, api_key}, finch: MyFinch) do
+    case Req.post(url, json: body, auth: {:bearer, api_key}) do
       {:ok, %{status: 200, body: %{"choices" => [%{"message" => %{"content" => content}} | _]}}} ->
         content
 

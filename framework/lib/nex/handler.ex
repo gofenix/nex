@@ -152,7 +152,7 @@ defmodule Nex.Handler do
       <script>
         document.body.setAttribute('hx-vals', JSON.stringify({_page_id: "#{page_id}"}));
 
-        // Live reload via polling
+        // Live reload via polling (every 3 seconds to reduce noise)
         (function() {
           let lastReloadTime = 0;
           setInterval(function() {
@@ -166,7 +166,7 @@ defmodule Nex.Handler do
                 lastReloadTime = data.time;
               })
               .catch(() => {});
-          }, 1000);
+          }, 3000);
         })();
       </script>
       """

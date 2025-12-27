@@ -13,7 +13,9 @@ defmodule Chatbot.Application do
   def start(_type, _args) do
     children = [
       # Finch HTTP client for making API requests
-      {Finch, name: MyFinch}
+      {Finch, name: MyFinch},
+      # Task supervisor for async AI responses
+      {Task.Supervisor, name: Chatbot.TaskSupervisor}
     ]
 
     opts = [strategy: :one_for_one, name: Chatbot.Supervisor]
