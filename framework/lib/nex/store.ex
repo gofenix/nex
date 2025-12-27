@@ -58,6 +58,11 @@ defmodule Nex.Store do
     Process.get(@page_id_key, "unknown")
   end
 
+  @doc "Clear page_id from process dictionary (called by framework after request)"
+  def clear_process_dictionary do
+    Process.delete(@page_id_key)
+  end
+
   @doc "Get value from page store"
   def get(key, default \\ nil) do
     page_id = get_page_id()
@@ -116,19 +121,15 @@ defmodule Nex.Store do
 
   defp touch_page(page_id) do
     # Update expiry for all keys of this page
+    # Optimized: use :ets.match to only scan matching records instead of full table
     expires_at = System.system_time(:millisecond) + @default_ttl
 
-    :ets.foldl(
-      fn
-        {{^page_id, key}, value, _old_expires}, acc ->
-          :ets.insert(@table, {{page_id, key}, value, expires_at})
-          acc
-        _, acc ->
-          acc
-      end,
-      nil,
-      @table
-    )
+    # Match pattern: {{page_id, '$1'}, '$2', '_'}
+    # Returns list of [key, value] pairs
+    :ets.match(@table, {{page_id, :"$1"}, :"$2", :_})
+    |> Enum.each(fn [key, value] ->
+      :ets.insert(@table, {{page_id, key}, value, expires_at})
+    end)
   end
 
   defp schedule_cleanup do
