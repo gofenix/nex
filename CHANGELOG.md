@@ -24,9 +24,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - 路由缓存机制（ETS），开发时文件变更自动刷新
   - 路由优先级排序：静态路由 > 动态路由 > 通配符路由
 - **Examples**: 新增 `dynamic_routes` 示例项目，展示所有动态路由类型的用法
+- **Mix.Tasks.Nex.New**: 全局项目生成器，从零创建完整 Nex 项目
+  - `mix nex.new my_app` - 创建完整项目结构（无需先运行 mix new）
+  - 支持指定路径 `mix nex.new my_app --path ~/projects`
+  - 自动生成干净的 mix.exs，无需清理 lib/ 和 test/
+  - 通过 `installer/` 目录打包为 Mix archive
 - **Mix.Tasks.Nex.Init**: 在现有 Elixir 项目中初始化 Nex 结构
   - `mix nex.init` - 创建 `src/` 目录结构和模板文件
-  - 自动生成 `layouts.ex`、`pages/index.ex`、`application.ex`
+  - 自动清理 `mix new` 生成的残留文件（lib/、test/）
+  - 自动更新 mix.exs：添加 elixirc_paths 和 mod: 配置
+  - 清理注释并统一 Elixir 版本为 1.18
   - 支持 `--force` 覆盖现有文件
 - **Mix.Tasks.Nex.Release**: 新增生产构建任务
   - `mix nex.release` - 编译并打包用于部署
