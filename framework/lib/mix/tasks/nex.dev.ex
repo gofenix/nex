@@ -36,6 +36,10 @@ defmodule Mix.Tasks.Nex.Dev do
     # Start Nex.Store for session-scoped state management
     {:ok, _} = Nex.Store.start_link()
 
+    # Start hot reloader (optional, requires :file_system)
+    Application.ensure_all_started(:file_system)
+    {:ok, _} = Nex.Reloader.start_link()
+
     port = opts[:port] || Nex.Env.get_integer(:PORT, 4000)
     host = opts[:host] || Nex.Env.get(:HOST, "localhost")
 
@@ -49,6 +53,7 @@ defmodule Mix.Tasks.Nex.Dev do
 
        App module: #{app_module}
        URL: http://#{host}:#{port}
+       Hot reload: enabled
 
     Press Ctrl+C to stop.
     """)
