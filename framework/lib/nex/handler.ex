@@ -43,25 +43,31 @@ defmodule Nex.Handler do
   end
 
   defp handle_page(conn, method, path) do
-    case resolve_page_module(path) do
-      {:ok, module, params} ->
-        merged_params = Map.merge(conn.params, params)
+    case method do
+      :get ->
+        # GET requests render pages
+        case resolve_page_module(path) do
+          {:ok, module, params} ->
+            handle_page_render(conn, module, Map.merge(conn.params, params))
 
-        case method do
-          :get ->
-            handle_page_render(conn, module, merged_params)
-
-          :post ->
-            # POST requests go to action functions
-            action = get_action_from_path(path)
-            handle_page_action(conn, module, action, merged_params)
-
-          _ ->
-            send_resp(conn, 405, "Method Not Allowed")
+          :error ->
+            send_resp(conn, 404, "Not Found")
         end
 
-      :error ->
-        send_resp(conn, 404, "Not Found")
+      :post ->
+        # POST requests call action functions
+        # e.g., POST /create_todo → Index.create_todo/2
+        # e.g., POST /todos/123/toggle → Todos.Id.toggle/2
+        case resolve_action(path) do
+          {:ok, module, action, params} ->
+            handle_page_action(conn, module, action, Map.merge(conn.params, params))
+
+          :error ->
+            send_resp(conn, 404, "Not Found")
+        end
+
+      _ ->
+        send_resp(conn, 405, "Method Not Allowed")
     end
   end
 
@@ -116,12 +122,47 @@ defmodule Nex.Handler do
     end
   end
 
-  defp get_action_from_path(path) do
-    # For POST requests, the last segment is the action name
-    # e.g., POST /create_todo → action = "create_todo"
+  defp resolve_action(path) do
+    # Resolve POST action: find module and action function
+    # e.g., POST /create_todo → Index.create_todo/2
+    # e.g., POST /todos/toggle_todo → Todos.Index.toggle_todo/2
+    # e.g., POST /todos/123/delete → Todos.Id.delete/2
+
+    app_module = get_app_module()
+
     case path do
-      [] -> "index"
-      segments -> List.last(segments)
+      [] ->
+        # POST / → Index.index
+        module = String.to_atom("Elixir.#{app_module}.Pages.Index")
+        if Code.ensure_loaded?(module), do: {:ok, module, "index", %{}}, else: :error
+
+      [action] ->
+        # POST /create_todo → Index.create_todo
+        module = String.to_atom("Elixir.#{app_module}.Pages.Index")
+        if Code.ensure_loaded?(module), do: {:ok, module, action, %{}}, else: :error
+
+      segments ->
+        # POST /todos/123/delete → resolve module path, last segment is action
+        {module_path, action} = Enum.split(segments, -1)
+        action = List.first(action)
+        {module_parts, params} = path_to_module_parts(module_path)
+
+        module_name = [app_module, "Pages" | module_parts] |> Enum.join(".")
+        module = String.to_atom("Elixir.#{module_name}")
+
+        cond do
+          Code.ensure_loaded?(module) ->
+            {:ok, module, action, params}
+
+          true ->
+            # Try Index submodule
+            index_module = String.to_atom("Elixir.#{module_name}.Index")
+            if Code.ensure_loaded?(index_module) do
+              {:ok, index_module, action, params}
+            else
+              :error
+            end
+        end
     end
   end
 
