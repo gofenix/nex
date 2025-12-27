@@ -22,3 +22,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Nex.Env**: Improved `.env` file path resolution to work correctly regardless of where `mix nex.dev` is executed from
 - **Nex.Env**: Enhanced error handling to show specific error messages when `.env` file loading fails
 - **Examples**: All example projects (`chatbot`, `guestbook`, `todos`) now have `Application` modules configured in `mix.exs`
+- **Live Reload**: Migrated from HTTP polling to WebSocket push for instant file change notifications without network request spam

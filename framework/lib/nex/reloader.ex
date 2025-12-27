@@ -69,6 +69,10 @@ defmodule Nex.Reloader do
     try do
       Code.compile_file(path)
       Logger.info("[Nex.Reloader] ✓ Reloaded successfully")
+
+      # Broadcast reload event to all connected WebSocket clients
+      Phoenix.PubSub.broadcast(Nex.PubSub, "live_reload", {:reload, path})
+
       # Update last_reload timestamp so browsers know to refresh
       %{state | last_reload: System.system_time(:millisecond)}
     rescue

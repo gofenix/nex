@@ -13,7 +13,11 @@ defmodule Nex.Handler do
       path = conn.path_info
 
       cond do
-        # Live reload SSE endpoint
+        # Live reload WebSocket endpoint
+        path == ["nex", "live-reload-ws"] ->
+          WebSockAdapter.upgrade(conn, Nex.LiveReloadSocket, %{}, [])
+
+        # Live reload HTTP endpoint (fallback for old clients)
         path == ["nex", "live-reload"] ->
           handle_live_reload(conn)
 
@@ -147,26 +151,34 @@ defmodule Nex.Handler do
       # Convert to string for layout embedding
       content_html = Phoenix.HTML.Safe.to_iodata(content) |> IO.iodata_to_binary()
 
-      # Inject page_id script for HTMX and live reload
+      # Inject page_id script for HTMX and live reload via WebSocket
       page_id_script = """
       <script>
         document.body.setAttribute('hx-vals', JSON.stringify({_page_id: "#{page_id}"}));
 
-        // Live reload via polling (every 3 seconds to reduce noise)
+        // Live reload via WebSocket
         (function() {
-          let lastReloadTime = 0;
-          setInterval(function() {
-            fetch('/nex/live-reload')
-              .then(r => r.json())
-              .then(data => {
-                if (lastReloadTime > 0 && data.time > lastReloadTime) {
-                  console.log('[Nex] Reloading...');
-                  window.location.reload();
-                }
-                lastReloadTime = data.time;
-              })
-              .catch(() => {});
-          }, 3000);
+          const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+          const ws = new WebSocket(protocol + '//' + window.location.host + '/nex/live-reload-ws');
+
+          ws.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            if (data.reload) {
+              console.log('[Nex] File changed, reloading...');
+              window.location.reload();
+            }
+          };
+
+          ws.onerror = function() {
+            console.log('[Nex] WebSocket connection failed, falling back to manual reload');
+          };
+
+          ws.onclose = function() {
+            // Reconnect after 1 second if connection is lost
+            setTimeout(function() {
+              window.location.reload();
+            }, 1000);
+          };
         })();
       </script>
       """

@@ -42,6 +42,12 @@ defmodule Mix.Tasks.Nex.Dev do
     # Start Nex.Store for session-scoped state management
     {:ok, _} = Nex.Store.start_link()
 
+    # Start PubSub for live reload WebSocket communication
+    {:ok, _} = Supervisor.start_link(
+      [{Phoenix.PubSub, name: Nex.PubSub}],
+      strategy: :one_for_one
+    )
+
     # Start hot reloader (optional, requires :file_system)
     Application.ensure_all_started(:file_system)
     {:ok, _} = Nex.Reloader.start_link()
