@@ -74,11 +74,11 @@ defmodule Nex.Handler do
   defp handle_page_render(conn, module, params) do
     # Generate a new page_id for this page view
     page_id = Nex.Store.generate_page_id()
-    conn = put_private(conn, :nex_page_id, page_id)
+    Nex.Store.set_page_id(page_id)
 
     assigns =
-      if function_exported?(module, :mount, 2) do
-        module.mount(conn, params)
+      if function_exported?(module, :mount, 1) do
+        module.mount(params)
       else
         %{}
       end
@@ -127,13 +127,42 @@ defmodule Nex.Handler do
   end
 
   defp handle_page_action(conn, module, action, params) do
+    # Set page_id from HTMX request params
+    page_id = params["_page_id"] || "unknown"
+    Nex.Store.set_page_id(page_id)
+
     action_atom = String.to_atom(action)
 
-    if function_exported?(module, action_atom, 2) do
-      apply(module, action_atom, [conn, params])
+    if function_exported?(module, action_atom, 1) do
+      result = apply(module, action_atom, [params])
+      send_action_response(conn, result)
     else
       send_resp(conn, 404, "Action not found: #{action}")
     end
+  end
+
+  defp send_action_response(conn, :empty) do
+    send_resp(conn, 200, "")
+  end
+
+  defp send_action_response(conn, {:redirect, to}) do
+    conn
+    |> put_resp_header("hx-redirect", to)
+    |> send_resp(200, "")
+  end
+
+  defp send_action_response(conn, {:refresh, _}) do
+    conn
+    |> put_resp_header("hx-refresh", "true")
+    |> send_resp(200, "")
+  end
+
+  defp send_action_response(conn, heex) do
+    html = Phoenix.HTML.Safe.to_iodata(heex) |> IO.iodata_to_binary()
+
+    conn
+    |> put_resp_content_type("text/html")
+    |> send_resp(200, html)
   end
 
   defp resolve_action(path) do
