@@ -33,6 +33,9 @@ defmodule Mix.Tasks.Nex.Dev do
     Application.ensure_all_started(:phoenix_html)
     Application.ensure_all_started(:phoenix_live_view)
 
+    # Start Nex.Store for session-scoped state management
+    {:ok, _} = Nex.Store.start_link()
+
     port = opts[:port] || Nex.Env.get_integer(:PORT, 4000)
     host = opts[:host] || Nex.Env.get(:HOST, "localhost")
 
@@ -43,10 +46,10 @@ defmodule Mix.Tasks.Nex.Dev do
     IO.puts("""
 
     🚀 Nex dev server starting...
-    
+
        App module: #{app_module}
        URL: http://#{host}:#{port}
-    
+
     Press Ctrl+C to stop.
     """)
 

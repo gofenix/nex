@@ -72,6 +72,10 @@ defmodule Nex.Handler do
   end
 
   defp handle_page_render(conn, module, params) do
+    # Generate a new page_id for this page view
+    page_id = Nex.Store.generate_page_id()
+    conn = put_private(conn, :nex_page_id, page_id)
+
     assigns =
       if function_exported?(module, :mount, 2) do
         module.mount(conn, params)
@@ -79,10 +83,20 @@ defmodule Nex.Handler do
         %{}
       end
 
+    # Add page_id to assigns for template injection
+    assigns = Map.put(assigns, :_page_id, page_id)
+
     if function_exported?(module, :render, 1) do
       content = module.render(assigns)
       # Convert to string for layout embedding
       content_html = Phoenix.HTML.Safe.to_iodata(content) |> IO.iodata_to_binary()
+
+      # Inject page_id script for HTMX
+      page_id_script = """
+      <script>
+        document.body.setAttribute('hx-vals', JSON.stringify({_page_id: "#{page_id}"}));
+      </script>
+      """
 
       # Try to get layout module from app config
       layout_module = get_layout_module()
@@ -90,7 +104,7 @@ defmodule Nex.Handler do
       html =
         if layout_module && function_exported?(layout_module, :render, 1) do
           layout_module.render(%{
-            inner_content: content_html,
+            inner_content: content_html <> page_id_script,
             title: Map.get(assigns, :title, "Nex App")
           })
         else
