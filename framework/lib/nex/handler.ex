@@ -71,7 +71,7 @@ defmodule Nex.Handler do
 
   # Handle SSE endpoint (module uses Nex.SSE)
   defp handle_sse_endpoint(conn, module, params) do
-    page_id = params["_page_id"] || "sse"
+    page_id = get_page_id_from_request(conn)
     Nex.Store.set_page_id(page_id)
 
     # Check for stream/2 callback function
@@ -91,7 +91,7 @@ defmodule Nex.Handler do
 
   # Handle regular API endpoint
   defp handle_api_endpoint(conn, method, module, params) do
-    page_id = params["_page_id"] || "api"
+    page_id = get_page_id_from_request(conn)
     Nex.Store.set_page_id(page_id)
 
     # Try arity 1 first (with params), then arity 0 (no params)
@@ -123,7 +123,7 @@ defmodule Nex.Handler do
     case safe_to_existing_module(module_name) do
       {:ok, module} ->
         if function_exported?(module, :stream, 2) or function_exported?(module, :stream, 1) do
-          page_id = conn.params["_page_id"] || "sse"
+          page_id = get_page_id_from_request(conn)
           Nex.Store.set_page_id(page_id)
           params = conn.params
 
@@ -147,7 +147,7 @@ defmodule Nex.Handler do
     case safe_to_existing_module("#{module_name}.Index") do
       {:ok, index_module} ->
         if function_exported?(index_module, :stream, 2) or function_exported?(index_module, :stream, 1) do
-          page_id = conn.params["_page_id"] || "sse"
+          page_id = get_page_id_from_request(conn)
           Nex.Store.set_page_id(page_id)
           params = conn.params
 
@@ -155,6 +155,7 @@ defmodule Nex.Handler do
           |> put_resp_header("content-type", "text/event-stream")
           |> put_resp_header("cache-control", "no-cache")
           |> put_resp_header("connection", "keep-alive")
+          |> put_resp_header("x-nex-page-id", page_id)
           |> send_chunked(200)
           |> send_sse_stream(index_module, params)
         else
@@ -310,7 +311,11 @@ defmodule Nex.Handler do
       # Inject page_id script for HTMX and live reload via WebSocket
       page_id_script = """
       <script>
-        document.body.setAttribute('hx-vals', JSON.stringify({_page_id: "#{page_id}"}));
+        // Store page_id and configure HTMX to send it via header
+        document.body.dataset.pageId = "#{page_id}";
+        document.body.addEventListener('htmx:configRequest', function(evt) {
+          evt.detail.headers['X-Nex-Page-Id'] = document.body.dataset.pageId;
+        });
 
         // Live reload via WebSocket
         (function() {
@@ -376,8 +381,8 @@ defmodule Nex.Handler do
   end
 
   defp handle_page_action(conn, module, action, params) do
-    # Set page_id from HTMX request params
-    page_id = params["_page_id"] || "unknown"
+    # Set page_id from HTMX request header
+    page_id = get_page_id_from_request(conn)
     Nex.Store.set_page_id(page_id)
 
     # Use to_existing_atom to prevent atom exhaustion attacks
@@ -640,6 +645,14 @@ defmodule Nex.Handler do
 
       :error ->
         :error
+    end
+  end
+
+  # Get page_id from request (header or fallback to param for backward compatibility)
+  defp get_page_id_from_request(conn) do
+    case get_req_header(conn, "x-nex-page-id") do
+      [page_id | _] when is_binary(page_id) and page_id != "" -> page_id
+      _ -> conn.params["_page_id"] || "unknown"
     end
   end
 end
