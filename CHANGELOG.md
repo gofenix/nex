@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Nex.CSRF**: 新增 CSRF 保护模块，防止跨站请求伪造攻击
+  - `Nex.CSRF.generate_token/0` - 生成 CSRF token
+  - `Nex.CSRF.input_tag/0` - 生成表单隐藏字段
+  - `Nex.CSRF.hx_headers/0` - 生成 HTMX hx-headers 属性
+  - `Nex.CSRF.validate/1` - 验证请求中的 CSRF token
+  - 自动注入到页面，HTMX 请求自动携带 `X-CSRF-Token` header
+  - POST 请求自动验证 CSRF token
 - **Nex.RouteDiscovery**: 新增动态路由发现模块，支持基于文件系统的路由自动发现
   - 支持单参数动态路由 `[param]`（如 `users/[id].ex` 匹配 `/users/123`）
   - 支持命名参数路由 `[slug]`（如 `posts/[slug].ex` 匹配 `/posts/hello-world`）
@@ -25,6 +32,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `resolve_action/1` 支持动态路由下的 POST action
   - 保留 legacy 路由逻辑作为后备兼容
 - **Nex.Reloader**: 文件变更时自动清除路由缓存，确保新路由立即生效
+- **Nex.Reloader**: 生产环境自动禁用热重载
+  - `Nex.Reloader.enabled?/0` 检查是否启用（仅 `:dev` 环境）
+  - 生产环境不注入 live reload WebSocket 脚本
+  - 通过 `Application.get_env(:nex, :env)` 配置环境
 - **Mix.Tasks.Nex.Dev**: 重构进程启动逻辑，使用 `Nex.Supervisor` 替代手动启动单个进程
   - 原来：手动启动 Store、PubSub、Reloader（无监督）
   - 现在：通过 `Nex.Supervisor.start_link()` 统一管理（有监督）

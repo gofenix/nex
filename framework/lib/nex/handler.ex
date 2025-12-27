@@ -278,15 +278,25 @@ defmodule Nex.Handler do
         end
 
       :post ->
-        # POST requests call action functions
-        # e.g., POST /create_todo → Index.create_todo/2
-        # e.g., POST /todos/123/toggle → Todos.Id.toggle/2
-        case resolve_action(path) do
-          {:ok, module, action, params} ->
-            handle_page_action(conn, module, action, Map.merge(conn.params, params))
+        # Validate CSRF token for POST requests (skip for API routes)
+        case Nex.CSRF.validate(conn) do
+          :ok ->
+            # POST requests call action functions
+            # e.g., POST /create_todo → Index.create_todo/2
+            # e.g., POST /todos/123/toggle → Todos.Id.toggle/2
+            case resolve_action(path) do
+              {:ok, module, action, params} ->
+                handle_page_action(conn, module, action, Map.merge(conn.params, params))
 
-          :error ->
-            send_error_page(conn, 404, "Action Not Found", nil)
+              :error ->
+                send_error_page(conn, 404, "Action Not Found", nil)
+            end
+
+          {:error, :missing_token} ->
+            send_error_page(conn, 403, "CSRF token missing", nil)
+
+          {:error, :invalid_token} ->
+            send_error_page(conn, 403, "CSRF token invalid", nil)
         end
 
       _ ->
@@ -299,6 +309,9 @@ defmodule Nex.Handler do
     page_id = Nex.Store.generate_page_id()
     Nex.Store.set_page_id(page_id)
 
+    # Generate CSRF token for this page
+    csrf_token = Nex.CSRF.generate_token()
+
     assigns =
       if function_exported?(module, :mount, 1) do
         module.mount(params)
@@ -306,49 +319,19 @@ defmodule Nex.Handler do
         %{}
       end
 
-    # Add page_id to assigns for template injection
-    assigns = Map.put(assigns, :_page_id, page_id)
+    # Add page_id and csrf_token to assigns for template injection
+    assigns = assigns
+      |> Map.put(:_page_id, page_id)
+      |> Map.put(:_csrf_token, csrf_token)
 
     if function_exported?(module, :render, 1) do
       content = module.render(assigns)
       # Convert to string for layout embedding
       content_html = Phoenix.HTML.Safe.to_iodata(content) |> IO.iodata_to_binary()
 
-      # Inject page_id script for HTMX and live reload via WebSocket
-      page_id_script = """
-      <script>
-        // Store page_id and configure HTMX to send it via header
-        document.body.dataset.pageId = "#{page_id}";
-        document.body.addEventListener('htmx:configRequest', function(evt) {
-          evt.detail.headers['X-Nex-Page-Id'] = document.body.dataset.pageId;
-        });
-
-        // Live reload via WebSocket
-        (function() {
-          const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-          const ws = new WebSocket(protocol + '//' + window.location.host + '/nex/live-reload-ws');
-
-          ws.onmessage = function(event) {
-            const data = JSON.parse(event.data);
-            if (data.reload) {
-              console.log('[Nex] File changed, reloading...');
-              window.location.reload();
-            }
-          };
-
-          ws.onerror = function() {
-            console.log('[Nex] WebSocket connection failed, falling back to manual reload');
-          };
-
-          ws.onclose = function() {
-            // Reconnect after 1 second if connection is lost
-            setTimeout(function() {
-              window.location.reload();
-            }, 1000);
-          };
-        })();
-      </script>
-      """
+      # Inject page_id and CSRF token for HTMX
+      # Live reload script only in dev environment
+      nex_script = build_nex_script(page_id, csrf_token)
 
       # Try to get layout module from app config
       layout_module = get_layout_module()
@@ -356,7 +339,7 @@ defmodule Nex.Handler do
       html =
         if layout_module && function_exported?(layout_module, :render, 1) do
           layout_module.render(%{
-            inner_content: content_html <> page_id_script,
+            inner_content: content_html <> nex_script,
             title: Map.get(assigns, :title, "Nex App")
           })
         else
@@ -711,5 +694,50 @@ defmodule Nex.Handler do
       [page_id | _] when is_binary(page_id) and page_id != "" -> page_id
       _ -> conn.params["_page_id"] || "unknown"
     end
+  end
+
+  # Build the Nex script for page_id, CSRF token, and optional live reload
+  defp build_nex_script(page_id, csrf_token) do
+    base_script = """
+    <script>
+      // Store page_id and CSRF token, configure HTMX to send them via headers
+      document.body.dataset.pageId = "#{page_id}";
+      document.body.dataset.csrfToken = "#{csrf_token}";
+      document.body.addEventListener('htmx:configRequest', function(evt) {
+        evt.detail.headers['X-Nex-Page-Id'] = document.body.dataset.pageId;
+        evt.detail.headers['X-CSRF-Token'] = document.body.dataset.csrfToken;
+      });
+    """
+
+    # Only add live reload script in dev environment
+    live_reload_script = if Nex.Reloader.enabled?() do
+      """
+        // Live reload via WebSocket (dev only)
+        (function() {
+          const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+          const ws = new WebSocket(protocol + '//' + window.location.host + '/nex/live-reload-ws');
+
+          ws.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            if (data.reload) {
+              console.log('[Nex] File changed, reloading...');
+              window.location.reload();
+            }
+          };
+
+          ws.onerror = function() {
+            console.log('[Nex] WebSocket error');
+          };
+
+          ws.onclose = function() {
+            setTimeout(function() { window.location.reload(); }, 1000);
+          };
+        })();
+      """
+    else
+      ""
+    end
+
+    base_script <> live_reload_script <> "</script>"
   end
 end
