@@ -118,33 +118,35 @@ defmodule Nex.Handler do
     # Convert path segments to PascalCase (e.g., "stream" -> "Stream")
     camelized_path = Enum.map(sse_path, &Macro.camelize/1)
     module_name = [app_module, "Sse" | camelized_path] |> Enum.join(".")
-    module = String.to_atom("Elixir.#{module_name}")
 
-    # Check for stream/2 (callback) or stream/1 (list return)
-    has_stream = Code.ensure_loaded?(module) and
-      (function_exported?(module, :stream, 2) or function_exported?(module, :stream, 1))
+    # Use safe module resolution to prevent atom exhaustion
+    case safe_to_existing_module(module_name) do
+      {:ok, module} ->
+        if function_exported?(module, :stream, 2) or function_exported?(module, :stream, 1) do
+          page_id = conn.params["_page_id"] || "sse"
+          Nex.Store.set_page_id(page_id)
+          params = conn.params
 
-    cond do
-      has_stream ->
-        page_id = conn.params["_page_id"] || "sse"
-        Nex.Store.set_page_id(page_id)
-        params = conn.params
+          # Send SSE headers and stream response
+          conn
+          |> put_resp_header("content-type", "text/event-stream")
+          |> put_resp_header("cache-control", "no-cache")
+          |> put_resp_header("connection", "keep-alive")
+          |> send_chunked(200)
+          |> send_sse_stream(module, params)
+        else
+          try_sse_index_module(conn, module_name)
+        end
 
-        # Send SSE headers and stream response
-        conn
-        |> put_resp_header("content-type", "text/event-stream")
-        |> put_resp_header("cache-control", "no-cache")
-        |> put_resp_header("connection", "keep-alive")
-        |> send_chunked(200)
-        |> send_sse_stream(module, params)
+      :error ->
+        try_sse_index_module(conn, module_name)
+    end
+  end
 
-      true ->
-        # Try Index submodule
-        index_module = String.to_atom("Elixir.#{module_name}.Index")
-        has_index_stream = Code.ensure_loaded?(index_module) and
-          (function_exported?(index_module, :stream, 2) or function_exported?(index_module, :stream, 1))
-
-        if has_index_stream do
+  defp try_sse_index_module(conn, module_name) do
+    case safe_to_existing_module("#{module_name}.Index") do
+      {:ok, index_module} ->
+        if function_exported?(index_module, :stream, 2) or function_exported?(index_module, :stream, 1) do
           page_id = conn.params["_page_id"] || "sse"
           Nex.Store.set_page_id(page_id)
           params = conn.params
@@ -158,6 +160,9 @@ defmodule Nex.Handler do
         else
           send_json_error(conn, 404, "SSE endpoint not found")
         end
+
+      :error ->
+        send_json_error(conn, 404, "SSE endpoint not found")
     end
   end
 
@@ -221,38 +226,6 @@ defmodule Nex.Handler do
   defp format_sse_event(event) when is_binary(event) do
     # Plain text fallback
     "data: #{Jason.encode!(event)}\n\n"
-  end
-
-  defp handle_api(conn, method, path) do
-    # Remove "api" prefix
-    api_path = case path do
-      ["api" | rest] -> rest
-      _ -> path
-    end
-
-    # Set page_id for Nex.Store (from params if present)
-    page_id = conn.params["_page_id"] || "api"
-    Nex.Store.set_page_id(page_id)
-
-    case resolve_api_module(api_path) do
-      {:ok, module, params} ->
-        merged_params = Map.merge(conn.params, params)
-
-        # Try arity 1 first (with params), then arity 0 (no params)
-        result = cond do
-          function_exported?(module, method, 1) ->
-            apply(module, method, [merged_params])
-          function_exported?(module, method, 0) ->
-            apply(module, method, [])
-          true ->
-            :method_not_allowed
-        end
-
-        send_api_response(conn, result)
-
-      :error ->
-        send_json_error(conn, 404, "Not Found")
-    end
   end
 
   defp send_api_response(conn, :method_not_allowed) do
@@ -407,13 +380,18 @@ defmodule Nex.Handler do
     page_id = params["_page_id"] || "unknown"
     Nex.Store.set_page_id(page_id)
 
-    action_atom = String.to_atom(action)
+    # Use to_existing_atom to prevent atom exhaustion attacks
+    case safe_to_existing_atom(action) do
+      {:ok, action_atom} ->
+        if function_exported?(module, action_atom, 1) do
+          result = apply(module, action_atom, [params])
+          send_action_response(conn, result)
+        else
+          send_resp(conn, 404, "Action not found: #{action}")
+        end
 
-    if function_exported?(module, action_atom, 1) do
-      result = apply(module, action_atom, [params])
-      send_action_response(conn, result)
-    else
-      send_resp(conn, 404, "Action not found: #{action}")
+      :error ->
+        send_resp(conn, 404, "Action not found: #{action}")
     end
   end
 
@@ -452,21 +430,26 @@ defmodule Nex.Handler do
     case path do
       [] ->
         # POST / → Index.index
-        module = String.to_atom("Elixir.#{app_module}.Pages.Index")
-        if Code.ensure_loaded?(module), do: {:ok, module, "index", %{}}, else: :error
+        case safe_to_existing_module("#{app_module}.Pages.Index") do
+          {:ok, module} -> {:ok, module, "index", %{}}
+          :error -> :error
+        end
 
       [action] ->
         # POST /create_todo → Index.create_todo
         # Also try: POST /stream → Stream.stream
         action_module_name = [app_module, "Pages", Macro.camelize(action)] |> Enum.join(".")
-        action_module = String.to_atom("Elixir.#{action_module_name}")
 
-        cond do
-          Code.ensure_loaded?(action_module) and function_exported?(action_module, String.to_atom(action), 1) ->
-            {:ok, action_module, action, %{}}
-          true ->
-            module = String.to_atom("Elixir.#{app_module}.Pages.Index")
-            if Code.ensure_loaded?(module), do: {:ok, module, action, %{}}, else: :error
+        with {:ok, action_module} <- safe_to_existing_module(action_module_name),
+             {:ok, action_atom} <- safe_to_existing_atom(action),
+             true <- function_exported?(action_module, action_atom, 1) do
+          {:ok, action_module, action, %{}}
+        else
+          _ ->
+            case safe_to_existing_module("#{app_module}.Pages.Index") do
+              {:ok, module} -> {:ok, module, action, %{}}
+              :error -> :error
+            end
         end
 
       segments ->
@@ -476,19 +459,16 @@ defmodule Nex.Handler do
         {module_parts, params} = path_to_module_parts(module_path)
 
         module_name = [app_module, "Pages" | module_parts] |> Enum.join(".")
-        module = String.to_atom("Elixir.#{module_name}")
 
-        cond do
-          Code.ensure_loaded?(module) ->
+        case safe_to_existing_module(module_name) do
+          {:ok, module} ->
             {:ok, module, action, params}
 
-          true ->
+          :error ->
             # Try Index submodule
-            index_module = String.to_atom("Elixir.#{module_name}.Index")
-            if Code.ensure_loaded?(index_module) do
-              {:ok, index_module, action, params}
-            else
-              :error
+            case safe_to_existing_module("#{module_name}.Index") do
+              {:ok, index_module} -> {:ok, index_module, action, params}
+              :error -> :error
             end
         end
     end
@@ -508,19 +488,16 @@ defmodule Nex.Handler do
       [app_module, "Pages" | module_parts]
       |> Enum.join(".")
 
-    module = String.to_atom("Elixir.#{module_name}")
+    case safe_to_existing_module(module_name) do
+      {:ok, module} ->
+        {:ok, module, params}
 
-    if Code.ensure_loaded?(module) do
-      {:ok, module, params}
-    else
-      # Try index
-      index_module = String.to_atom("Elixir.#{module_name}.Index")
-
-      if Code.ensure_loaded?(index_module) do
-        {:ok, index_module, params}
-      else
-        :error
-      end
+      :error ->
+        # Try index
+        case safe_to_existing_module("#{module_name}.Index") do
+          {:ok, index_module} -> {:ok, index_module, params}
+          :error -> :error
+        end
     end
   end
 
@@ -533,18 +510,15 @@ defmodule Nex.Handler do
       [app_module, "Api" | module_parts]
       |> Enum.join(".")
 
-    module = String.to_atom("Elixir.#{module_name}")
+    case safe_to_existing_module(module_name) do
+      {:ok, module} ->
+        {:ok, module, params}
 
-    if Code.ensure_loaded?(module) do
-      {:ok, module, params}
-    else
-      index_module = String.to_atom("Elixir.#{module_name}.Index")
-
-      if Code.ensure_loaded?(index_module) do
-        {:ok, index_module, params}
-      else
-        :error
-      end
+      :error ->
+        case safe_to_existing_module("#{module_name}.Index") do
+          {:ok, index_module} -> {:ok, index_module, params}
+          :error -> :error
+        end
     end
   end
 
@@ -577,12 +551,10 @@ defmodule Nex.Handler do
 
   defp get_layout_module do
     app_module = get_app_module()
-    module = String.to_atom("Elixir.#{app_module}.Layouts")
 
-    if Code.ensure_loaded?(module) do
-      module
-    else
-      nil
+    case safe_to_existing_module("#{app_module}.Layouts") do
+      {:ok, module} -> module
+      :error -> nil
     end
   end
 
@@ -652,4 +624,22 @@ defmodule Nex.Handler do
   end
 
   defp html_escape(text), do: html_escape(to_string(text))
+
+  # Safe atom/module conversion to prevent atom exhaustion attacks
+  # Only converts to atom if it already exists (i.e., module was compiled)
+  defp safe_to_existing_atom(string) do
+    {:ok, String.to_existing_atom(string)}
+  rescue
+    ArgumentError -> :error
+  end
+
+  defp safe_to_existing_module(module_name) do
+    case safe_to_existing_atom("Elixir.#{module_name}") do
+      {:ok, module} ->
+        if Code.ensure_loaded?(module), do: {:ok, module}, else: :error
+
+      :error ->
+        :error
+    end
+  end
 end
