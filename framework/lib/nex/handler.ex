@@ -4,20 +4,31 @@ defmodule Nex.Handler do
   """
 
   import Plug.Conn
+  require Logger
 
   @doc "Handle incoming request"
   def handle(conn) do
-    method = conn.method |> String.downcase() |> String.to_atom()
-    path = conn.path_info
+    try do
+      method = conn.method |> String.downcase() |> String.to_atom()
+      path = conn.path_info
 
-    cond do
-      # API routes: /api/*
-      match?(["api" | _], path) ->
-        handle_api(conn, method, path)
+      cond do
+        # API routes: /api/*
+        match?(["api" | _], path) ->
+          handle_api(conn, method, path)
 
-      # Page routes
-      true ->
-        handle_page(conn, method, path)
+        # Page routes
+        true ->
+          handle_page(conn, method, path)
+      end
+    rescue
+      e ->
+        Logger.error("Unhandled error: #{inspect(e)}\n#{Exception.format_stacktrace(__STACKTRACE__)}")
+        send_error_page(conn, 500, "Internal Server Error", e)
+    catch
+      kind, reason ->
+        Logger.error("Caught #{kind}: #{inspect(reason)}")
+        send_error_page(conn, 500, "Internal Server Error", reason)
     end
   end
 
@@ -92,7 +103,7 @@ defmodule Nex.Handler do
             handle_page_render(conn, module, Map.merge(conn.params, params))
 
           :error ->
-            send_resp(conn, 404, "Not Found")
+            send_error_page(conn, 404, "Page Not Found", nil)
         end
 
       :post ->
@@ -104,11 +115,11 @@ defmodule Nex.Handler do
             handle_page_action(conn, module, action, Map.merge(conn.params, params))
 
           :error ->
-            send_resp(conn, 404, "Not Found")
+            send_error_page(conn, 404, "Action Not Found", nil)
         end
 
       _ ->
-        send_resp(conn, 405, "Method Not Allowed")
+        send_error_page(conn, 405, "Method Not Allowed", nil)
     end
   end
 
@@ -341,4 +352,71 @@ defmodule Nex.Handler do
       nil
     end
   end
+
+  defp send_error_page(conn, status, message, error) do
+    # Check if request is from HTMX
+    is_htmx = get_req_header(conn, "hx-request") != []
+
+    # Check if request expects JSON
+    is_json = match?(["api" | _], conn.path_info) or
+              get_req_header(conn, "accept") |> Enum.any?(&String.contains?(&1, "application/json"))
+
+    cond do
+      is_json ->
+        send_json_error(conn, status, message)
+
+      is_htmx ->
+        # For HTMX requests, return a simple error fragment
+        html = """
+        <div class="p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+          <strong>Error #{status}:</strong> #{html_escape(message)}
+        </div>
+        """
+        conn
+        |> put_resp_content_type("text/html")
+        |> send_resp(status, html)
+
+      true ->
+        # Full error page
+        error_detail = if error && Mix.env() == :dev do
+          "<pre class=\"mt-4 p-4 bg-gray-800 text-green-400 rounded overflow-auto text-sm\">#{html_escape(inspect(error, pretty: true))}</pre>"
+        else
+          ""
+        end
+
+        html = """
+        <!DOCTYPE html>
+        <html lang="en">
+          <head>
+            <meta charset="UTF-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            <title>#{status} - #{html_escape(message)}</title>
+            <script src="https://cdn.tailwindcss.com"></script>
+          </head>
+          <body class="bg-gray-100 min-h-screen flex items-center justify-center">
+            <div class="text-center p-8">
+              <h1 class="text-6xl font-bold text-gray-300 mb-4">#{status}</h1>
+              <p class="text-xl text-gray-600 mb-8">#{html_escape(message)}</p>
+              <a href="/" class="text-blue-500 hover:underline">← Back to Home</a>
+              #{error_detail}
+            </div>
+          </body>
+        </html>
+        """
+
+        conn
+        |> put_resp_content_type("text/html")
+        |> send_resp(status, html)
+    end
+  end
+
+  defp html_escape(text) when is_binary(text) do
+    text
+    |> String.replace("&", "&amp;")
+    |> String.replace("<", "&lt;")
+    |> String.replace(">", "&gt;")
+    |> String.replace("\"", "&quot;")
+  end
+
+  defp html_escape(text), do: html_escape(to_string(text))
 end

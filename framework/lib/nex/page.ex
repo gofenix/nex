@@ -34,6 +34,7 @@ defmodule Nex.Page do
   defmacro __using__(_opts) do
     quote do
       import Phoenix.Component, only: [sigil_H: 2]
+      import Phoenix.HTML, only: [raw: 1]
     end
   end
 end
