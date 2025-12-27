@@ -47,7 +47,7 @@ defmodule Chatbot.Pages.Index do
     """
   end
 
-  def chat(%{"message" => user_message} = params) do
+  def chat(%{"message" => user_message} = _params) do
     user_msg = %{
       role: :user,
       content: user_message,
@@ -56,8 +56,8 @@ defmodule Chatbot.Pages.Index do
 
     Nex.Store.update(:chat_messages, [], &[user_msg | &1])
 
-    # Simulate AI response (replace with real OpenAI API in production)
-    ai_response = simulate_ai_response(user_message)
+    # Get AI response from OpenAI
+    ai_response = get_ai_response(user_message)
 
     ai_msg = %{
       role: :assistant,
@@ -67,14 +67,57 @@ defmodule Chatbot.Pages.Index do
 
     Nex.Store.update(:chat_messages, [], &[ai_msg | &1])
 
-    {:ok, assigns} = mount(nil)
-    assigns = Map.put(assigns, :loading, false)
+    # Return the new messages as HEEx fragment
+    assigns = %{user_msg: user_msg, ai_msg: ai_msg}
+    ~H"<div><.chat_message message={@user_msg} /><.chat_message message={@ai_msg} /></div>"
+  end
 
-    # Render just the new messages (user + AI)
-    ~H"""
-    <.chat_message message={user_msg} />
-    <.chat_message message={ai_msg} />
-    """
+  defp get_ai_response(user_message) do
+    api_key = Nex.Env.get(:OPENAI_API_KEY)
+    base_url = Nex.Env.get(:OPENAI_BASE_URL, "https://api.openai.com/v1")
+
+    if api_key == nil or api_key == "" do
+      simulate_ai_response(user_message)
+    else
+      call_openai(api_key, base_url, user_message)
+    end
+  end
+
+  defp call_openai(api_key, base_url, user_message) do
+    messages = [
+      %{
+        "role" => "system",
+        "content" => "你是一个友好的AI助手，请用简洁的中文回复。"
+      },
+      %{
+        "role" => "user",
+        "content" => user_message
+      }
+    ]
+
+    body = Jason.encode!(%{
+      "model" => "gpt-3.5-turbo",
+      "messages" => messages
+    })
+
+    headers = [
+      {"Content-Type", "application/json"},
+      {"Authorization", "Bearer #{api_key}"}
+    ]
+
+    url = "#{base_url}/chat/completions"
+
+    case :hackney.post(url, headers, body, []) do
+      {:ok, 200, _headers, body_ref} ->
+        {:ok, body} = :hackney.body(body_ref)
+        Jason.decode!(body)["choices"] |> List.first() |> get_in(["message", "content"])
+
+      {:ok, status, _headers, _body_ref} ->
+        "请求失败 (HTTP #{status})"
+
+      {:error, reason} ->
+        "请求失败: #{inspect(reason)}"
+    end
   end
 
   defp simulate_ai_response(user_input) do

@@ -11,16 +11,19 @@ defmodule Chatbot.Partials.Chat.ChatMessage do
       <ChatMessage.chat_message message={message} />
   """
   def chat_message(assigns) do
-    is_user = @message.role == :user
+    assigns =
+      assigns
+      |> Map.put(:is_user, assigns.message.role == :user)
+
     ~H"""
-    <div class={"flex gap-3 #{if is_user, do: "flex-row-reverse"}"}>
-      <div class={if is_user, do: "avatar placeholder", else: ""}>
-        <div class={if is_user, do: "bg-blue-500 text-white rounded-full w-10", else: "bg-emerald-500 text-white rounded-full w-10"}>
-          <span class="text-sm">{if is_user, do: "U", else: "AI"}</span>
+    <div class={"flex gap-3 #{if @is_user, do: "flex-row-reverse"}"}>
+      <div class={if @is_user, do: "avatar placeholder", else: ""}>
+        <div class={if @is_user, do: "bg-blue-500 text-white rounded-full w-10", else: "bg-emerald-500 text-white rounded-full w-10"}>
+          <span class="text-sm">{if @is_user, do: "U", else: "AI"}</span>
         </div>
       </div>
-      <div class={if is_user, do: "chat-message-user", else: "chat-message-ai"}>
-        <div class={if is_user, do: "bg-blue-600 text-white", else: "bg-gray-700 text-gray-100"}>
+      <div class={if @is_user, do: "chat-message-user", else: "chat-message-ai"}>
+        <div class={if @is_user, do: "bg-blue-600 text-white", else: "bg-gray-700 text-gray-100"}>
           <p class="whitespace-pre-wrap">{@message.content}</p>
         </div>
         <span class="text-xs text-gray-500 mt-1 block">
