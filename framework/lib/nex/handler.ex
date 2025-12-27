@@ -8,6 +8,12 @@ defmodule Nex.Handler do
 
   @doc "Handle incoming request"
   def handle(conn) do
+    # Register cleanup callback to clear process dictionary after response
+    conn = register_before_send(conn, fn conn ->
+      Nex.Store.clear_process_dictionary()
+      conn
+    end)
+
     try do
       method = conn.method |> String.downcase() |> String.to_atom()
       path = conn.path_info

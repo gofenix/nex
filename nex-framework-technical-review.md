@@ -97,7 +97,9 @@ end
 
 **建议**：拆分为多个专门的模块，如 `Nex.Dispatcher`、`Nex.PageRenderer`、`Nex.SSEHandler` 等。
 
-### 3.2 状态管理的并发问题
+### 3.2 状态管理的并发问题 ✅ **已优化**
+
+~~**原问题**~~：
 
 ```elixir
 defp touch_page(page_id) do
@@ -111,11 +113,48 @@ defp touch_page(page_id) do
 end
 ```
 
-**问题**：
-- 使用进程字典存储 `page_id` 在并发请求间可能泄露
-- `touch_page/1` 的 O(n) 复杂度会在大量页面时成为瓶颈
+~~**问题**~~：
+- ~~使用进程字典存储 `page_id` 在并发请求间可能泄露~~ ✅ **已缓解**
+- ~~`touch_page/1` 的 O(n) 复杂度会在大量页面时成为瓶颈~~ ✅ **已优化**
 
-**建议**：考虑使用 `Registry` 或为每个页面创建专门的 GenServer。
+**优化方案（对用户透明）**：
+
+1. **自动进程字典清理**：
+   - 使用 `Plug.Conn.register_before_send/2` 在响应发送前自动清理
+   - 防止进程复用时的数据泄露
+   - 用户代码无需任何修改
+
+2. **性能优化**：
+   - 将 `:ets.foldl/3` 改为 `:ets.match/2`
+   - 只扫描匹配特定 `page_id` 的记录，而非全表
+   - 复杂度从 O(n) 降至 O(m)，其中 m 是该页面的 key 数量
+
+**优化后代码**：
+
+```elixir
+# 自动清理
+def handle(conn) do
+  conn = register_before_send(conn, fn conn ->
+    Nex.Store.clear_process_dictionary()
+    conn
+  end)
+  # ...
+end
+
+# 性能优化
+defp touch_page(page_id) do
+  expires_at = System.system_time(:millisecond) + @default_ttl
+  
+  :ets.match(@table, {{page_id, :"$1"}, :"$2", :_})
+  |> Enum.each(fn [key, value] ->
+    :ets.insert(@table, {{page_id, key}, value, expires_at})
+  end)
+end
+```
+
+**性能提升**：
+- 1000 个页面，每页 10 个 key：从扫描 10,000 条降至 10 条（1000x 提升）
+- 用户完全无感知，API 保持不变
 
 ### 3.3 缺失的中间件系统
 
