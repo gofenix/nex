@@ -76,9 +76,14 @@ defmodule Chatbot.Pages.Index do
     api_key = Nex.Env.get(:OPENAI_API_KEY)
     base_url = Nex.Env.get(:OPENAI_BASE_URL, "https://api.openai.com/v1")
 
+    IO.puts("[DEBUG] OPENAI_API_KEY: #{inspect(api_key)}")
+    IO.puts("[DEBUG] OPENAI_BASE_URL: #{inspect(base_url)}")
+
     if api_key == nil or api_key == "" do
+      IO.puts("[DEBUG] Using simulated AI response")
       simulate_ai_response(user_message)
     else
+      IO.puts("[DEBUG] Calling OpenAI API")
       call_openai(api_key, base_url, user_message)
     end
   end
