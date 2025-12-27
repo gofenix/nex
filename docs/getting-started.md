@@ -44,7 +44,47 @@ def project do
 end
 ```
 
-### 4. 获取依赖
+### 4. 配置应用启动
+
+在 `mix.exs` 的 `application/0` 中添加 `mod` 配置：
+
+```elixir
+def application do
+  [
+    extra_applications: [:logger],
+    mod: {MyApp.Application, []}  # 添加这行
+  ]
+end
+```
+
+### 5. 创建 Application 模块
+
+```elixir
+# src/application.ex
+defmodule MyApp.Application do
+  @moduledoc """
+  The MyApp application.
+  
+  This module defines the application supervision tree.
+  Add any supervised processes (like database connections, HTTP clients, etc.) here.
+  """
+  
+  use Application
+
+  @impl true
+  def start(_type, _args) do
+    children = [
+      # Add supervised processes here
+      # Example: {MyWorker, arg}
+    ]
+
+    opts = [strategy: :one_for_one, name: MyApp.Supervisor]
+    Supervisor.start_link(children, opts)
+  end
+end
+```
+
+### 6. 获取依赖
 
 ```bash
 mix deps.get

@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Nex.Env**: Added debug logging to show which `.env` files are being loaded, their paths, and how many variables were loaded
 - **Mix.Tasks.Nex.Dev**: Fixed user application not being started, which prevented application supervision trees (like Finch for HTTP clients) from running
 
+### Added
+- **Documentation**: Added comprehensive `application.md` guide explaining Application modules and supervision trees
+- **Examples**: All example projects now include a default `Application` module template with documentation
+- **Getting Started**: Updated quick start guide to include Application module setup
+
 ### Changed
 - **Nex.Env**: Improved `.env` file path resolution to work correctly regardless of where `mix nex.dev` is executed from
 - **Nex.Env**: Enhanced error handling to show specific error messages when `.env` file loading fails
+- **Examples**: All example projects (`chatbot`, `guestbook`, `todos`) now have `Application` modules configured in `mix.exs`
