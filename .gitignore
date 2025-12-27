@@ -1,0 +1,35 @@
+# Dependencies
+deps/
+_build/
+
+# Mix artifacts
+*.ez
+mix.lock
+
+# Crash dumps
+erl_crash.dump
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Elixir LS
+.elixir_ls/
+
+# Test coverage
+cover/
+
+# Documentation
+doc/
