@@ -1,9 +1,9 @@
-defmodule Myapp.Pages.Index do
+defmodule Tt.Pages.Index do
   use Nex.Page
 
   def mount(_params) do
     %{
-      title: "Welcome to Myapp",
+      title: "Welcome to Tt",
       message: "Your Nex app is running!"
     }
   end
@@ -15,6 +15,7 @@ defmodule Myapp.Pages.Index do
       <p class="text-gray-600 mb-8">
         Edit <code class="bg-gray-200 px-2 py-1 rounded">src/pages/index.ex</code> to get started.
       </p>
+
       <div class="bg-white rounded-lg p-6 shadow max-w-md mx-auto">
         <h2 class="text-xl font-semibold mb-4">Project Structure</h2>
         <ul class="space-y-2 text-left">

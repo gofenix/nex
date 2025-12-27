@@ -1,21 +1,12 @@
 # Myapp
 
-**TODO: Add description**
+A web application built with [Nex](https://github.com/aspect-build/nex).
 
-## Installation
+## Getting Started
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `myapp` to your list of dependencies in `mix.exs`:
-
-```elixir
-def deps do
-  [
-    {:myapp, "~> 0.1.0"}
-  ]
-end
+```bash
+mix deps.get
+mix nex.dev
 ```
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at <https://hexdocs.pm/myapp>.
-
+Open http://localhost:4000
