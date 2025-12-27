@@ -70,6 +70,9 @@ defmodule Nex.Reloader do
       Code.compile_file(path)
       Logger.info("[Nex.Reloader] ✓ Reloaded successfully")
 
+      # Clear route cache so new routes are discovered
+      Nex.RouteDiscovery.clear_cache()
+
       # Broadcast reload event to all connected WebSocket clients
       Phoenix.PubSub.broadcast(Nex.PubSub, "live_reload", {:reload, path})
 

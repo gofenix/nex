@@ -8,15 +8,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Nex.RouteDiscovery**: 新增动态路由发现模块，支持基于文件系统的路由自动发现
+  - 支持单参数动态路由 `[param]`（如 `users/[id].ex` 匹配 `/users/123`）
+  - 支持命名参数路由 `[slug]`（如 `posts/[slug].ex` 匹配 `/posts/hello-world`）
+  - 支持多参数动态路由（如 `posts/[year]/[month].ex` 匹配 `/posts/2024/12`）
+  - 支持通配符路由 `[...path]`（如 `docs/[...path].ex` 匹配任意层级路径）
+  - 支持混合路由（如 `files/[category]/[...path].ex`）
+  - 路由缓存机制（ETS），开发时文件变更自动刷新
+  - 路由优先级排序：静态路由 > 动态路由 > 通配符路由
+- **Examples**: 新增 `dynamic_routes` 示例项目，展示所有动态路由类型的用法
+
+### Changed
+- **Nex.Handler**: 重构路由解析逻辑，优先使用 `Nex.RouteDiscovery` 进行动态路由匹配
+  - `resolve_page_module/1` 现在支持基于文件名的动态参数提取
+  - `resolve_api_module/1` 同样支持动态路由
+  - `resolve_action/1` 支持动态路由下的 POST action
+  - 保留 legacy 路由逻辑作为后备兼容
+- **Nex.Reloader**: 文件变更时自动清除路由缓存，确保新路由立即生效
+- **Mix.Tasks.Nex.Dev**: 重构进程启动逻辑，使用 `Nex.Supervisor` 替代手动启动单个进程
+  - 原来：手动启动 Store、PubSub、Reloader（无监督）
+  - 现在：通过 `Nex.Supervisor.start_link()` 统一管理（有监督）
+
+### Added (Earlier)
 - **Nex.Supervisor**: 新增框架层监督树模块，统一管理 Nex 核心进程（Store、PubSub、Reloader）
   - 任何进程崩溃会自动重启，提高框架可靠性
   - 对用户完全透明，无需额外配置
   - 符合 OTP 最佳实践
-
-### Changed
-- **Mix.Tasks.Nex.Dev**: 重构进程启动逻辑，使用 `Nex.Supervisor` 替代手动启动单个进程
-  - 原来：手动启动 Store、PubSub、Reloader（无监督）
-  - 现在：通过 `Nex.Supervisor.start_link()` 统一管理（有监督）
 
 ### Security
 - **Nex.Handler**: Fixed atom exhaustion vulnerability (CVE-level security issue) by replacing `String.to_atom/1` with `String.to_existing_atom/1` for user-supplied input. This prevents attackers from crashing the server by requesting random paths like `/api/random_1`, `/api/random_2`, etc.
