@@ -2,10 +2,10 @@ defmodule Todos.Pages.Index do
   use Nex.Page
   import Todos.Partials.Todos.Item
 
-  def mount(conn, _params) do
+  def mount(_params) do
     %{
       title: "Todo App",
-      todos: Nex.Store.get(conn, :todos, [])
+      todos: Nex.Store.get(:todos, [])
     }
   end
 
@@ -37,23 +37,23 @@ defmodule Todos.Pages.Index do
     """
   end
 
-  def create_todo(conn, %{"text" => text}) do
+  def create_todo(%{"text" => text}) do
     todo = %{
       id: System.unique_integer([:positive]),
       text: text,
       completed: false
     }
 
-    Nex.Store.update(conn, :todos, [], &[todo | &1])
+    Nex.Store.update(:todos, [], &[todo | &1])
 
     assigns = %{todo: todo}
-    render_fragment(conn, ~H"<.todo_item todo={@todo} />")
+    ~H"<.todo_item todo={@todo} />"
   end
 
-  def toggle_todo(conn, %{"id" => id}) do
+  def toggle_todo(%{"id" => id}) do
     id = String.to_integer(id)
 
-    Nex.Store.update(conn, :todos, [], fn todos ->
+    Nex.Store.update(:todos, [], fn todos ->
       Enum.map(todos, fn todo ->
         if todo.id == id do
           %{todo | completed: !todo.completed}
@@ -63,19 +63,19 @@ defmodule Todos.Pages.Index do
       end)
     end)
 
-    todo = Nex.Store.get(conn, :todos, []) |> Enum.find(&(&1.id == id))
+    todo = Nex.Store.get(:todos, []) |> Enum.find(&(&1.id == id))
 
     assigns = %{todo: todo}
-    render_fragment(conn, ~H"<.todo_item todo={@todo} />")
+    ~H"<.todo_item todo={@todo} />"
   end
 
-  def delete_todo(conn, %{"id" => id}) do
+  def delete_todo(%{"id" => id}) do
     id = String.to_integer(id)
 
-    Nex.Store.update(conn, :todos, [], fn todos ->
+    Nex.Store.update(:todos, [], fn todos ->
       Enum.reject(todos, &(&1.id == id))
     end)
 
-    empty(conn)
+    :empty
   end
 end

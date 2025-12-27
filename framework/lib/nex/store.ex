@@ -8,15 +8,14 @@ defmodule Nex.Store do
   ## Usage
 
       # In a Page module
-      def mount(conn, _params) do
-        # First page load: empty state
-        %{title: "Todos", todos: Nex.Store.get(conn, :todos, [])}
+      def mount(_params) do
+        %{title: "Todos", todos: Nex.Store.get(:todos, [])}
       end
 
-      def create_todo(conn, %{"text" => text}) do
+      def create_todo(%{"text" => text}) do
         todo = %{id: unique_id(), text: text, completed: false}
-        Nex.Store.update(conn, :todos, [], &[todo | &1])
-        render_fragment(conn, ~H"<.todo_item todo={todo} />")
+        Nex.Store.update(:todos, [], &[todo | &1])
+        # ...
       end
 
   State is tied to a `_page_id` that is generated on first page render.
@@ -27,6 +26,7 @@ defmodule Nex.Store do
   use GenServer
 
   @table :nex_store
+  @page_id_key :nex_page_id
 
   ## Client API
 
@@ -39,9 +39,19 @@ defmodule Nex.Store do
     :crypto.strong_rand_bytes(12) |> Base.url_encode64()
   end
 
+  @doc "Set current page ID in process dictionary (called by framework)"
+  def set_page_id(page_id) do
+    Process.put(@page_id_key, page_id)
+  end
+
+  @doc "Get current page ID from process dictionary"
+  def get_page_id do
+    Process.get(@page_id_key, "unknown")
+  end
+
   @doc "Get value from page store"
-  def get(conn, key, default \\ nil) do
-    page_id = get_page_id(conn)
+  def get(key, default \\ nil) do
+    page_id = get_page_id()
 
     case :ets.lookup(@table, {page_id, key}) do
       [{_, value}] -> value
@@ -50,22 +60,22 @@ defmodule Nex.Store do
   end
 
   @doc "Put value into page store"
-  def put(conn, key, value) do
-    page_id = get_page_id(conn)
+  def put(key, value) do
+    page_id = get_page_id()
     :ets.insert(@table, {{page_id, key}, value})
     value
   end
 
   @doc "Update value in page store"
-  def update(conn, key, default, fun) do
-    current = get(conn, key, default)
+  def update(key, default, fun) do
+    current = get(key, default)
     new_value = fun.(current)
-    put(conn, key, new_value)
+    put(key, new_value)
   end
 
   @doc "Delete value from page store"
-  def delete(conn, key) do
-    page_id = get_page_id(conn)
+  def delete(key) do
+    page_id = get_page_id()
     :ets.delete(@table, {page_id, key})
     :ok
   end
@@ -82,14 +92,5 @@ defmodule Nex.Store do
   def init(_opts) do
     table = :ets.new(@table, [:named_table, :public, :set])
     {:ok, %{table: table}}
-  end
-
-  ## Private
-
-  defp get_page_id(conn) do
-    # Try to get page_id from:
-    # 1. Request params (_page_id from HTMX)
-    # 2. conn.private (set by Handler on page render)
-    conn.params["_page_id"] || conn.private[:nex_page_id] || "unknown"
   end
 end

@@ -2,7 +2,7 @@ defmodule Todos.Api.Todos.Index do
   use Nex.Api
 
   def get(conn, _params) do
-    todos = Nex.Store.get(conn, :todos, [])
+    todos = Nex.Store.get(:todos, [])
     json(conn, %{data: todos})
   end
 
@@ -13,7 +13,7 @@ defmodule Todos.Api.Todos.Index do
       completed: false
     }
 
-    Nex.Store.update(conn, :todos, [], &[todo | &1])
+    Nex.Store.update(:todos, [], &[todo | &1])
 
     json(conn, %{data: todo}, status: 201)
   end
