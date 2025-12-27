@@ -1,0 +1,245 @@
+defmodule Mix.Tasks.Nex.New do
+  @moduledoc """
+  Creates a new Nex project.
+
+  ## Usage
+
+      mix nex.new my_app
+      mix nex.new my_app --path ~/projects
+
+  ## Options
+
+      --path PATH    Directory to create project in (default: current directory)
+
+  ## Installation
+
+      cd installer
+      mix archive.build
+      mix archive.install
+  """
+
+  use Mix.Task
+
+  @shortdoc "Create a new Nex project"
+
+  def run([]) do
+    Mix.raise("Expected project name. Usage: mix nex.new my_app")
+  end
+
+  def run(args) do
+    {opts, [name | _], _} = OptionParser.parse(args, switches: [path: :string])
+
+    unless valid_name?(name) do
+      Mix.raise("Project name must start with a letter and contain only lowercase letters, numbers, and underscores")
+    end
+
+    base_path = opts[:path] || "."
+    project_path = Path.expand(Path.join(base_path, name))
+
+    if File.dir?(project_path) do
+      Mix.raise("Directory #{project_path} already exists")
+    end
+
+    module_name = Macro.camelize(name)
+    assigns = %{app_name: name, module_name: module_name}
+
+    Mix.shell().info("\n🚀 Creating Nex project: #{name}\n")
+
+    create_project(project_path, assigns)
+
+    Mix.shell().info("""
+
+    ✅ Project created successfully!
+
+    Next steps:
+
+        cd #{name}
+        mix deps.get
+        mix nex.dev
+
+    Then open http://localhost:4000 in your browser.
+    """)
+  end
+
+  defp valid_name?(name), do: Regex.match?(~r/^[a-z][a-z0-9_]*$/, name)
+
+  defp create_project(path, assigns) do
+    # Create directories
+    dirs = [path, "#{path}/src", "#{path}/src/pages", "#{path}/src/api", "#{path}/src/partials"]
+    Enum.each(dirs, fn dir ->
+      File.mkdir_p!(dir)
+      Mix.shell().info("  Created: #{dir}/")
+    end)
+
+    # Create files
+    files = [
+      {"mix.exs", mix_exs(assigns)},
+      {"src/application.ex", application(assigns)},
+      {"src/layouts.ex", layouts(assigns)},
+      {"src/pages/index.ex", index(assigns)},
+      {".gitignore", gitignore()},
+      {".env.example", env_example()},
+      {"README.md", readme(assigns)}
+    ]
+
+    Enum.each(files, fn {file, content} ->
+      full_path = Path.join(path, file)
+      File.write!(full_path, content)
+      Mix.shell().info("  Created: #{full_path}")
+    end)
+  end
+
+  # Templates
+
+  defp mix_exs(a) do
+    """
+    defmodule #{a.module_name}.MixProject do
+      use Mix.Project
+
+      def project do
+        [
+          app: :#{a.app_name},
+          version: "0.1.0",
+          elixir: "~> 1.18",
+          start_permanent: Mix.env() == :prod,
+          elixirc_paths: ["src"],
+          deps: deps()
+        ]
+      end
+
+      def application do
+        [
+          extra_applications: [:logger],
+          mod: {#{a.module_name}.Application, []}
+        ]
+      end
+
+      defp deps do
+        [
+          {:nex, "~> 0.1"}
+        ]
+      end
+    end
+    """
+  end
+
+  defp application(a) do
+    """
+    defmodule #{a.module_name}.Application do
+      use Application
+
+      @impl true
+      def start(_type, _args) do
+        children = []
+        opts = [strategy: :one_for_one, name: #{a.module_name}.Supervisor]
+        Supervisor.start_link(children, opts)
+      end
+    end
+    """
+  end
+
+  defp layouts(a) do
+    """
+    defmodule #{a.module_name}.Layouts do
+      use Nex.Page
+
+      def render(assigns) do
+        ~H\"\"\"
+        <!DOCTYPE html>
+        <html lang="en">
+          <head>
+            <meta charset="UTF-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            <title>{@title}</title>
+            <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio"></script>
+            <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+          </head>
+          <body class="bg-gray-100 min-h-screen">
+            <nav class="bg-white shadow-sm border-b">
+              <div class="max-w-4xl mx-auto px-4 py-3">
+                <a href="/" class="text-xl font-bold text-blue-600">#{a.module_name}</a>
+              </div>
+            </nav>
+            <main class="max-w-4xl mx-auto px-4 py-8">
+              {raw(@inner_content)}
+            </main>
+          </body>
+        </html>
+        \"\"\"
+      end
+    end
+    """
+  end
+
+  defp index(a) do
+    """
+    defmodule #{a.module_name}.Pages.Index do
+      use Nex.Page
+
+      def mount(_params) do
+        %{
+          title: "Welcome to #{a.module_name}",
+          message: "Your Nex app is running!"
+        }
+      end
+
+      def render(assigns) do
+        ~H\"\"\"
+        <div class="text-center py-12">
+          <h1 class="text-4xl font-bold text-gray-800 mb-4">{@message}</h1>
+          <p class="text-gray-600 mb-8">
+            Edit <code class="bg-gray-200 px-2 py-1 rounded">src/pages/index.ex</code> to get started.
+          </p>
+          <div class="bg-white rounded-lg p-6 shadow max-w-md mx-auto">
+            <h2 class="text-xl font-semibold mb-4">Project Structure</h2>
+            <ul class="space-y-2 text-left">
+              <li>📁 <code>src/pages/</code> - Page components</li>
+              <li>🔌 <code>src/api/</code> - API endpoints</li>
+              <li>🧩 <code>src/partials/</code> - Reusable components</li>
+              <li>🎨 <code>src/layouts.ex</code> - Layout template</li>
+            </ul>
+          </div>
+        </div>
+        \"\"\"
+      end
+    end
+    """
+  end
+
+  defp gitignore do
+    """
+    /deps/
+    /_build/
+    .env
+    .env.local
+    *.beam
+    erl_crash.dump
+    .elixir_ls/
+    .DS_Store
+    """
+  end
+
+  defp env_example do
+    """
+    PORT=4000
+    HOST=localhost
+    """
+  end
+
+  defp readme(a) do
+    """
+    # #{a.module_name}
+
+    A web application built with [Nex](https://github.com/aspect-build/nex).
+
+    ## Getting Started
+
+    ```bash
+    mix deps.get
+    mix nex.dev
+    ```
+
+    Open http://localhost:4000
+    """
+  end
+end
