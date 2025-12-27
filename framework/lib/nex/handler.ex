@@ -28,18 +28,59 @@ defmodule Nex.Handler do
       _ -> path
     end
 
+    # Set page_id for Nex.Store (from params if present)
+    page_id = conn.params["_page_id"] || "api"
+    Nex.Store.set_page_id(page_id)
+
     case resolve_api_module(api_path) do
       {:ok, module, params} ->
-        if function_exported?(module, method, 2) do
-          merged_params = Map.merge(conn.params, params)
-          apply(module, method, [conn, merged_params])
-        else
-          send_resp(conn, 405, "Method Not Allowed")
+        merged_params = Map.merge(conn.params, params)
+
+        # Try arity 1 first (with params), then arity 0 (no params)
+        result = cond do
+          function_exported?(module, method, 1) ->
+            apply(module, method, [merged_params])
+          function_exported?(module, method, 0) ->
+            apply(module, method, [])
+          true ->
+            :method_not_allowed
         end
 
+        send_api_response(conn, result)
+
       :error ->
-        send_resp(conn, 404, "Not Found")
+        send_json_error(conn, 404, "Not Found")
     end
+  end
+
+  defp send_api_response(conn, :method_not_allowed) do
+    send_json_error(conn, 405, "Method Not Allowed")
+  end
+
+  defp send_api_response(conn, :empty) do
+    send_resp(conn, 204, "")
+  end
+
+  defp send_api_response(conn, {:error, status, message}) do
+    send_json_error(conn, status, message)
+  end
+
+  defp send_api_response(conn, {status, data}) when is_integer(status) do
+    send_json(conn, status, data)
+  end
+
+  defp send_api_response(conn, data) when is_map(data) do
+    send_json(conn, 200, data)
+  end
+
+  defp send_json(conn, status, data) do
+    conn
+    |> put_resp_content_type("application/json")
+    |> send_resp(status, Jason.encode!(data))
+  end
+
+  defp send_json_error(conn, status, message) do
+    send_json(conn, status, %{error: message})
   end
 
   defp handle_page(conn, method, path) do
