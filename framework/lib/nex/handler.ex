@@ -13,6 +13,10 @@ defmodule Nex.Handler do
       path = conn.path_info
 
       cond do
+        # Live reload SSE endpoint
+        path == ["nex", "live-reload"] ->
+          handle_live_reload(conn)
+
         # API routes: /api/*
         match?(["api" | _], path) ->
           handle_api(conn, method, path)
@@ -143,10 +147,27 @@ defmodule Nex.Handler do
       # Convert to string for layout embedding
       content_html = Phoenix.HTML.Safe.to_iodata(content) |> IO.iodata_to_binary()
 
-      # Inject page_id script for HTMX
+      # Inject page_id script for HTMX and live reload
       page_id_script = """
       <script>
         document.body.setAttribute('hx-vals', JSON.stringify({_page_id: "#{page_id}"}));
+
+        // Live reload via polling
+        (function() {
+          let lastReloadTime = 0;
+          setInterval(function() {
+            fetch('/nex/live-reload')
+              .then(r => r.json())
+              .then(data => {
+                if (lastReloadTime > 0 && data.time > lastReloadTime) {
+                  console.log('[Nex] Reloading...');
+                  window.location.reload();
+                }
+                lastReloadTime = data.time;
+              })
+              .catch(() => {});
+          }, 1000);
+        })();
       </script>
       """
 
@@ -176,6 +197,14 @@ defmodule Nex.Handler do
     else
       send_resp(conn, 500, "Page module missing render/1")
     end
+  end
+
+  defp handle_live_reload(conn) do
+    last_reload = Nex.Reloader.last_reload_time()
+
+    conn
+    |> put_resp_content_type("application/json")
+    |> send_resp(200, Jason.encode!(%{time: last_reload}))
   end
 
   defp handle_page_action(conn, module, action, params) do

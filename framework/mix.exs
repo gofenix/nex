@@ -27,7 +27,7 @@ defmodule Nex.MixProject do
       {:phoenix_live_view, "~> 1.0"},
       {:jason, "~> 1.4"},
       {:dotenvy, "~> 0.9"},
-      {:file_system, "~> 1.0", only: :dev}
+      {:file_system, "~> 1.0"}
     ]
   end
 
