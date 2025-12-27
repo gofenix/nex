@@ -827,3 +827,15 @@ api 就是json api
 
 我在之前强调过，在todos里面，逻辑代码都是在src里面，包括layout.ex也是，这个是很关键的。
 你放在了lib中，这个不可接受
+
+你要怎么对待partials中的代码，现在我看还没有任何的实现。
+
+所以，在你的理解里面
+
+<.todo_item todo={@todo} /> 是同一个模块的
+
+<xxx.todo_item.render(assign) /> 是跨模块的。
+
+但是，我们都已经通过alias Todos.Partials.Todos.Item, as: todo_item
+来实现跨模块的调用，那么也应该采用
+<.todo_item todo={@todo} /> ，只不过 Nex 框架帮你自动处理了 alias 的问题。

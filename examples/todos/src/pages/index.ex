@@ -1,5 +1,6 @@
 defmodule Todos.Pages.Index do
   use Nex.Page
+  import Todos.Partials.Todos.Item
 
   # In-memory todo storage (for demo purposes)
   @todos_agent :todos_agent
@@ -87,32 +88,6 @@ defmodule Todos.Pages.Index do
     end)
 
     empty(conn)
-  end
-
-  # Private component
-  defp todo_item(assigns) do
-    ~H"""
-    <li id={"todo-#{@todo.id}"}
-        class={"flex items-center gap-3 p-3 bg-white rounded-lg shadow #{if @todo.completed, do: "opacity-60"}"}>
-      <input type="checkbox"
-             checked={@todo.completed}
-             hx-post="/toggle_todo"
-             hx-vals={Jason.encode!(%{id: @todo.id})}
-             hx-target={"#todo-#{@todo.id}"}
-             hx-swap="outerHTML"
-             class="w-5 h-5 text-blue-500" />
-      <span class={"flex-1 #{if @todo.completed, do: "line-through text-gray-400", else: "text-gray-700"}"}>
-        {@todo.text}
-      </span>
-      <button hx-post="/delete_todo"
-              hx-vals={Jason.encode!(%{id: @todo.id})}
-              hx-target={"#todo-#{@todo.id}"}
-              hx-swap="outerHTML"
-              class="text-red-500 hover:text-red-700">
-        删除
-      </button>
-    </li>
-    """
   end
 
   # Helper functions
