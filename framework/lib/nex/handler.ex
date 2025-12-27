@@ -437,6 +437,7 @@ defmodule Nex.Handler do
     # e.g., POST /todos/123/delete → resolve module path, last segment is action
 
     app_module = get_app_module()
+    src_path = get_src_path()
 
     case path do
       [] ->
@@ -465,34 +466,62 @@ defmodule Nex.Handler do
 
       segments ->
         # POST /todos/123/delete → resolve module path, last segment is action
-        {module_path, action} = Enum.split(segments, -1)
-        action = List.first(action)
-        {module_parts, params} = path_to_module_parts(module_path)
+        {module_path, [action]} = Enum.split(segments, -1)
 
-        module_name = [app_module, "Pages" | module_parts] |> Enum.join(".")
+        # Try dynamic route discovery first
+        routes = Nex.RouteDiscovery.get_routes(src_path, :pages)
 
-        case safe_to_existing_module(module_name) do
-          {:ok, module} ->
-            {:ok, module, action, params}
+        case Nex.RouteDiscovery.match_route(routes, module_path, app_module, "Pages") do
+          {:ok, module_name, params} ->
+            case safe_to_existing_module(module_name) do
+              {:ok, module} -> {:ok, module, action, params}
+              :error -> resolve_action_legacy(module_path, action, app_module)
+            end
 
           :error ->
-            # Try Index submodule
-            case safe_to_existing_module("#{module_name}.Index") do
-              {:ok, index_module} -> {:ok, index_module, action, params}
-              :error -> :error
-            end
+            resolve_action_legacy(module_path, action, app_module)
+        end
+    end
+  end
+
+  defp resolve_action_legacy(module_path, action, app_module) do
+    {module_parts, params} = path_to_module_parts(module_path)
+    module_name = [app_module, "Pages" | module_parts] |> Enum.join(".")
+
+    case safe_to_existing_module(module_name) do
+      {:ok, module} ->
+        {:ok, module, action, params}
+
+      :error ->
+        case safe_to_existing_module("#{module_name}.Index") do
+          {:ok, index_module} -> {:ok, index_module, action, params}
+          :error -> :error
         end
     end
   end
 
   defp resolve_page_module(path) do
-    # Try to find a matching page module
-    # e.g., [] → Pages.Index
-    # e.g., ["about"] → Pages.About
-    # e.g., ["todos", "123"] → Pages.Todos.Id with params %{"id" => "123"}
-
+    # Try dynamic route discovery first, then fall back to legacy behavior
     app_module = get_app_module()
+    src_path = get_src_path()
 
+    # Get cached routes
+    routes = Nex.RouteDiscovery.get_routes(src_path, :pages)
+
+    case Nex.RouteDiscovery.match_route(routes, path, app_module, "Pages") do
+      {:ok, module_name, params} ->
+        case safe_to_existing_module(module_name) do
+          {:ok, module} -> {:ok, module, params}
+          :error -> resolve_page_module_legacy(path, app_module)
+        end
+
+      :error ->
+        resolve_page_module_legacy(path, app_module)
+    end
+  end
+
+  defp resolve_page_module_legacy(path, app_module) do
+    # Legacy behavior for backward compatibility
     {module_parts, params} = path_to_module_parts(path)
 
     module_name =
@@ -504,7 +533,6 @@ defmodule Nex.Handler do
         {:ok, module, params}
 
       :error ->
-        # Try index
         case safe_to_existing_module("#{module_name}.Index") do
           {:ok, index_module} -> {:ok, index_module, params}
           :error -> :error
@@ -514,7 +542,25 @@ defmodule Nex.Handler do
 
   defp resolve_api_module(path) do
     app_module = get_app_module()
+    src_path = get_src_path()
 
+    # Get cached routes for API
+    routes = Nex.RouteDiscovery.get_routes(src_path, :api)
+
+    case Nex.RouteDiscovery.match_route(routes, path, app_module, "Api") do
+      {:ok, module_name, params} ->
+        case safe_to_existing_module(module_name) do
+          {:ok, module} -> {:ok, module, params}
+          :error -> resolve_api_module_legacy(path, app_module)
+        end
+
+      :error ->
+        resolve_api_module_legacy(path, app_module)
+    end
+  end
+
+  defp resolve_api_module_legacy(path, app_module) do
+    # Legacy behavior for backward compatibility
     {module_parts, params} = path_to_module_parts(path)
 
     module_name =
@@ -558,6 +604,11 @@ defmodule Nex.Handler do
   defp get_app_module do
     # Get the app module name from application config
     Application.get_env(:nex, :app_module, "MyApp")
+  end
+
+  defp get_src_path do
+    # Get the source path from application config
+    Application.get_env(:nex, :src_path, "src")
   end
 
   defp get_layout_module do

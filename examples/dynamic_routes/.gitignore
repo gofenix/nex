@@ -1,0 +1,26 @@
+# The directory Mix will write compiled artifacts to.
+/_build/
+
+# If you run "mix test --cover", coverage assets end up here.
+/cover/
+
+# The directory Mix downloads your dependencies sources to.
+/deps/
+
+# Where 3rd-party dependencies like ExDoc output generated docs.
+/doc/
+
+# Ignore .env files.
+.env
+
+# Ignore the generated assets directory.
+/priv/static/
+
+# Ignore compiled elixir modules.
+*.beam
+*.ez
+
+# Temporary files
+*.swp
+*.swo
+*~
