@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Mix.Tasks.Nex.New**: 项目生成时自动创建 Dockerfile 和 .dockerignore
+  - 使用 Alpine Linux 基础镜像，镜像体积小（~150-200MB）
+  - 简化的单阶段构建，易于理解和维护
+  - README 中包含 Docker 部署说明
+
+### Changed
+- **Deployment**: 改用 Docker 作为标准部署方式，移除 `mix nex.release` 命令
+
 ## [0.1.2] - 2025-12-28
 
 ### Changed
