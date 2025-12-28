@@ -241,6 +241,99 @@ defmodule NexWebsite.Pages.Index do
       </div>
     </div>
 
+    <!-- Why Nex Section -->
+    <div class="py-24 px-4 md:px-8 bg-white border-y border-gray-100">
+      <div class="max-w-6xl mx-auto">
+        <div class="text-center mb-16">
+          <h2 class="text-4xl md:text-5xl font-bold mb-4">Why Choose <span class="gradient-text">Nex</span></h2>
+          <p class="text-xl text-claude-muted">Compared to other frameworks and approaches</p>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-8">
+          <div class="card bg-white p-8 border-2 border-purple-100 hover:border-purple-200 relative overflow-hidden group">
+            <div class="absolute top-0 right-0 w-24 h-24 bg-purple-50 rounded-full -mr-12 -mt-12 group-hover:scale-110 transition-transform"></div>
+            <div class="relative z-10">
+              <h3 class="text-xl font-bold mb-4 text-claude-text">vs Phoenix</h3>
+              <p class="text-claude-muted mb-4">Phoenix is powerful but complex. Nex is lightweight and focused on server-side rendering with HTMX. Perfect when you don't need LiveView's complexity.</p>
+              <div class="text-sm text-claude-purple font-semibold">Best for: Rapid development, smaller teams</div>
+            </div>
+          </div>
+
+          <div class="card bg-white p-8 border-2 border-yellow-100 hover:border-yellow-200 relative overflow-hidden group">
+            <div class="absolute top-0 right-0 w-24 h-24 bg-yellow-50 rounded-full -mr-12 -mt-12 group-hover:scale-110 transition-transform"></div>
+            <div class="relative z-10">
+              <h3 class="text-xl font-bold mb-4 text-claude-text">vs React/Vue</h3>
+              <p class="text-claude-muted mb-4">Frontend frameworks require JavaScript expertise and build complexity. Nex uses server-side rendering with HTMX for interactivity without the overhead.</p>
+              <div class="text-sm text-claude-purple font-semibold">Best for: Zero JavaScript, faster development</div>
+            </div>
+          </div>
+
+          <div class="card bg-white p-8 border-2 border-blue-100 hover:border-blue-200 relative overflow-hidden group">
+            <div class="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-full -mr-12 -mt-12 group-hover:scale-110 transition-transform"></div>
+            <div class="relative z-10">
+              <h3 class="text-xl font-bold mb-4 text-claude-text">vs Rails</h3>
+              <p class="text-claude-muted mb-4">Rails is full-featured but heavyweight. Nex is minimal and convention-based, perfect for Elixir developers who want simplicity and performance.</p>
+              <div class="text-sm text-claude-purple font-semibold">Best for: Elixir ecosystem, fast execution</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Production Ready Section -->
+    <div class="py-24 px-4 md:px-8 bg-claude-light border-y border-gray-100">
+      <div class="max-w-6xl mx-auto">
+        <div class="text-center mb-16">
+          <h2 class="text-4xl md:text-5xl font-bold mb-4">Production <span class="gradient-text">Ready</span></h2>
+          <p class="text-xl text-claude-muted">Everything you need to ship to production</p>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-8">
+          <div class="card bg-white p-8 border-2 border-purple-100 hover:border-purple-200 relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-32 h-32 bg-purple-50 rounded-full -mr-16 -mt-16"></div>
+            <div class="relative z-10">
+              <h3 class="text-2xl font-bold mb-6 text-claude-text">Deployment</h3>
+              <ul class="space-y-3 text-claude-muted">
+                <li class="flex items-center gap-3">
+                  <svg class="w-5 h-5 text-claude-purple flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                  Docker-ready with optimized images
+                </li>
+                <li class="flex items-center gap-3">
+                  <svg class="w-5 h-5 text-claude-purple flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                  Deploy to Railway, Fly.io, Render
+                </li>
+                <li class="flex items-center gap-3">
+                  <svg class="w-5 h-5 text-claude-purple flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                  Single binary deployment
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card bg-white p-8 border-2 border-blue-100 hover:border-blue-200 relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-full -mr-16 -mt-16"></div>
+            <div class="relative z-10">
+              <h3 class="text-2xl font-bold mb-6 text-claude-text">Security & Performance</h3>
+              <ul class="space-y-3 text-claude-muted">
+                <li class="flex items-center gap-3">
+                  <svg class="w-5 h-5 text-claude-purple flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                  Built-in CSRF protection
+                </li>
+                <li class="flex items-center gap-3">
+                  <svg class="w-5 h-5 text-claude-purple flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                  Elixir performance and reliability
+                </li>
+                <li class="flex items-center gap-3">
+                  <svg class="w-5 h-5 text-claude-purple flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                  Hot reload in development
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="relative py-32 px-4 md:px-8 overflow-hidden">
       <!-- Decorative background -->
       <div class="absolute inset-0 bg-purple-50"></div>
