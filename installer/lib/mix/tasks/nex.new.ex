@@ -210,7 +210,7 @@ defmodule Mix.Tasks.Nex.New do
                 <li>🎨 <code>src/layouts.ex</code> - Layout template</li>
               </ul>
               <div class="card-actions justify-end mt-4">
-                <a href="https://github.com/aspect-build/nex" class="btn btn-primary">Documentation</a>
+                <a href="https://github.com/gofenix/nex" class="btn btn-primary">Documentation</a>
               </div>
             </div>
           </div>
