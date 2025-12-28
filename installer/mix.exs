@@ -10,7 +10,8 @@ defmodule NexNew.MixProject do
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      description: "Nex project generator"
+      description: "Nex project generator",
+      package: package()
     ]
   end
 
@@ -20,5 +21,14 @@ defmodule NexNew.MixProject do
 
   defp deps do
     []
+  end
+
+  defp package do
+    [
+      maintainers: ["fenix"],
+      licenses: ["MIT"],
+      links: %{"GitHub" => "https://github.com/fenix/nex"},
+      files: ~w(lib mix.exs README.md ../VERSION)
+    ]
   end
 end

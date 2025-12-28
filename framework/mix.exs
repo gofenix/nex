@@ -35,8 +35,10 @@ defmodule Nex.MixProject do
 
   defp package do
     [
+      maintainers: ["fenix"],
       licenses: ["MIT"],
-      links: %{"GitHub" => "https://github.com/user/nex"}
+      links: %{"GitHub" => "https://github.com/fenix/nex"},
+      files: ~w(lib mix.exs README.md CHANGELOG.md ../VERSION)
     ]
   end
 end
