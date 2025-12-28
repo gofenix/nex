@@ -14,14 +14,14 @@ defmodule NexWebsite.Pages.Index do
     <div class="hero min-h-[80vh] px-4">
       <div class="hero-content text-center flex-col max-w-4xl">
         <div class="badge badge-outline border-claude-purple text-claude-purple px-4 py-3 mb-6 font-semibold">
-          v0.1.0 Released
+          v0.2.0 Released - Docker Ready 🐳
         </div>
         <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight mb-8 leading-tight">
           Modern Web Apps,<br/>
           <span class="text-claude-purple">Minimum Complexity.</span>
         </h1>
         <p class="text-xl md:text-2xl text-claude-muted mb-10 max-w-2xl mx-auto leading-relaxed">
-          Nex is a minimalist Elixir web framework that leverages HTMX for rich interactivity without the complexity of modern JS frameworks.
+          The simplest way to build HTMX apps in Elixir. Perfect for rapid prototyping, indie hackers, and learning server-side rendering.
         </p>
         <div class="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
           <a href="/getting_started" class="btn btn-claude-purple btn-lg px-10 rounded-full shadow-xl shadow-purple-200">
@@ -97,7 +97,7 @@ defmodule NexWebsite.Pages.Index do
                 <div class="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-green-600" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
                 </div>
-                <span class="font-medium">DaisyUI & Tailwind Built-in</span>
+                <span class="font-medium">Docker-ready deployment</span>
               </li>
             </ul>
           </div>
@@ -106,6 +106,50 @@ defmodule NexWebsite.Pages.Index do
               <%= raw @example_code %>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="py-24 px-4 md:px-8">
+      <div class="max-w-7xl mx-auto">
+        <div class="text-center mb-16">
+          <h2 class="text-4xl font-bold mb-4">Built for <span class="text-claude-purple">Real Developers</span></h2>
+          <p class="text-xl text-claude-muted">Not for enterprise. Not for complex SPAs. Perfect for you.</p>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-8">
+          <div class="card bg-gradient-to-br from-purple-50 to-white p-8 border border-purple-100">
+            <div class="text-4xl mb-4">🚀</div>
+            <h3 class="text-2xl font-bold mb-3">Rapid Prototyping</h3>
+            <p class="text-claude-muted">Go from idea to deployed MVP in hours, not weeks. Perfect for validating ideas quickly.</p>
+          </div>
+
+          <div class="card bg-gradient-to-br from-yellow-50 to-white p-8 border border-yellow-100">
+            <div class="text-4xl mb-4">🎯</div>
+            <h3 class="text-2xl font-bold mb-3">Indie Hackers</h3>
+            <p class="text-claude-muted">Build and ship solo projects without the overhead of complex frameworks. Focus on your product.</p>
+          </div>
+
+          <div class="card bg-gradient-to-br from-blue-50 to-white p-8 border border-blue-100">
+            <div class="text-4xl mb-4">📚</div>
+            <h3 class="text-2xl font-bold mb-3">Learning HTMX</h3>
+            <p class="text-claude-muted">The best way to learn server-side rendering with HTMX. Clean examples, no magic.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-gradient-to-br from-purple-50 to-white py-24 px-4 md:px-8 border-y border-purple-100">
+      <div class="max-w-4xl mx-auto text-center">
+        <h2 class="text-4xl font-bold mb-6">Ready to Build Something?</h2>
+        <p class="text-xl text-claude-muted mb-10">Join developers who chose simplicity over complexity.</p>
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+          <a href="/getting_started" class="btn btn-claude-purple btn-lg px-10 rounded-full shadow-xl">
+            Get Started Now
+          </a>
+          <a href="https://github.com/gofenix/nex" class="btn btn-outline btn-lg px-10 rounded-full">
+            View on GitHub
+          </a>
         </div>
       </div>
     </div>

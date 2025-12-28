@@ -4,11 +4,29 @@ defmodule NexWebsite.Layouts do
   def render(assigns) do
     ~H"""
     <!DOCTYPE html>
-    <html lang="zh-CN" data-theme="cupcake">
+    <html lang="en" data-theme="cupcake">
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>{@title || "Nex - The Minimalist Elixir Web Framework"}</title>
+
+        <!-- SEO Meta Tags -->
+        <meta name="description" content="Nex is a minimalist Elixir web framework powered by HTMX. Perfect for rapid prototyping, indie hackers, and learning server-side rendering. Zero config, Docker-ready.">
+        <meta name="keywords" content="Elixir, HTMX, web framework, minimalist, server-side rendering, rapid prototyping, indie hacker">
+        <meta name="author" content="Nex Framework">
+
+        <!-- Open Graph / Facebook -->
+        <meta property="og:type" content="website">
+        <meta property="og:url" content="https://nex-framework.dev/">
+        <meta property="og:title" content="Nex - The Minimalist Elixir Web Framework">
+        <meta property="og:description" content="The simplest way to build HTMX apps in Elixir. Perfect for rapid prototyping, indie hackers, and learning server-side rendering.">
+
+        <!-- Twitter -->
+        <meta property="twitter:card" content="summary_large_image">
+        <meta property="twitter:url" content="https://nex-framework.dev/">
+        <meta property="twitter:title" content="Nex - The Minimalist Elixir Web Framework">
+        <meta property="twitter:description" content="The simplest way to build HTMX apps in Elixir. Perfect for rapid prototyping, indie hackers, and learning server-side rendering.">
+
         <script src="https://cdn.tailwindcss.com?plugins=typography,forms,aspect-ratio"></script>
         <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.23/dist/full.min.css" rel="stylesheet" type="text/css" />
         <link rel="preconnect" href="https://fonts.googleapis.com">
