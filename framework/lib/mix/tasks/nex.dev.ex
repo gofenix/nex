@@ -88,22 +88,14 @@ defmodule Mix.Tasks.Nex.Dev do
   end
 
   defp ensure_deps_installed do
+    # Check if deps directory exists
     deps_path = Mix.Project.deps_path()
 
-    # Check if dependencies are available
-    missing_deps =
-      Mix.Project.config()[:deps]
-      |> Enum.filter(fn
-        {dep, _opts} when is_atom(dep) ->
-          dep_path = Path.join(deps_path, to_string(dep))
-          not File.exists?(dep_path)
-        _ -> false
-      end)
-
-    if length(missing_deps) > 0 do
-      IO.puts("\n📦 Installing missing dependencies...\n")
-      Mix.Task.run("deps.get")
+    if not File.exists?(deps_path) or File.ls!(deps_path) == [] do
+      IO.puts("\n📦 Installing dependencies...\n")
+      IO.puts("Please run: mix deps.get")
       IO.puts("")
+      System.halt(1)
     end
   end
 end

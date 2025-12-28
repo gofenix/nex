@@ -12,7 +12,7 @@ echo ""
 # Publish framework
 echo "📤 Publishing nex_core v$VERSION..."
 cd framework
-HEX_HOME=~/.hex mix hex.publish --yes
+HEX_HOME=~/.hex mix hex.publish --yes --replace
 cd ..
 echo "✅ nex_core published"
 echo ""
@@ -20,7 +20,7 @@ echo ""
 # Publish installer
 echo "📤 Publishing nex_new v$VERSION..."
 cd installer
-HEX_HOME=~/.hex mix hex.publish --yes
+HEX_HOME=~/.hex mix hex.publish --yes --replace
 cd ..
 echo "✅ nex_new published"
 echo ""
