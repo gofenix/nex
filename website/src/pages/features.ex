@@ -20,10 +20,10 @@ defmodule NexWebsite.Pages.Features do
       </div>
 
       <div class="space-y-24">
-        <!-- Docker Ready - NEW in v0.2.1 -->
+        <!-- Docker Ready - NEW in v0.2.x -->
         <section class="bg-purple-50 p-10 rounded-3xl border-2 border-purple-100">
           <div class="flex items-center gap-3 mb-6">
-            <div class="badge badge-lg bg-purple-500 text-white border-none">NEW in v0.2.1</div>
+            <div class="badge badge-lg bg-purple-500 text-white border-none">NEW in v0.2.x</div>
             <h2 class="text-3xl font-bold">🐳 Docker Ready</h2>
           </div>
           <p class="text-lg text-claude-muted mb-6 leading-relaxed">

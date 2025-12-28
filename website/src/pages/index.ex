@@ -18,7 +18,7 @@ defmodule NexWebsite.Pages.Index do
 
       <div class="hero-content text-center flex-col max-w-4xl relative z-10 animate-fade-in-up">
         <div class="badge badge-outline border-claude-purple text-claude-purple px-5 py-3 mb-8 font-semibold text-sm shadow-sm">
-          ✨ v0.2.1 Released - Docker Ready
+          ✨ v0.2.x Released - Docker Ready
         </div>
         <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight mb-8 leading-[1.1]">
           Modern Web Apps,<br/>
