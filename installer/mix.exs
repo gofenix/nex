@@ -1,12 +1,10 @@
 defmodule NexNew.MixProject do
   use Mix.Project
 
-  @version Path.join(__DIR__, "VERSION") |> File.read!() |> String.trim()
-
   def project do
     [
       app: :nex_new,
-      version: @version,
+      version: "0.1.6",
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       deps: deps(),

@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.6] - 2025-12-28
+
+### Fixed
+- **Framework & Installer**: 修复版本号管理方式，改为在 mix.exs 中硬编码版本号，彻底解决作为 Hex 依赖安装时的 VERSION 文件读取问题
+
+## [0.1.5] - 2025-12-28
+
+### Fixed
+- **Framework**: 修复 VERSION 文件读取路径问题，使用 `__DIR__` 确保在作为依赖安装时能正确读取版本号
+- **Mix.Tasks.Nex.Start**: 添加编译步骤，修复生产模式下模块未加载导致的 404 错误
+- **Mix.Tasks.Nex.Dev**: 优化依赖检查逻辑，避免在使用 path 依赖时触发 Hex 兼容性问题
+
+### Changed
+- **Package Metadata**: 更新 GitHub 仓库链接为 `gofenix/nex`
+- **Installer**: 添加 README.md 文件，完善包文档
+
 ## [0.1.4] - 2025-12-28
 
 ### Changed
