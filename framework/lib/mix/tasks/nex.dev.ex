@@ -22,6 +22,9 @@ defmodule Mix.Tasks.Nex.Dev do
         switches: [port: :integer, host: :string]
       )
 
+    # Check and install dependencies if needed
+    ensure_deps_installed()
+
     # Ensure dependencies are compiled
     Mix.Task.run("compile")
 
@@ -32,7 +35,7 @@ defmodule Mix.Tasks.Nex.Dev do
     Nex.Env.init()
 
     # Get project info from mix.exs
-    app_name = Mix.Project.config()[:app] |> to_string()
+    app_name = Mix.Project.config()[:app]
 
     # Configure app module
     app_module = get_app_module()
@@ -81,6 +84,26 @@ defmodule Mix.Tasks.Nex.Dev do
     case Mix.Project.config()[:app] do
       nil -> "MyApp"
       app -> app |> to_string() |> Macro.camelize()
+    end
+  end
+
+  defp ensure_deps_installed do
+    deps_path = Mix.Project.deps_path()
+
+    # Check if dependencies are available
+    missing_deps =
+      Mix.Project.config()[:deps]
+      |> Enum.filter(fn
+        {dep, _opts} when is_atom(dep) ->
+          dep_path = Path.join(deps_path, to_string(dep))
+          not File.exists?(dep_path)
+        _ -> false
+      end)
+
+    if length(missing_deps) > 0 do
+      IO.puts("\n📦 Installing missing dependencies...\n")
+      Mix.Task.run("deps.get")
+      IO.puts("")
     end
   end
 end

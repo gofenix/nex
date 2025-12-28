@@ -47,6 +47,13 @@ defmodule Mix.Tasks.Nex.New do
 
     create_project(project_path, assigns)
 
+    # Install dependencies automatically
+    Mix.shell().info("\n📦 Installing dependencies...\n")
+    original_dir = File.cwd!()
+    File.cd!(project_path)
+    System.cmd("mix", ["deps.get"], into: IO.stream(:stdio, :line))
+    File.cd!(original_dir)
+
     Mix.shell().info("""
 
     ✅ Project created successfully!
@@ -54,7 +61,6 @@ defmodule Mix.Tasks.Nex.New do
     Next steps:
 
         cd #{name}
-        mix deps.get
         mix nex.dev
 
     Then open http://localhost:4000 in your browser.

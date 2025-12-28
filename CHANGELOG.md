@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Mix.Tasks.Nex.Dev**: 自动检查并安装缺失的依赖，避免因未运行 `mix deps.get` 导致启动失败
+- **Mix.Tasks.Nex.New**: 创建项目后自动运行 `mix deps.get`，用户可直接运行 `mix nex.dev` 启动项目
+
+### Fixed
+- **Mix.Tasks.Nex.Dev**: 修复 `app_name` 类型错误，确保 `Application.ensure_all_started/2` 接收原子类型参数
+
 ## [0.1.1] - 2025-12-28
 
 ### Fixed
