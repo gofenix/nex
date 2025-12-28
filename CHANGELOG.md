@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.4] - 2025-12-28
+
+### Changed
+- **Installer Package**: 更新默认项目模板，提升开箱即用体验
+  - `layouts.ex`: 添加 DaisyUI CDN，提供语义化组件（card、btn、navbar 等）
+  - `index.ex`: 使用 DaisyUI 组件重写示例页面
+  - 使用 `bg-base-100`、`bg-base-300` 等语义化颜色替代硬编码颜色
+
+## [0.1.3] - 2025-12-28
+
+### Added
+- **Mix.Tasks.Nex.Start**: 新增生产环境启动命令 `mix nex.start`
+  - 支持 Railway、Fly.io、Docker 等平台部署
+  - 从环境变量读取 `PORT` 和 `HOST`
+  - 生产环境自动禁用热重载
+  - 默认监听 `0.0.0.0` 以适应容器环境
+- **Website**: 新增 `railway.json` 配置文件，简化 Railway 部署
+- **Website**: 重组项目结构，新增 `src/support/` 目录存放辅助模块
+
 ## [0.1.2] - 2025-12-28
 
 ### Changed

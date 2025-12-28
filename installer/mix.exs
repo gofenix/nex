@@ -1,7 +1,7 @@
 defmodule NexNew.MixProject do
   use Mix.Project
 
-  @version File.read!("VERSION") |> String.trim()
+  @version Path.join(__DIR__, "VERSION") |> File.read!() |> String.trim()
 
   def project do
     [
@@ -29,7 +29,7 @@ defmodule NexNew.MixProject do
     [
       maintainers: ["fenix"],
       licenses: ["MIT"],
-      links: %{"GitHub" => "https://github.com/fenix/nex"},
+      links: %{"GitHub" => "https://github.com/gofenix/nex"},
       files: ~w(lib mix.exs README.md VERSION)
     ]
   end

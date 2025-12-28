@@ -14,13 +14,13 @@ defmodule NexWebsite.Partials.Footer do
       <nav>
         <h6 class="footer-title">Framework</h6>
         <a href="/features" class="link link-hover">Features</a>
-        <a href="/getting-started" class="link link-hover">Getting Started</a>
-        <a href="https://github.com/fenix/nex" class="link link-hover">Source Code</a>
+        <a href="/getting_started" class="link link-hover">Getting Started</a>
+        <a href="https://github.com/gofenix/nex" class="link link-hover">Source Code</a>
       </nav>
       <nav>
         <h6 class="footer-title">Community</h6>
-        <a href="https://github.com/fenix/nex/issues" class="link link-hover">Issues</a>
-        <a href="https://github.com/fenix/nex/discussions" class="link link-hover">Discussions</a>
+        <a href="https://github.com/gofenix/nex/issues" class="link link-hover">Issues</a>
+        <a href="https://github.com/gofenix/nex/discussions" class="link link-hover">Discussions</a>
       </nav>
       <nav>
         <h6 class="footer-title">Legal</h6>
