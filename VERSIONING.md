@@ -1,36 +1,36 @@
 # Version Management
 
-Nex 采用**完全同步版本策略**。
+Nex adopts a **fully synchronized versioning strategy**.
 
-## 策略
+## Strategy
 
-`nex_core` (framework) 和 `nex_new` (installer) **始终使用相同的版本号**。
+`nex_core` (framework) and `nex_new` (installer) **always use the same version number**.
 
-即使只修改了其中一个包，两个包也会同时升级版本号并发布。
+Even if only one package is modified, both packages will upgrade their version numbers and be released simultaneously.
 
-## 版本号位置
+## Version Number Locations
 
-- `/VERSION` - 主版本号（所有包共享）
-- `/framework/VERSION` - framework 版本号（与主版本号同步）
-- `/installer/VERSION` - installer 版本号（与主版本号同步）
-- `/framework/mix.exs` - framework 包版本
-- `/installer/mix.exs` - installer 包版本
+- `/VERSION` - Master version number (shared by all packages)
+- `/framework/VERSION` - Framework version number (synchronized with master version)
+- `/installer/VERSION` - Installer version number (synchronized with master version)
+- `/framework/mix.exs` - Framework package version
+- `/installer/mix.exs` - Installer package version
 
-## 发布流程
+## Release Process
 
-1. 更新 `/VERSION` 文件
-2. 更新 CHANGELOG（两个包都要更新）
-3. 运行 `./scripts/publish_hex.sh` - 自动同步版本号并发布所有包
+1. Update `/VERSION` file
+2. Update CHANGELOG (update both packages)
+3. Run `./scripts/publish_hex.sh` - Automatically synchronize version numbers and publish all packages
 
-## 为什么选择同步版本？
+## Why Choose Synchronized Versioning?
 
-**优点**：
-- 简单明了，版本号永远一致
-- 用户容易理解（nex v0.2.1 = nex_core v0.2.1 + nex_new v0.2.1）
-- 减少版本管理的心智负担
+**Advantages**:
+- Simple and clear, version numbers are always consistent
+- Easy for users to understand (nex v0.2.1 = nex_core v0.2.1 + nex_new v0.2.1)
+- Reduces cognitive burden of version management
 
-**缺点**：
-- 会有一些"空版本"（某个包无实际变更）
-- 发布频率可能略高
+**Disadvantages**:
+- There will be some "empty versions" (a package with no actual changes)
+- Release frequency may be slightly higher
 
-我们认为简单性的价值大于缺点。
+We believe the value of simplicity outweighs the disadvantages.

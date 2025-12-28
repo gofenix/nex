@@ -16,9 +16,9 @@ defmodule DynamicRoutes.Layouts do
         <nav class="bg-white shadow-sm border-b">
           <div class="max-w-4xl mx-auto px-4 py-3">
             <div class="flex space-x-6">
-              <a href="/" class="text-blue-600 hover:text-blue-800">首页</a>
-              <a href="/users" class="text-blue-600 hover:text-blue-800">用户列表</a>
-              <a href="/posts" class="text-blue-600 hover:text-blue-800">文章列表</a>
+              <a href="/" class="text-blue-600 hover:text-blue-800">Home</a>
+              <a href="/users" class="text-blue-600 hover:text-blue-800">Users</a>
+              <a href="/posts" class="text-blue-600 hover:text-blue-800">Posts</a>
             </div>
           </div>
         </nav>

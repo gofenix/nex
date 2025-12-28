@@ -3,7 +3,7 @@ defmodule DynamicRoutes.Pages.Posts.Year.Month do
 
   def mount(%{"year" => year, "month" => month}) do
     %{
-      title: "#{year}年#{month}月 - 文章归档",
+      title: "#{year}-#{month} - Post Archive",
       year: year,
       month: month,
       posts: find_posts(year, month),
@@ -15,9 +15,9 @@ defmodule DynamicRoutes.Pages.Posts.Year.Month do
     ~H"""
     <div class="space-y-6">
       <nav class="text-sm text-gray-500">
-        <a href="/" class="hover:text-gray-700">首页</a>
+        <a href="/" class="hover:text-gray-700">Home</a>
         <span class="mx-2">/</span>
-        <a href="/posts" class="hover:text-gray-700">文章</a>
+        <a href="/posts" class="hover:text-gray-700">Posts</a>
         <span class="mx-2">/</span>
         <span>{@year}</span>
         <span class="mx-2">/</span>
@@ -25,13 +25,13 @@ defmodule DynamicRoutes.Pages.Posts.Year.Month do
       </nav>
 
       <div class="bg-white rounded-lg p-6 shadow">
-        <h1 class="text-2xl font-bold mb-2">{@year}年{@month}月 文章归档</h1>
-        <p class="text-gray-600 mb-6">共找到 {length(@posts)} 篇文章</p>
+        <h1 class="text-2xl font-bold mb-2">{@year}-{@month} Post Archive</h1>
+        <p class="text-gray-600 mb-6">Found {length(@posts)} posts</p>
 
         <div class="bg-blue-50 p-4 rounded mb-6">
-          <h3 class="font-mono text-sm mb-2">多参数动态路由</h3>
+          <h3 class="font-mono text-sm mb-2">Multi-Parameter Dynamic Routes</h3>
           <p class="text-sm text-gray-600">
-            展示了如何在 URL 中使用多个动态参数，并自动提取到 params 中
+            Demonstrates how to use multiple dynamic parameters in a URL and automatically extract them to params
           </p>
         </div>
 
@@ -43,17 +43,17 @@ defmodule DynamicRoutes.Pages.Posts.Year.Month do
               </a>
             </h3>
             <p class="text-gray-600 text-sm mb-2">
-              发布于: {post.date} · 作者: {post.author}
+              Published: {post.date} · Author: {post.author}
             </p>
             <p class="text-gray-700">{post.excerpt}</p>
           </div>
         </div>
 
         <div class="mt-8 bg-gray-50 p-4 rounded">
-          <h3 class="font-semibold mb-3">路由解析示例</h3>
+          <h3 class="font-semibold mb-3">Route Parsing Example</h3>
           <div class="grid md:grid-cols-3 gap-4 text-sm">
             <div>
-              <span class="text-gray-600">文件:</span>
+              <span class="text-gray-600">File:</span>
               <br>
               <code class="text-xs">posts/[year]/[month].ex</code>
             </div>
@@ -71,19 +71,19 @@ defmodule DynamicRoutes.Pages.Posts.Year.Month do
         </div>
 
         <div class="mt-6">
-          <h3 class="font-semibold mb-3">其他月份</h3>
+          <h3 class="font-semibold mb-3">Other Months</h3>
           <div class="flex flex-wrap gap-2">
             <a href="/posts/2024/11" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 text-sm">
-              2024年11月
+              2024-11
             </a>
             <a href="/posts/2024/10" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 text-sm">
-              2024年10月
+              2024-10
             </a>
             <a href="/posts/2024/09" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 text-sm">
-              2024年09月
+              2024-09
             </a>
             <a href="/posts/2023/12" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 text-sm">
-              2023年12月
+              2023-12
             </a>
           </div>
         </div>
@@ -92,54 +92,54 @@ defmodule DynamicRoutes.Pages.Posts.Year.Month do
     """
   end
 
-  # 模拟文章数据
+  # Mock post data
   defp find_posts(year, month) do
     all_posts = [
       %{
         slug: "hello-world",
-        title: "Hello World - 我的 Nex 框架之旅",
-        author: "开发者",
+        title: "Hello World - My Nex Framework Journey",
+        author: "Developer",
         date: "2024-12-20",
-        excerpt: "这是使用 Nex 框架创建的第一篇文章..."
+        excerpt: "This is the first article created with Nex framework..."
       },
       %{
         slug: "elixir-tips",
-        title: "10 个 Elixir 编程技巧",
-        author: "Elixir 专家",
+        title: "10 Elixir Programming Tips",
+        author: "Elixir Expert",
         date: "2024-12-15",
-        excerpt: "分享 10 个实用的 Elixir 编程技巧..."
+        excerpt: "Share 10 practical Elixir programming tips..."
       },
       %{
         slug: "web-development-2024",
-        title: "2024 年 Web 开发趋势",
-        author: "技术观察者",
+        title: "2024 Web Development Trends",
+        author: "Technology Observer",
         date: "2024-12-10",
-        excerpt: "探讨 2024 年 Web 开发的最新趋势..."
+        excerpt: "Explore the latest trends in 2024 Web development..."
       },
       %{
         slug: "functional-programming",
-        title: "函数式编程入门指南",
-        author: "函数式编程爱好者",
+        title: "Functional Programming Getting Started Guide",
+        author: "Functional Programming Enthusiast",
         date: "2024-12-05",
-        excerpt: "从零开始学习函数式编程..."
+        excerpt: "Learn functional programming from scratch..."
       },
       %{
         slug: "htmx-tutorial",
-        title: "HTMX 完全指南",
-        author: "前端开发者",
+        title: "HTMX Complete Guide",
+        author: "Frontend Developer",
         date: "2024-11-25",
-        excerpt: "深入了解 HTMX 的工作原理..."
+        excerpt: "Deep dive into how HTMX works..."
       },
       %{
         slug: "elixir-patterns",
-        title: "Elixir 设计模式",
-        author: "架构师",
+        title: "Elixir Design Patterns",
+        author: "Architect",
         date: "2024-11-15",
-        excerpt: "探索 Elixir 中的常用设计模式..."
+        excerpt: "Explore common design patterns in Elixir..."
       }
     ]
 
-    # 过滤指定年月的文章
+    # Filter posts for specified year and month
     Enum.filter(all_posts, fn post ->
       String.starts_with?(post.date, "#{year}-#{month}")
     end)

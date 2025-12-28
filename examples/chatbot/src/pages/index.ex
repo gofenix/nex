@@ -15,8 +15,8 @@ defmodule Chatbot.Pages.Index do
 
     <div id="chat-container" class="flex-1 bg-gray-800 rounded-2xl p-4 overflow-y-auto space-y-4 mb-4">
       <div :if={length(@messages) == 0} class="text-center text-gray-500 py-10">
-        <p class="text-lg mb-2">你好！我是 AI 助手</p>
-        <p class="text-sm">有什么可以帮助你的吗？</p>
+        <p class="text-lg mb-2">Hello! I'm an AI assistant</p>
+        <p class="text-sm">How can I help you?</p>
       </div>
       <.chat_message :for={msg <- @messages} message={msg} />
     </div>
@@ -28,11 +28,11 @@ defmodule Chatbot.Pages.Index do
           class="flex gap-3">
       <input type="text"
              name="message"
-             placeholder="输入消息..."
+             placeholder="Enter message..."
              required
              class="flex-1 input input-bordered bg-gray-700 text-white border-gray-600 focus:border-emerald-500" />
       <button type="submit" class="btn btn-emerald">
-        发送
+        Send
       </button>
     </form>
     """
@@ -51,10 +51,10 @@ defmodule Chatbot.Pages.Index do
 
     Nex.Store.update(:chat_messages, [], &[user_msg | &1])
 
-    # 获取当前 page_id，传递给异步任务
+    # Get current page_id, pass to async task
     current_page_id = Nex.Store.get_page_id()
 
-    # 启动异步任务生成 AI 响应
+    # Start async task to generate AI response
     Task.Supervisor.async_nolink(Chatbot.TaskSupervisor, fn ->
       Nex.Store.set_page_id(current_page_id)
 
@@ -88,14 +88,14 @@ defmodule Chatbot.Pages.Index do
             <span class="animate-bounce w-2 h-2 bg-gray-400 rounded-full delay-75"></span>
             <span class="animate-bounce w-2 h-2 bg-gray-400 rounded-full delay-150"></span>
           </span>
-          正在思考...
+          Thinking...
         </div>
       </div>
     </div>
     """
   end
 
-  # 轮询获取 AI 响应
+  # Poll to get AI response
   def ai_response(%{"id" => id}) do
     messages = Nex.Store.get(:chat_messages, [])
     target_id = String.to_integer(id)
@@ -105,11 +105,11 @@ defmodule Chatbot.Pages.Index do
     end)
 
     if ai_msg do
-      # 返回 AI 消息，不带轮询属性，停止轮询
+      # Return AI message without polling attributes to stop polling
       assigns = %{ai_msg: ai_msg}
       ~H"<.chat_message message={@ai_msg} />"
     else
-      # 还在思考中，返回相同的 loading div 继续轮询
+      # Still thinking, return the same loading div to continue polling
       assigns = %{msg_id: target_id}
       ~H"""
       <div id={"ai-loading-#{@msg_id}"} hx-post="/ai_response" hx-vals={Jason.encode!(%{id: @msg_id})} hx-trigger="load delay:500ms" hx-swap="outerHTML" class="flex gap-3">
@@ -123,7 +123,7 @@ defmodule Chatbot.Pages.Index do
               <span class="animate-bounce w-2 h-2 bg-gray-400 rounded-full delay-75"></span>
               <span class="animate-bounce w-2 h-2 bg-gray-400 rounded-full delay-150"></span>
             </span>
-            正在思考...
+            Thinking...
           </div>
         </div>
       </div>
@@ -135,7 +135,7 @@ defmodule Chatbot.Pages.Index do
     messages = [
       %{
         "role" => "system",
-        "content" => "你是一个友好的AI助手，请用简洁的中文回复。"
+        "content" => "You are a friendly AI assistant, please reply in concise English."
       },
       %{
         "role" => "user",
@@ -156,10 +156,10 @@ defmodule Chatbot.Pages.Index do
         content
 
       {:ok, %{status: status}} ->
-        "请求失败 (HTTP #{status})"
+        "Request failed (HTTP #{status})"
 
       {:error, reason} ->
-        "请求失败: #{inspect(reason)}"
+        "Request failed: #{inspect(reason)}"
     end
   end
 

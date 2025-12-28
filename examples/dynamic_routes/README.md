@@ -1,59 +1,59 @@
-# 动态路由示例
+# Dynamic Routes Example
 
-这个示例展示了 Nex 框架的动态路由功能，包括：
+This example demonstrates the dynamic routing capabilities of the Nex framework, including:
 
-## 路由类型
+## Route Types
 
-### 1. 单参数动态路由
+### 1. Single Parameter Dynamic Routes
 ```
 src/pages/users/[id].ex
-匹配: /users/123, /users/456
-参数: %{"id" => "123"}
+Matches: /users/123, /users/456
+Params: %{"id" => "123"}
 ```
 
-### 2. 嵌套动态路由
+### 2. Nested Dynamic Routes
 ```
 src/pages/users/[id]/profile.ex
-匹配: /users/123/profile
-参数: %{"id" => "123"}
+Matches: /users/123/profile
+Params: %{"id" => "123"}
 ```
 
-### 3. 多参数动态路由
+### 3. Multi-Parameter Dynamic Routes
 ```
 src/pages/posts/[year]/[month].ex
-匹配: /posts/2024/12
-参数: %{"year" => "2024", "month" => "12"}
+Matches: /posts/2024/12
+Params: %{"year" => "2024", "month" => "12"}
 ```
 
-### 4. Slug 路由
+### 4. Slug Routes
 ```
 src/pages/posts/[slug].ex
-匹配: /posts/hello-world, /posts/my-first-post
-参数: %{"slug" => "hello-world"}
+Matches: /posts/hello-world, /posts/my-first-post
+Params: %{"slug" => "hello-world"}
 ```
 
-### 5. 通配符路由
+### 5. Wildcard Routes
 ```
 src/pages/docs/[...path].ex
-匹配: /docs/* (任意层级)
-参数: %{"path" => ["getting-started", "install"]}
+Matches: /docs/* (any level)
+Params: %{"path" => ["getting-started", "install"]}
 ```
 
-### 6. 混合路由
+### 6. Mixed Routes
 ```
 src/pages/files/[category]/[...path].ex
-匹配: /files/images/2024/12/photo.jpg
-参数: %{"category" => "images", "path" => ["2024", "12", "photo.jpg"]}
+Matches: /files/images/2024/12/photo.jpg
+Params: %{"category" => "images", "path" => ["2024", "12", "photo.jpg"]}
 ```
 
-### 7. API 动态路由
+### 7. API Dynamic Routes
 ```
 src/api/users/[id].ex
-匹配: GET /api/users/123
-参数: %{"id" => "123"}
+Matches: GET /api/users/123
+Params: %{"id" => "123"}
 ```
 
-## 运行示例
+## Running the Example
 
 ```bash
 cd examples/dynamic_routes
@@ -61,34 +61,34 @@ mix deps.get
 mix nex.dev
 ```
 
-然后访问 http://localhost:4000
+Then visit http://localhost:4000
 
-## 路由规则
+## Routing Rules
 
-1. **文件名约定**：
-   - `[param]` - 单个动态参数
-   - `[...path]` - 通配符参数（匹配剩余路径）
+1. **File Naming Conventions**:
+   - `[param]` - Single dynamic parameter
+   - `[...path]` - Wildcard parameter (matches remaining path)
 
-2. **参数提取**：
-   - 方括号内的名称会成为参数键
-   - 通配符参数总是返回字符串列表
+2. **Parameter Extraction**:
+   - The name inside brackets becomes the parameter key
+   - Wildcard parameters always return a list of strings
 
-3. **匹配优先级**：
-   - 精确匹配 > 动态匹配
-   - 少参数 > 多参数
-   - 非通配 > 通配
+3. **Matching Priority**:
+   - Exact match > Dynamic match
+   - Fewer parameters > More parameters
+   - Non-wildcard > Wildcard
 
-## 实际应用场景
+## Real-World Use Cases
 
-- **用户系统**: `/users/[id]`, `/users/[id]/posts`
-- **博客系统**: `/posts/[slug]`, `/posts/[year]/[month]`
-- **文档系统**: `/docs/[...path]`
-- **文件管理**: `/files/[category]/[...path]`
-- **API 设计**: `/api/[resource]/[id]`
+- **User Systems**: `/users/[id]`, `/users/[id]/posts`
+- **Blog Systems**: `/posts/[slug]`, `/posts/[year]/[month]`
+- **Documentation Systems**: `/docs/[...path]`
+- **File Management**: `/files/[category]/[...path]`
+- **API Design**: `/api/[resource]/[id]`
 
-## 注意事项
+## Notes
 
-1. 动态参数总是以字符串形式传递
-2. 通配符参数可以匹配空路径（如 `/docs/`）
-3. 嵌套路由支持任意层级
-4. API 和页面路由使用相同的动态规则
+1. Dynamic parameters are always passed as strings
+2. Wildcard parameters can match empty paths (e.g., `/docs/`)
+3. Nested routes support arbitrary levels
+4. API and page routes use the same dynamic rules

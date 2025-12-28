@@ -20,11 +20,11 @@ defmodule DynamicRoutes.Api.Users.Id do
   def post(%{"id" => id, "action" => action}) do
     case action do
       "follow" ->
-        # 模拟关注操作
+        # Simulate follow operation
         {:ok, %{"message" => "Successfully followed user #{id}"}}
 
       "unfollow" ->
-        # 模拟取消关注
+        # Simulate unfollow
         {:ok, %{"message" => "Successfully unfollowed user #{id}"}}
 
       _ ->
@@ -32,36 +32,36 @@ defmodule DynamicRoutes.Api.Users.Id do
     end
   end
 
-  # 模拟用户数据
+  # Mock user data
   defp find_user(id) do
     users = %{
       "1" => %{
         id: "1",
-        name: "张三",
+        name: "Zhang San",
         email: "zhangsan@example.com",
         age: 28,
-        city: "北京",
-        bio: "热爱编程的 Elixir 开发者",
+        city: "Beijing",
+        bio: "Elixir developer who loves programming",
         followers: 156,
         following: 89
       },
       "2" => %{
         id: "2",
-        name: "李四",
+        name: "Li Si",
         email: "lisi@example.com",
         age: 32,
-        city: "上海",
-        bio: "全栈工程师，专注于 Web 开发",
+        city: "Shanghai",
+        bio: "Full-stack engineer focused on web development",
         followers: 234,
         following: 123
       },
       "3" => %{
         id: "3",
-        name: "王五",
+        name: "Wang Wu",
         email: "wangwu@example.com",
         age: 25,
-        city: "深圳",
-        bio: "前端开发者，HTMX 爱好者",
+        city: "Shenzhen",
+        bio: "Frontend developer, HTMX enthusiast",
         followers: 89,
         following: 67
       }

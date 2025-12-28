@@ -4,7 +4,7 @@ defmodule Guestbook.Pages.Index do
 
   def mount(_params) do
     %{
-      title: "留言板",
+      title: "Guestbook",
       messages: Nex.Store.get(:messages, [])
     }
   end
@@ -12,10 +12,10 @@ defmodule Guestbook.Pages.Index do
   def render(assigns) do
     ~H"""
     <div class="space-y-6">
-      <h1 class="text-4xl font-bold text-center text-purple-800">留言板</h1>
+      <h1 class="text-4xl font-bold text-center text-purple-800">Guestbook</h1>
 
       <div class="bg-white rounded-xl p-6 shadow-lg">
-        <h2 class="text-xl font-semibold mb-4 text-gray-700">写留言</h2>
+        <h2 class="text-xl font-semibold mb-4 text-gray-700">Write Message</h2>
         <form hx-post="/create_message"
               hx-target="#message-list"
               hx-swap="afterbegin"
@@ -23,36 +23,36 @@ defmodule Guestbook.Pages.Index do
               class="space-y-4">
           <div class="form-control">
             <label class="label">
-              <span class="label-text font-medium">你的名字</span>
+              <span class="label-text font-medium">Your Name</span>
             </label>
             <input type="text"
                    name="name"
-                   placeholder="请输入名字"
+                   placeholder="Enter your name"
                    required
                    class="input input-bordered w-full focus:input-primary" />
           </div>
           <div class="form-control">
             <label class="label">
-              <span class="label-text font-medium">留言内容</span>
+              <span class="label-text font-medium">Message Content</span>
             </label>
             <textarea name="content"
-                      placeholder="写下你想说的话..."
+                      placeholder="Write what you want to say..."
                       required
                       rows="3"
                       class="textarea textarea-bordered w-full focus:textarea-primary"></textarea>
           </div>
           <button type="submit" class="btn btn-primary w-full">
-            提交留言
+            Submit Message
           </button>
         </form>
       </div>
 
       <div id="message-list" class="space-y-4">
         <h2 class="text-xl font-semibold text-gray-700">
-          全部留言 <span class="text-sm font-normal text-gray-400">({length(@messages)})</span>
+          All Messages <span class="text-sm font-normal text-gray-400">({length(@messages)})</span>
         </h2>
         <div :if={length(@messages) == 0} class="text-center py-10 text-gray-400">
-          暂无留言，快来抢沙发~
+          No messages yet. Be the first to leave a message!
         </div>
         <.guestbook_message :for={message <- @messages} message={message} />
       </div>
