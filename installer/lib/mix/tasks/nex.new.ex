@@ -124,7 +124,7 @@ defmodule Mix.Tasks.Nex.New do
 
       defp deps do
         [
-          {:nex_core, "~> 0.1"}
+          {:nex_core, "~> 0.2.2"}
         ]
       end
     end
