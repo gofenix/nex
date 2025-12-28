@@ -2,15 +2,15 @@
 
 **The simplest way to build HTMX apps in Elixir**
 
-Nex is a minimalist web framework that embraces simplicity and convention over configuration. Build modern web applications with server-side rendering, zero JavaScript complexity, and instant hot reloading.
+Nex is a minimalist web framework for **indie hackers, startups, and teams** who want to ship real products fast without enterprise complexity. Build modern web applications with server-side rendering, zero JavaScript complexity, and instant hot reloading.
 
 ## Philosophy
 
 Nex is designed for building **real applications** that work in production:
 - 🚀 **Rapid development** - Ship features fast, not prototypes
 - 🎯 **Indie hackers & startups** - Build profitable products without enterprise complexity
-- �️ **Internal tools & dashboards** - Admin panels, data dashboards, operational tools
-- � **Real-time applications** - Live dashboards, chat apps, streaming data with SSE
+- 📊 **Internal tools & dashboards** - Admin panels, data dashboards, operational tools
+- 🔄 **Real-time applications** - Live dashboards, chat apps, streaming data with SSE
 - 🌐 **Server-side rendering done right** - Modern web apps without JavaScript overhead
 
 Nex is **not**:
