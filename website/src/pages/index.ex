@@ -25,7 +25,7 @@ defmodule NexWebsite.Pages.Index do
           <span class="gradient-text">Minimum Complexity.</span>
         </h1>
         <p class="text-xl md:text-2xl text-claude-muted mb-12 max-w-2xl mx-auto leading-relaxed font-medium">
-          Ship real products fast. Built for indie hackers, startups, and teams who want to focus on features, not framework complexity.
+          The simplest way to build HTMX apps in Elixir. Ship real products fast without enterprise complexity. Built for indie hackers, startups, and teams who want to focus on features, not framework overhead.
         </p>
         <div class="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
           <a href="/getting_started" class="btn btn-claude-purple btn-lg px-10 rounded-full shadow-xl shadow-purple-200">
