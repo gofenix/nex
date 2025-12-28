@@ -4,7 +4,10 @@ _build/
 
 # Mix artifacts
 *.ez
-mix.lock
+# Ignore mix.lock for library projects (framework, installer)
+# But keep it for application projects (website, examples)
+/framework/mix.lock
+/installer/mix.lock
 
 # Crash dumps
 erl_crash.dump
