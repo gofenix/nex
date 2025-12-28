@@ -1,0 +1,10 @@
+_build/
+deps/
+.git/
+.gitignore
+*.log
+erl_crash.dump
+.DS_Store
+.vscode/
+.idea/
+.elixir_ls/
