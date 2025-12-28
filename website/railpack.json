@@ -1,0 +1,58 @@
+{
+  "steps": [
+    {
+      "name": "packages:mise",
+      "base": {
+        "image": "ghcr.io/railwayapp/railpack-runtime:latest"
+      },
+      "cmds": [
+        "mise install elixir@1.18",
+        "mise install erlang@27"
+      ]
+    },
+    {
+      "name": "setup",
+      "inputs": [
+        {
+          "step": "packages:mise"
+        }
+      ],
+      "cmds": [
+        "mix local.hex --force",
+        "mix local.rebar --force"
+      ]
+    },
+    {
+      "name": "build",
+      "inputs": [
+        {
+          "step": "setup"
+        },
+        {
+          "local": ".",
+          "include": ["mix.exs", "mix.lock", "src/**"]
+        }
+      ],
+      "cmds": [
+        "mix deps.get --only prod",
+        "mix compile"
+      ]
+    }
+  ],
+  "deploy": {
+    "base": {
+      "image": "ghcr.io/railwayapp/railpack-runtime:latest"
+    },
+    "inputs": [
+      {
+        "step": "packages:mise",
+        "include": ["/mise/shims", "/mise/installs"]
+      },
+      {
+        "step": "build",
+        "include": ["."]
+      }
+    ],
+    "cmd": "mix nex.start"
+  }
+}
