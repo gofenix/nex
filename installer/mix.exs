@@ -1,7 +1,7 @@
 defmodule NexNew.MixProject do
   use Mix.Project
 
-  @version "0.1.0"
+  @version File.read!("../VERSION") |> String.trim()
 
   def project do
     [

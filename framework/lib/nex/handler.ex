@@ -586,12 +586,12 @@ defmodule Nex.Handler do
 
   defp get_app_module do
     # Get the app module name from application config
-    Application.get_env(:nex, :app_module, "MyApp")
+    Application.get_env(:nex_core, :app_module, "MyApp")
   end
 
   defp get_src_path do
     # Get the source path from application config
-    Application.get_env(:nex, :src_path, "src")
+    Application.get_env(:nex_core, :src_path, "src")
   end
 
   defp get_layout_module do

@@ -26,7 +26,7 @@ cd my_app
 # mix.exs
 defp deps do
   [
-    {:nex, path: "../nex/framework"}  # 或发布后使用 {:nex, "~> 0.1"}
+    {:nex_core, path: "../nex/framework"}  # 或发布后使用 {:nex_core, "~> 0.1"}
   ]
 end
 ```

@@ -17,7 +17,7 @@ defmodule Nex.Reloader do
 
   @doc "Check if hot reload is enabled (only in dev environment)"
   def enabled? do
-    Application.get_env(:nex, :env, :prod) == :dev
+    Application.get_env(:nex_core, :env, :prod) == :dev
   end
 
   @doc "Get the timestamp of the last successful reload"

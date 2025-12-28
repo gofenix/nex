@@ -15,7 +15,7 @@ defmodule Mix.Tasks.Nex.Release do
 
   1. Compiles the application in production mode
   2. Creates an Elixir release with all dependencies
-  3. Generates a startup script
+  3. Generates a Dockerfile for containerized deployment
 
   ## Deployment
 
@@ -56,7 +56,7 @@ defmodule Mix.Tasks.Nex.Release do
     Mix.env(:prod)
 
     # Step 2: Configure Nex for production
-    Application.put_env(:nex, :env, :prod)
+    Application.put_env(:nex_core, :env, :prod)
 
     # Step 3: Get dependencies
     Mix.shell().info("  → Fetching dependencies")
@@ -88,10 +88,8 @@ defmodule Mix.Tasks.Nex.Release do
 
         _build/prod/rel/#{app_name}/bin/#{app_name} start
 
-    Environment variables:
-        PORT     - HTTP port (default: 4000)
-        HOST     - Bind host (default: 0.0.0.0)
-        NEX_ENV  - Environment (automatically set to prod)
+    Generated files:
+        _build/prod/rel/#{app_name}/Dockerfile
     """)
   end
 
@@ -106,85 +104,13 @@ defmodule Mix.Tasks.Nex.Release do
     Mix.Project.config()[:releases] != nil
   end
 
-  defp create_simple_release(app_name, module_name, opts) do
+  defp create_simple_release(app_name, _module_name, opts) do
     output_dir = opts[:output] || "_build/prod/rel/#{app_name}"
 
-    Mix.shell().info("  → Creating simple release in #{output_dir}")
+    Mix.shell().info("  → Creating simple release structure in #{output_dir}")
 
     # Create directories
     File.mkdir_p!(output_dir)
-    File.mkdir_p!(Path.join(output_dir, "bin"))
-
-    # Create startup script
-    start_script = """
-    #!/bin/bash
-    # #{module_name} Production Startup Script
-
-    set -e
-
-    export MIX_ENV=prod
-    export NEX_ENV=prod
-    export PORT=${PORT:-4000}
-    export HOST=${HOST:-0.0.0.0}
-
-    cd "$(dirname "$0")/.."
-
-    echo "Starting #{module_name}..."
-    echo "  Port: $PORT"
-    echo "  Host: $HOST"
-
-    exec elixir --sname #{app_name} -S mix run --no-halt
-    """
-
-    start_script_path = Path.join([output_dir, "bin", "start"])
-    File.write!(start_script_path, start_script)
-    File.chmod!(start_script_path, 0o755)
-
-    # Create a prod config reminder
-    config_reminder = """
-    # #{module_name} Production Configuration
-
-    ## Environment Variables
-
-    - PORT: HTTP port (default: 4000)
-    - HOST: Bind address (default: 0.0.0.0)
-    - DATABASE_URL: Database connection string
-    - SECRET_KEY_BASE: Secret for sessions/tokens
-
-    ## Starting the Application
-
-    ```bash
-    ./bin/start
-    ```
-
-    ## Using systemd
-
-    Create `/etc/systemd/system/#{app_name}.service`:
-
-    ```ini
-    [Unit]
-    Description=#{module_name}
-    After=network.target
-
-    [Service]
-    Type=simple
-    User=deploy
-    WorkingDirectory=/app/#{app_name}
-    Environment=PORT=4000
-    Environment=MIX_ENV=prod
-    ExecStart=/app/#{app_name}/bin/start
-    Restart=on-failure
-
-    [Install]
-    WantedBy=multi-user.target
-    ```
-
-    ## Using Docker
-
-    See the generated Dockerfile for containerized deployment.
-    """
-
-    File.write!(Path.join(output_dir, "DEPLOY.md"), config_reminder)
 
     # Create a simple Dockerfile
     dockerfile = """
@@ -222,8 +148,6 @@ defmodule Mix.Tasks.Nex.Release do
 
     File.write!(Path.join(output_dir, "Dockerfile"), dockerfile)
 
-    Mix.shell().info("  → Created startup script: #{start_script_path}")
-    Mix.shell().info("  → Created deployment guide: #{output_dir}/DEPLOY.md")
     Mix.shell().info("  → Created Dockerfile: #{output_dir}/Dockerfile")
   end
 end
