@@ -2,15 +2,16 @@
 
 **The simplest way to build HTMX apps in Elixir**
 
-Nex is a minimalist web framework that embraces simplicity and convention over configuration.
+Nex is a minimalist web framework that embraces simplicity and convention over configuration. Build modern web applications with server-side rendering, zero JavaScript complexity, and instant hot reloading.
 
 ## Philosophy
 
-Nex is designed for:
-- 🚀 **Rapid prototyping** - Get ideas to production fast
-- 🎯 **Indie hackers** - Build MVPs without complexity
-- 📚 **Learning HTMX** - Best way to learn server-side rendering with HTMX
-- 🛠️ **Internal tools** - Perfect for dashboards and admin panels
+Nex is designed for building **real applications** that work in production:
+- 🚀 **Rapid development** - Ship features fast, not prototypes
+- 🎯 **Indie hackers & startups** - Build profitable products without enterprise complexity
+- �️ **Internal tools & dashboards** - Admin panels, data dashboards, operational tools
+- � **Real-time applications** - Live dashboards, chat apps, streaming data with SSE
+- 🌐 **Server-side rendering done right** - Modern web apps without JavaScript overhead
 
 Nex is **not**:
 - ❌ A Phoenix competitor (use Phoenix for enterprise apps)
@@ -35,43 +36,149 @@ Visit `http://localhost:4000` to see your app running.
 
 ## Core Features
 
-- **📁 File-based Routing** - Drop a file in `src/pages/`, get a route
-- **🔀 Dynamic Routes** - Support for `[id]`, `[slug]`, and `[...path]` patterns
-- **⚡ HTMX-first** - Built-in HTMX integration, no JavaScript needed
-- **🔄 Server-Sent Events** - Real-time streaming with SSE support
-- **🛡️ CSRF Protection** - Automatic token generation and validation
-- **🔥 Hot Reload** - Instant file change detection via WebSocket
-- **🐳 Docker Ready** - Dockerfile generated with every project
-- **🎨 CDN-first** - Use Tailwind/DaisyUI via CDN, no build step
+### Routing & Pages
+- **📁 File-based Routing** - Drop a file in `src/pages/`, get a route automatically
+- **🔀 Dynamic Routes** - Support for `[id]`, `[slug]`, `[...path]` patterns, and mixed routes
+- **🎯 Convention over Configuration** - No route configuration needed, just create files
+
+### Development Experience
+- **🔥 Hot Reload** - Instant file change detection via WebSocket, no manual refresh needed
+- **⚡ Zero Config** - Works out of the box, sensible defaults for everything
+- **🎨 CDN-first** - Use Tailwind/DaisyUI via CDN, no build step required
+
+### Frontend Integration
+- **⚡ HTMX-first** - Built-in HTMX integration, server-side rendering without JavaScript
+- **🛡️ CSRF Protection** - Automatic token generation and validation on all POST/PUT/PATCH/DELETE requests
+- **📝 HTML Templates** - Phoenix HEEx templates for type-safe markup
+
+### Real-time & APIs
+- **🔄 Server-Sent Events** - Real-time streaming with SSE support for live updates
+- **📡 JSON APIs** - Easy JSON endpoint creation with `Nex.Api`
+- **🔗 Dynamic API Routes** - Support for dynamic API routes with parameters
+
+### Deployment
+- **🐳 Docker Ready** - Production-ready Dockerfile generated with every project
+- **📦 Single Binary** - Compile to a single executable for easy deployment
+- **🚀 Multi-platform** - Deploy to Railway, Fly.io, Render, or any VPS
+
+## Project Structure
+
+```
+my_app/
+├── src/
+│   ├── pages/           # Page modules (auto-routed)
+│   │   ├── index.ex     # GET /
+│   │   └── [id].ex      # GET /:id
+│   ├── api/             # API endpoints (JSON)
+│   │   └── todos/
+│   │       └── index.ex # GET/POST /api/todos
+│   ├── partials/        # Reusable components
+│   └── layouts.ex       # Layout template
+├── mix.exs
+└── Dockerfile           # Production deployment
+```
+
+## Usage Examples
+
+### Page with HTMX Handler
+
+```elixir
+defmodule MyApp.Pages.Todos do
+  use Nex.Page
+
+  def mount(_params) do
+    %{todos: fetch_todos()}
+  end
+
+  def render(assigns) do
+    ~H"""
+    <h1>My Todos</h1>
+    <form hx-post="/add_todo" hx-target="#todos" hx-swap="beforeend">
+      <input type="text" name="title" required />
+      <button>Add</button>
+    </form>
+    <ul id="todos">
+      <li :for={todo <- @todos}>{todo.title}</li>
+    </ul>
+    """
+  end
+
+  # HTMX POST handler
+  def add_todo(%{"title" => title}) do
+    todo = create_todo(title)
+    ~H"<li>{@todo.title}</li>"
+  end
+end
+```
+
+### Server-Sent Events (Real-time Streaming)
+
+```elixir
+defmodule MyApp.Api.Chat.Stream do
+  use Nex.SSE
+
+  @impl true
+  def stream(%{"message" => msg}, send_fn) do
+    # Stream response character by character
+    msg
+    |> String.graphemes()
+    |> Enum.each(fn char ->
+      send_fn.(%{event: "message", data: char})
+      Process.sleep(50)
+    end)
+    :ok
+  end
+end
+```
+
+### JSON API Endpoint
+
+```elixir
+defmodule MyApp.Api.Todos.Index do
+  use Nex.Api
+
+  def get do
+    %{data: fetch_todos()}
+  end
+
+  def post(%{"title" => title}) do
+    todo = create_todo(title)
+    {201, %{data: todo}}
+  end
+end
+```
 
 ## Deployment
 
-Every Nex project includes a Dockerfile:
+Every Nex project includes a production-ready Dockerfile:
 
 ```bash
 docker build -t my_app .
 docker run -p 4000:4000 my_app
 ```
 
-Or deploy to any platform that supports Elixir:
-- Railway
-- Fly.io
-- Render
-- Traditional VPS
+Deploy to any platform that supports Elixir:
+- **Railway** - Easiest option, auto-deploy from Git
+- **Fly.io** - Global deployment with edge computing
+- **Render** - Simple and straightforward
+- **Traditional VPS** - Full control with Elixir installed
 
 ## Examples
 
-Check out the `examples/` directory for:
-- `chatbot` - AI chat with streaming responses
-- `todos` - Classic todo app with HTMX
-- `guestbook` - Simple guestbook with persistence
-- `dynamic_routes` - Showcase of all routing patterns
+Check out the `examples/` directory for complete working applications:
+- **chatbot** - AI chat with streaming responses using SSE
+- **chatbot_sse** - Real-time streaming with HTMX SSE extension
+- **todos** - Classic todo app with HTMX interactions
+- **guestbook** - Simple guestbook with persistence
+- **dynamic_routes** - Comprehensive showcase of all routing patterns
 
 ## Documentation
 
 - [GitHub Repository](https://github.com/gofenix/nex)
 - [Hex Package: nex_core](https://hex.pm/packages/nex_core)
 - [Hex Package: nex_new](https://hex.pm/packages/nex_new)
+- [HexDocs: nex_core](https://hexdocs.pm/nex_core)
+- [HexDocs: nex_new](https://hexdocs.pm/nex_new)
 
 ## License
 

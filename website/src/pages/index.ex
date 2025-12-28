@@ -25,7 +25,7 @@ defmodule NexWebsite.Pages.Index do
           <span class="gradient-text">Minimum Complexity.</span>
         </h1>
         <p class="text-xl md:text-2xl text-claude-muted mb-12 max-w-2xl mx-auto leading-relaxed font-medium">
-          The simplest way to build HTMX apps in Elixir. Perfect for rapid prototyping, indie hackers, and learning server-side rendering.
+          Ship real products fast. Built for indie hackers, startups, and teams who want to focus on features, not framework complexity.
         </p>
         <div class="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
           <a href="/getting_started" class="btn btn-claude-purple btn-lg px-10 rounded-full shadow-xl shadow-purple-200">
@@ -88,28 +88,28 @@ defmodule NexWebsite.Pages.Index do
             <div class="inline-block px-4 py-2 bg-purple-50 rounded-full text-sm font-semibold text-claude-purple mb-6">
               Our Philosophy
             </div>
-            <h2 class="text-4xl md:text-5xl font-bold mb-6 leading-tight">Simplicity is the <br/><span class="text-claude-purple">Ultimate Sophistication.</span></h2>
+            <h2 class="text-4xl md:text-5xl font-bold mb-6 leading-tight">Build Real Apps,<br/><span class="text-claude-purple">Not Complexity.</span></h2>
             <p class="text-lg text-claude-muted mb-8 leading-relaxed">
-              We believe that web development has become unnecessarily complex. Nex brings back the joy of building for the web by focusing on what matters: your code and your users.
+              Nex is built for shipping real products to production. Server-side rendering with HTMX means you build features, not infrastructure. Convention over configuration eliminates boilerplate. Get your idea from concept to live users fast.
             </p>
             <ul class="space-y-4">
               <li class="flex items-center gap-3">
                 <div class="w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-claude-purple" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
                 </div>
-                <span class="font-medium">Zero-config by default</span>
+                <span class="font-medium">Convention over configuration</span>
               </li>
               <li class="flex items-center gap-3">
                 <div class="w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-claude-purple" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
                 </div>
-                <span class="font-medium">Instant Hot Reloading</span>
+                <span class="font-medium">Instant hot reloading in development</span>
               </li>
               <li class="flex items-center gap-3">
                 <div class="w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-claude-purple" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
                 </div>
-                <span class="font-medium">Docker-ready deployment</span>
+                <span class="font-medium">Production-ready Docker deployment</span>
               </li>
             </ul>
           </div>
@@ -136,11 +136,24 @@ defmodule NexWebsite.Pages.Index do
               <div class="text-3xl">💬</div>
               <h3 class="text-2xl font-bold">AI Chatbot</h3>
             </div>
-            <p class="text-claude-muted mb-6 leading-relaxed">Streaming AI responses with Server-Sent Events. Real-time chat interface with HTMX.</p>
+            <p class="text-claude-muted mb-6 leading-relaxed">AI chat with streaming responses using polling. Learn async patterns and real-time updates.</p>
+            <div class="flex gap-3">
+              <span class="px-3 py-1 bg-gray-100 rounded-full text-xs font-semibold text-claude-muted">Polling</span>
+              <span class="px-3 py-1 bg-gray-100 rounded-full text-xs font-semibold text-claude-muted">HTMX</span>
+              <span class="px-3 py-1 bg-gray-100 rounded-full text-xs font-semibold text-claude-muted">Async</span>
+            </div>
+          </div>
+
+          <div class="card bg-white p-8 border-2 border-gray-200">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="text-3xl">🌊</div>
+              <h3 class="text-2xl font-bold">Chatbot SSE</h3>
+            </div>
+            <p class="text-claude-muted mb-6 leading-relaxed">Real-time streaming with Server-Sent Events and HTMX SSE extension. Zero-JS streaming.</p>
             <div class="flex gap-3">
               <span class="px-3 py-1 bg-gray-100 rounded-full text-xs font-semibold text-claude-muted">SSE</span>
-              <span class="px-3 py-1 bg-gray-100 rounded-full text-xs font-semibold text-claude-muted">HTMX</span>
               <span class="px-3 py-1 bg-gray-100 rounded-full text-xs font-semibold text-claude-muted">Streaming</span>
+              <span class="px-3 py-1 bg-gray-100 rounded-full text-xs font-semibold text-claude-muted">Real-time</span>
             </div>
           </div>
 
@@ -219,9 +232,9 @@ defmodule NexWebsite.Pages.Index do
           <div class="card bg-white p-10 border-2 border-blue-100 hover:border-blue-200 relative overflow-hidden">
             <div class="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-full -mr-16 -mt-16"></div>
             <div class="relative z-10">
-              <div class="text-5xl mb-6">📚</div>
-              <h3 class="text-2xl font-bold mb-4">Learning HTMX</h3>
-              <p class="text-claude-muted leading-relaxed">The best way to learn server-side rendering with HTMX. Clean examples, no magic.</p>
+              <div class="text-5xl mb-6">📊</div>
+              <h3 class="text-2xl font-bold mb-4">Real-time Applications</h3>
+              <p class="text-claude-muted leading-relaxed">Build live dashboards, chat apps, and streaming data applications with Server-Sent Events. Production-ready.</p>
             </div>
           </div>
         </div>
