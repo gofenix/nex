@@ -24,7 +24,7 @@ defmodule NexWebsite.Pages.Index do
           Nex is a minimalist Elixir web framework that leverages HTMX for rich interactivity without the complexity of modern JS frameworks.
         </p>
         <div class="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-          <a href="/getting-started" class="btn btn-claude-purple btn-lg px-10 rounded-full shadow-xl shadow-purple-200">
+          <a href="/getting_started" class="btn btn-claude-purple btn-lg px-10 rounded-full shadow-xl shadow-purple-200">
             Get Started
           </a>
           <div class="bg-white/50 border border-gray-200 rounded-full flex items-center px-6 py-3 font-mono text-sm shadow-sm">
