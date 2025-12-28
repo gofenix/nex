@@ -21,7 +21,7 @@ defmodule NexWebsite.MixProject do
 
   defp deps do
     [
-      {:nex_core, "~> 0.1.6"}
+      {:nex_core, "~> 0.2.0"}
     ]
   end
 end

@@ -7,10 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2025-12-28
+
 ### Removed
 - **Mix.Tasks.Nex.Release**: 移除 `mix nex.release` 命令，改用 Docker 作为标准部署方式
   - 项目生成时自动创建 Dockerfile 和 .dockerignore
   - 简化部署流程，统一使用容器化部署
+
+### Changed
+- **Documentation**: 重写 README，明确框架定位和哲学
+  - 强调 Nex 适用于快速原型、独立开发者、学习 HTMX、内部工具
+  - 明确 Nex 不是 Phoenix 竞争者，不是企业级框架
+  - 突出 CDN-first、Docker-ready 的设计理念
 
 ## [0.1.6] - 2025-12-28
 
