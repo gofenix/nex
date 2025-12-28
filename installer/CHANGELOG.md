@@ -10,28 +10,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.1] - 2025-12-28
 
 ### Fixed
-- **Mix.Tasks.Nex.New**: 修复生成项目中 Documentation 链接，从错误的 `aspect-build/nex` 更正为 `gofenix/nex`
+- **Mix.Tasks.Nex.New**: Fixed Documentation link in generated projects, corrected from incorrect `aspect-build/nex` to `gofenix/nex`
 
 ## [0.2.0] - 2025-12-28
 
 ### Added
-- **Mix.Tasks.Nex.New**: 项目生成时自动创建 Dockerfile 和 .dockerignore
-  - 使用 Alpine Linux 基础镜像，镜像体积小（~150-200MB）
-  - 简化的单阶段构建，易于理解和维护
-  - README 中包含 Docker 部署说明
+- **Mix.Tasks.Nex.New**: Automatically creates Dockerfile and .dockerignore when generating projects
+  - Uses Alpine Linux base image, small image size (~150-200MB)
+  - Simplified single-stage build, easy to understand and maintain
+  - README includes Docker deployment instructions
 
 ### Changed
-- **Deployment**: 改用 Docker 作为标准部署方式，移除 `mix nex.release` 命令
-- **Documentation**: 更新生成的项目 README 模板，包含 Docker 部署说明
+- **Deployment**: Switch to Docker as standard deployment method, removed `mix nex.release` command
+- **Documentation**: Updated generated project README template with Docker deployment instructions
 
 ## [0.1.2] - 2025-12-28
 
 ### Changed
-- **Mix.Tasks.Nex.Dev**: 自动检查并安装缺失的依赖，避免因未运行 `mix deps.get` 导致启动失败
-- **Mix.Tasks.Nex.New**: 创建项目后自动运行 `mix deps.get`，用户可直接运行 `mix nex.dev` 启动项目
+- **Mix.Tasks.Nex.Dev**: Automatically checks and installs missing dependencies to prevent startup failures due to not running `mix deps.get`
+- **Mix.Tasks.Nex.New**: Automatically runs `mix deps.get` after project creation, users can directly run `mix nex.dev` to start the project
 
 ### Fixed
-- **Mix.Tasks.Nex.Dev**: 修复 `app_name` 类型错误，确保 `Application.ensure_all_started/2` 接收原子类型参数
+- **Mix.Tasks.Nex.Dev**: Fixed `app_name` type error to ensure `Application.ensure_all_started/2` receives atom type parameter
 
 ## [0.1.1] - 2025-12-28
 
@@ -47,58 +47,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Documentation**: Published documentation to HexDocs at https://hexdocs.pm/nex_core/0.1.0 and https://hexdocs.pm/nex_new/0.1.0
 
 ### Changed
-- **Naming**: 重命名框架核心包为 `nex_core`，重命名项目生成器为 `nex_new`，以解决 Hex.pm 命名冲突。
+- **Naming**: Renamed framework core package to `nex_core`, renamed project generator to `nex_new` to resolve Hex.pm naming conflicts.
 - **Version Management**: Installer and framework now share a single VERSION file for synchronized releases
 - **Dependencies**: Added `ex_doc` as dev dependency for documentation generation
 
 ## [0.1.0] - 2025-12-28
 
 ### Added
-- **Nex.CSRF**: 新增 CSRF 保护模块，防止跨站请求伪造攻击
-  - `Nex.CSRF.generate_token/0` - 生成 CSRF token
-  - `Nex.CSRF.input_tag/0` - 生成表单隐藏字段
-  - `Nex.CSRF.hx_headers/0` - 生成 HTMX hx-headers 属性
-  - `Nex.CSRF.validate/1` - 验证请求中的 CSRF token
-  - 自动注入到页面，HTMX 请求自动携带 `X-CSRF-Token` header
-  - POST 请求自动验证 CSRF token
-- **Nex.RouteDiscovery**: 新增动态路由发现模块，支持基于文件系统的路由自动发现
-  - 支持单参数动态路由 `[param]`（如 `users/[id].ex` 匹配 `/users/123`）
-  - 支持命名参数路由 `[slug]`（如 `posts/[slug].ex` 匹配 `/posts/hello-world`）
-  - 支持多参数动态路由（如 `posts/[year]/[month].ex` 匹配 `/posts/2024/12`）
-  - 支持通配符路由 `[...path]`（如 `docs/[...path].ex` 匹配任意层级路径）
-  - 支持混合路由（如 `files/[category]/[...path].ex`）
-  - 路由缓存机制（ETS），开发时文件变更自动刷新
-  - 路由优先级排序：静态路由 > 动态路由 > 通配符路由
-- **Examples**: 新增 `dynamic_routes` 示例项目，展示所有动态路由类型的用法
-- **Mix.Tasks.Nex.New**: 全局项目生成器，从零创建完整 Nex 项目
-  - `mix nex.new my_app` - 创建完整项目结构（无需先运行 mix new）
-  - 支持指定路径 `mix nex.new my_app --path ~/projects`
-  - 自动生成干净的 mix.exs，无需清理 lib/ 和 test/
-  - 通过 `installer/` 目录打包为 Mix archive
-- **Mix.Tasks.Nex.Release**: 新增生产构建任务
-  - `mix nex.release` - 编译并打包用于部署
-  - 自动生成优化后的 Dockerfile 用于容器化部署
+- **Nex.CSRF**: Added CSRF protection module to prevent cross-site request forgery attacks
+  - `Nex.CSRF.generate_token/0` - Generate CSRF token
+  - `Nex.CSRF.input_tag/0` - Generate form hidden field
+  - `Nex.CSRF.hx_headers/0` - Generate HTMX hx-headers attribute
+  - `Nex.CSRF.validate/1` - Validate CSRF token in requests
+  - Auto-injected into pages, HTMX requests automatically carry `X-CSRF-Token` header
+  - POST requests automatically validate CSRF token
+- **Nex.RouteDiscovery**: Added dynamic route discovery module supporting file-system-based automatic route discovery
+  - Supports single-parameter dynamic routes `[param]` (e.g., `users/[id].ex` matches `/users/123`)
+  - Supports named parameter routes `[slug]` (e.g., `posts/[slug].ex` matches `/posts/hello-world`)
+  - Supports multi-parameter dynamic routes (e.g., `posts/[year]/[month].ex` matches `/posts/2024/12`)
+  - Supports wildcard routes `[...path]` (e.g., `docs/[...path].ex` matches any level of path)
+  - Supports mixed routes (e.g., `files/[category]/[...path].ex`)
+  - Route caching mechanism (ETS), auto-refresh on file changes in development
+  - Route priority sorting: static routes > dynamic routes > wildcard routes
+- **Examples**: Added `dynamic_routes` example project showcasing all dynamic route types
+- **Mix.Tasks.Nex.New**: Global project generator to create complete Nex projects from scratch
+  - `mix nex.new my_app` - Create complete project structure (no need to run mix new first)
+  - Supports specifying path `mix nex.new my_app --path ~/projects`
+  - Automatically generates clean mix.exs, no need to clean up lib/ and test/
+  - Packaged as Mix archive via `installer/` directory
+- **Mix.Tasks.Nex.Release**: Added production build task
+  - `mix nex.release` - Compile and package for deployment
+  - Automatically generates optimized Dockerfile for containerized deployment
 
 ### Changed
-- **Nex.Handler**: 重构路由解析逻辑，优先使用 `Nex.RouteDiscovery` 进行动态路由匹配
-  - `resolve_page_module/1` 现在支持基于文件名的动态参数提取
-  - `resolve_api_module/1` 同样支持动态路由
-  - `resolve_action/1` 支持动态路由下的 POST action
-  - 保留 legacy 路由逻辑作为后备兼容
-- **Nex.Reloader**: 文件变更时自动清除路由缓存，确保新路由立即生效
-- **Nex.Reloader**: 生产环境自动禁用热重载
-  - `Nex.Reloader.enabled?/0` 检查是否启用（仅 `:dev` 环境）
-  - 生产环境不注入 live reload WebSocket 脚本
-  - 通过 `Application.get_env(:nex, :env)` 配置环境
-- **Mix.Tasks.Nex.Dev**: 重构进程启动逻辑，使用 `Nex.Supervisor` 替代手动启动单个进程
-  - 原来：手动启动 Store、PubSub、Reloader（无监督）
-  - 现在：通过 `Nex.Supervisor.start_link()` 统一管理（有监督）
+- **Nex.Handler**: Refactored route parsing logic to prioritize `Nex.RouteDiscovery` for dynamic route matching
+  - `resolve_page_module/1` now supports filename-based dynamic parameter extraction
+  - `resolve_api_module/1` also supports dynamic routes
+  - `resolve_action/1` supports POST actions under dynamic routes
+  - Retained legacy route logic for backward compatibility
+- **Nex.Reloader**: Automatically clears route cache on file changes to ensure new routes take effect immediately
+- **Nex.Reloader**: Automatically disables hot reload in production
+  - `Nex.Reloader.enabled?/0` checks if enabled (only in `:dev` environment)
+  - Production environment does not inject live reload WebSocket script
+  - Environment configured via `Application.get_env(:nex, :env)`
+- **Mix.Tasks.Nex.Dev**: Refactored process startup logic, using `Nex.Supervisor` instead of manually starting individual processes
+  - Before: Manually starting Store, PubSub, Reloader (no supervision)
+  - Now: Unified management through `Nex.Supervisor.start_link()` (with supervision)
 
 ### Added (Earlier)
-- **Nex.Supervisor**: 新增框架层监督树模块，统一管理 Nex 核心进程（Store、PubSub、Reloader）
-  - 任何进程崩溃会自动重启，提高框架可靠性
-  - 对用户完全透明，无需额外配置
-  - 符合 OTP 最佳实践
+- **Nex.Supervisor**: Added framework-level supervision tree module to uniformly manage Nex core processes (Store, PubSub, Reloader)
+  - Any process crash automatically restarts, improving framework reliability
+  - Completely transparent to users, no additional configuration required
+  - Follows OTP best practices
 
 ### Security
 - **Nex.Handler**: Fixed atom exhaustion vulnerability (CVE-level security issue) by replacing `String.to_atom/1` with `String.to_existing_atom/1` for user-supplied input. This prevents attackers from crashing the server by requesting random paths like `/api/random_1`, `/api/random_2`, etc.
@@ -109,7 +109,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Nex.Store**: Optimized `touch_page/1` to use `:ets.match/2` instead of `:ets.foldl/3`, reducing complexity from O(n) to O(m) where m is the number of keys for a specific page. This significantly improves performance when the ETS table contains many pages.
 
 ### Removed
-- **Mix.Tasks.Nex.Init**: 删除了 `mix nex.init` 任务。现在推荐使用 `installer` 中的 `mix nex.new` 来创建项目，以保持框架简洁和单一职责原则。
+- **Mix.Tasks.Nex.Init**: Removed `mix nex.init` task. Now recommend using `mix nex.new` from `installer` to create projects, to maintain framework simplicity and single responsibility principle.
 
 ### Fixed
 - **Nex.Env**: Fixed `.env` file loading to correctly resolve project root directory using `Mix.Project.app_path()` instead of relying on current working directory

@@ -23,9 +23,9 @@ defmodule Guestbook.Partials.Guestbook.Message do
                 hx-vals={Jason.encode!(%{id: @message.id})}
                 hx-target={"#message-#{@message.id}"}
                 hx-swap="outerHTML"
-                hx-confirm="确定要删除这条留言吗？"
+                hx-confirm="Are you sure you want to delete this message?"
                 class="btn btn-ghost btn-xs text-red-400 hover:text-red-600">
-          删除
+          Delete
         </button>
       </div>
       <p class="text-gray-700 whitespace-pre-wrap">{@message.content}</p>

@@ -1,17 +1,17 @@
-# 构建官网
+# Build Official Website
 
-仔细阅读这个框架的代码，然后参考https://www.phoenixframework.org/的设计风格，通过这个框架来做一个官网。
+Carefully read the code of this framework, then refer to the design style of https://www.phoenixframework.org/, and build an official website using this framework.
 
-你首先理解这个需求，然后用中文写一个实施方案让我review。写到 specs/<number>-tech.md
+First understand this requirement, then write an implementation plan in English for me to review. Write to specs/<number>-tech.md
 
-# railway部署 ✅
+# Railway Deployment ✅
 
-参考railway的文档，将website部署到railway上。
+Refer to Railway's documentation and deploy the website to Railway.
 
-已配置：
-- `website/railway.json` - Railway 部署配置
-- `specs/deploy-railway.md` - 部署文档
+Already configured:
+- `website/railway.json` - Railway deployment configuration
+- `specs/deploy-railway.md` - Deployment documentation
 
-部署命令：
+Deployment commands:
 - Build: `mix do deps.get, compile`
-- Start: `mix nex.start` (自动读取 PORT 环境变量，默认为 4000)
+- Start: `mix nex.start` (automatically reads PORT environment variable, defaults to 4000)

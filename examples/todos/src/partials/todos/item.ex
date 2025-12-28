@@ -34,7 +34,7 @@ defmodule Todos.Partials.Todos.Item do
               hx-target={"#todo-#{@todo.id}"}
               hx-swap="outerHTML"
               class="text-red-500 hover:text-red-700">
-        删除
+        Delete
       </button>
     </li>
     """

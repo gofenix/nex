@@ -31,17 +31,17 @@ defmodule ChatbotSse.Api.Sse.Stream do
     input = String.downcase(user_message)
 
     response_text = cond do
-      String.contains?(input, "你好") or String.contains?(input, "hello") ->
-        "你好！很高兴见到你。有什么我可以帮助你的吗？"
+      String.contains?(input, "hello") ->
+        "Hello! Nice to meet you. Is there anything I can help you with?"
 
-      String.contains?(input, "名字") ->
-        "我是 Nex 框架的 SSE 聊天机器人，使用 HTMX SSE 扩展实现零 JS 流式响应！"
+      String.contains?(input, "name") ->
+        "I'm an SSE chatbot for the Nex framework, implementing zero-JS streaming responses using HTMX SSE extension!"
 
-      String.contains?(input, "你是谁") or String.contains?(input, "是什么") ->
-        "我是一个使用 SSE 流式传输的 AI 聊天机器人。Nex 框架 + HTMX SSE 扩展 = 零 JS！"
+      String.contains?(input, "who") or String.contains?(input, "what") ->
+        "I'm an AI chatbot using SSE streaming. Nex framework + HTMX SSE extension = Zero JS!"
 
       true ->
-        "这是一个模拟回复。配置 OPENAI_API_KEY 环境变量可使用真正的 AI！"
+        "This is a simulated reply. Configure OPENAI_API_KEY environment variable to use real AI!"
     end
 
     # Stream each character with cumulative content for HTMX SSE
@@ -59,7 +59,7 @@ defmodule ChatbotSse.Api.Sse.Stream do
 
   defp call_openai_stream(base_url, api_key, user_message, send_fn) do
     messages = [
-      %{"role" => "system", "content" => "你是一个友好的AI助手。"},
+      %{"role" => "system", "content" => "You are a friendly AI assistant."},
       %{"role" => "user", "content" => user_message}
     ]
 
@@ -89,10 +89,10 @@ defmodule ChatbotSse.Api.Sse.Stream do
         :ok
 
       {:ok, %{status: status, body: _body}} ->
-        send_fn.(%{event: "error", data: "请求失败 (HTTP #{status})"})
+        send_fn.(%{event: "error", data: "Request failed (HTTP #{status})"})
 
       {:error, reason} ->
-        send_fn.(%{event: "error", data: "请求失败: #{inspect(reason)}"})
+        send_fn.(%{event: "error", data: "Request failed: #{inspect(reason)}"})
     end
   end
 

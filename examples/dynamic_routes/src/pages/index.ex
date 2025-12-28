@@ -3,7 +3,7 @@ defmodule DynamicRoutes.Pages.Index do
 
   def mount(_params) do
     %{
-      title: "动态路由示例"
+      title: "Dynamic Routes Example"
     }
   end
 
@@ -11,65 +11,65 @@ defmodule DynamicRoutes.Pages.Index do
     ~H"""
     <div class="space-y-8">
       <div>
-        <h1 class="text-3xl font-bold text-gray-800 mb-4">动态路由示例</h1>
-        <p class="text-gray-600">展示 Nex 框架的动态路由能力</p>
+        <h1 class="text-3xl font-bold text-gray-800 mb-4">Dynamic Routes Example</h1>
+        <p class="text-gray-600">Showcasing Nex framework's dynamic routing capabilities</p>
       </div>
 
       <div class="grid md:grid-cols-2 gap-6">
-        <!-- 用户相关路由 -->
+        <!-- User-related routes -->
         <div class="bg-white rounded-lg p-6 shadow">
-          <h2 class="text-xl font-semibold mb-4">用户路由</h2>
+          <h2 class="text-xl font-semibold mb-4">User Routes</h2>
           <div class="space-y-3">
             <div>
               <code class="text-sm bg-gray-100 px-2 py-1 rounded">src/pages/users/[id].ex</code>
-              <p class="text-sm text-gray-600 mt-1">匹配: /users/123, /users/456</p>
-              <a href="/users/1" class="text-blue-600 hover:underline text-sm">→ 查看用户 1</a>
+              <p class="text-sm text-gray-600 mt-1">Matches: /users/123, /users/456</p>
+              <a href="/users/1" class="text-blue-600 hover:underline text-sm">→ View User 1</a>
             </div>
             <div>
               <code class="text-sm bg-gray-100 px-2 py-1 rounded">src/pages/users/[id]/profile.ex</code>
-              <p class="text-sm text-gray-600 mt-1">匹配: /users/123/profile</p>
-              <a href="/users/1/profile" class="text-blue-600 hover:underline text-sm">→ 查看用户 1 资料</a>
+              <p class="text-sm text-gray-600 mt-1">Matches: /users/123/profile</p>
+              <a href="/users/1/profile" class="text-blue-600 hover:underline text-sm">→ View User 1 Profile</a>
             </div>
           </div>
         </div>
 
-        <!-- 文章相关路由 -->
+        <!-- Post-related routes -->
         <div class="bg-white rounded-lg p-6 shadow">
-          <h2 class="text-xl font-semibold mb-4">文章路由</h2>
+          <h2 class="text-xl font-semibold mb-4">Post Routes</h2>
           <div class="space-y-3">
             <div>
               <code class="text-sm bg-gray-100 px-2 py-1 rounded">src/pages/posts/[slug].ex</code>
-              <p class="text-sm text-gray-600 mt-1">匹配: /posts/hello-world, /posts/my-first-post</p>
-              <a href="/posts/hello-world" class="text-blue-600 hover:underline text-sm">→ 查看 "hello-world"</a>
+              <p class="text-sm text-gray-600 mt-1">Matches: /posts/hello-world, /posts/my-first-post</p>
+              <a href="/posts/hello-world" class="text-blue-600 hover:underline text-sm">→ View "hello-world"</a>
             </div>
             <div>
               <code class="text-sm bg-gray-100 px-2 py-1 rounded">src/pages/posts/[year]/[month].ex</code>
-              <p class="text-sm text-gray-600 mt-1">匹配: /posts/2024/12</p>
-              <a href="/posts/2024/12" class="text-blue-600 hover:underline text-sm">→ 查看 2024年12月</a>
+              <p class="text-sm text-gray-600 mt-1">Matches: /posts/2024/12</p>
+              <a href="/posts/2024/12" class="text-blue-600 hover:underline text-sm">→ View December 2024</a>
             </div>
           </div>
         </div>
 
-        <!-- 通配符路由 -->
+        <!-- Wildcard routes -->
         <div class="bg-white rounded-lg p-6 shadow">
-          <h2 class="text-xl font-semibold mb-4">通配符路由</h2>
+          <h2 class="text-xl font-semibold mb-4">Wildcard Routes</h2>
           <div class="space-y-3">
             <div>
               <code class="text-sm bg-gray-100 px-2 py-1 rounded">src/pages/docs/[...path].ex</code>
-              <p class="text-sm text-gray-600 mt-1">匹配: /docs/* (任意层级)</p>
-              <a href="/docs/getting-started/install" class="text-blue-600 hover:underline text-sm">→ 查看文档</a>
+              <p class="text-sm text-gray-600 mt-1">Matches: /docs/* (any level)</p>
+              <a href="/docs/getting-started/install" class="text-blue-600 hover:underline text-sm">→ View Documentation</a>
             </div>
             <div>
               <code class="text-sm bg-gray-100 px-2 py-1 rounded">src/pages/files/[category]/[...path].ex</code>
-              <p class="text-sm text-gray-600 mt-1">匹配: /files/images/2024/12/photo.jpg</p>
-              <a href="/files/images/2024/12/holiday.jpg" class="text-blue-600 hover:underline text-sm">→ 查看文件路径</a>
+              <p class="text-sm text-gray-600 mt-1">Matches: /files/images/2024/12/photo.jpg</p>
+              <a href="/files/images/2024/12/holiday.jpg" class="text-blue-600 hover:underline text-sm">→ View File Path</a>
             </div>
           </div>
         </div>
 
-        <!-- API 路由 -->
+        <!-- API routes -->
         <div class="bg-white rounded-lg p-6 shadow">
-          <h2 class="text-xl font-semibold mb-4">API 路由</h2>
+          <h2 class="text-xl font-semibold mb-4">API Routes</h2>
           <div class="space-y-3">
             <div>
               <code class="text-sm bg-gray-100 px-2 py-1 rounded">src/api/users/[id].ex</code>
@@ -78,7 +78,7 @@ defmodule DynamicRoutes.Pages.Index do
                 hx-get="/api/users/1"
                 hx-target="#api-result"
                 class="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600">
-                测试 API
+                Test API
               </button>
               <div id="api-result" class="mt-2"></div>
             </div>

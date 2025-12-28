@@ -3,7 +3,7 @@ defmodule DynamicRoutes.Pages.Posts.Slug do
 
   def mount(%{"slug" => slug}) do
     %{
-      title: "文章 - #{slug}",
+      title: "Post - #{slug}",
       slug: slug,
       post: find_post(slug),
       params_display: ~s(%{"slug" => "#{slug}"})
@@ -14,9 +14,9 @@ defmodule DynamicRoutes.Pages.Posts.Slug do
     ~H"""
     <div class="space-y-6">
       <nav class="text-sm text-gray-500">
-        <a href="/" class="hover:text-gray-700">首页</a>
+        <a href="/" class="hover:text-gray-700">Home</a>
         <span class="mx-2">/</span>
-        <a href="/posts" class="hover:text-gray-700">文章</a>
+        <a href="/posts" class="hover:text-gray-700">Posts</a>
         <span class="mx-2">/</span>
         <span>{@slug}</span>
       </nav>
@@ -25,9 +25,9 @@ defmodule DynamicRoutes.Pages.Posts.Slug do
         <header class="mb-6">
           <h1 class="text-3xl font-bold mb-2">{@post.title}</h1>
           <div class="flex items-center text-sm text-gray-500 space-x-4">
-            <span>作者: {@post.author}</span>
-            <span>发布于: {@post.date}</span>
-            <span>阅读量: {@post.views}</span>
+            <span>Author: {@post.author}</span>
+            <span>Published: {@post.date}</span>
+            <span>Views: {@post.views}</span>
           </div>
         </header>
 
@@ -36,47 +36,47 @@ defmodule DynamicRoutes.Pages.Posts.Slug do
 
           <div class="space-y-4">
             <p>
-              这是一篇关于 {@post.topic} 的文章。文章的 slug 是 {@slug}，
-              它是一个对 SEO 友好的 URL 标识符。
+              This is an article about {@post.topic}. The article's slug is {@slug},
+              which is a SEO-friendly URL identifier.
             </p>
 
-            <h2 class="text-2xl font-semibold mt-6 mb-3">什么是 Slug？</h2>
+            <h2 class="text-2xl font-semibold mt-6 mb-3">What is a Slug?</h2>
             <p>
-              Slug 是 URL 中用于标识资源的字符串，通常使用小写字母、
-              数字和连字符。相比数字 ID，slug 更具可读性，有利于 SEO。
+              A slug is a string used to identify a resource in a URL, typically using lowercase letters,
+              numbers, and hyphens. Compared to numeric IDs, slugs are more readable and beneficial for SEO.
             </p>
 
-            <h2 class="text-2xl font-semibold mt-6 mb-3">动态路由的优势</h2>
+            <h2 class="text-2xl font-semibold mt-6 mb-3">Advantages of Dynamic Routes</h2>
             <ul class="list-disc pl-6 space-y-2">
-              <li>SEO 友好</li>
-              <li>用户可读</li>
-              <li>易于分享</li>
-              <li>语义明确</li>
+              <li>SEO friendly</li>
+              <li>User readable</li>
+              <li>Easy to share</li>
+              <li>Semantically clear</li>
             </ul>
           </div>
         </div>
 
         <footer class="mt-8 pt-6 border-t">
           <div class="bg-gray-50 p-4 rounded">
-            <h3 class="font-mono text-sm mb-2">路由解析详情</h3>
+            <h3 class="font-mono text-sm mb-2">Route Parsing Details</h3>
             <div class="grid md:grid-cols-2 gap-4 text-sm">
               <div>
-                <span class="text-gray-600">文件路径:</span>
+                <span class="text-gray-600">File Path:</span>
                 <br>
                 <code class="text-xs">src/pages/posts/[slug].ex</code>
               </div>
               <div>
-                <span class="text-gray-600">匹配模式:</span>
+                <span class="text-gray-600">Match Pattern:</span>
                 <br>
                 <code class="text-xs">/posts/{:slug}</code>
               </div>
               <div>
-                <span class="text-gray-600">实际 URL:</span>
+                <span class="text-gray-600">Actual URL:</span>
                 <br>
                 <code class="text-xs">/posts/{@slug}</code>
               </div>
               <div>
-                <span class="text-gray-600">提取参数:</span>
+                <span class="text-gray-600">Extracted Parameters:</span>
                 <br>
                 <code class="text-xs">{@params_display}</code>
               </div>
@@ -86,23 +86,23 @@ defmodule DynamicRoutes.Pages.Posts.Slug do
       </article>
 
       <div class="bg-white rounded-lg p-6 shadow">
-        <h2 class="text-xl font-semibold mb-4">更多示例</h2>
+        <h2 class="text-xl font-semibold mb-4">More Examples</h2>
         <div class="grid md:grid-cols-2 gap-4">
           <a href="/posts/hello-world" class="block p-3 border rounded hover:bg-gray-50">
             <h3 class="font-semibold">Hello World</h3>
-            <p class="text-sm text-gray-600">经典的编程入门文章</p>
+            <p class="text-sm text-gray-600">Classic programming introduction article</p>
           </a>
           <a href="/posts/elixir-tips" class="block p-3 border rounded hover:bg-gray-50">
             <h3 class="font-semibold">Elixir Tips</h3>
-            <p class="text-sm text-gray-600">Elixir 编程技巧分享</p>
+            <p class="text-sm text-gray-600">Elixir programming tips and tricks</p>
           </a>
           <a href="/posts/web-development-2024" class="block p-3 border rounded hover:bg-gray-50">
             <h3 class="font-semibold">Web Development 2024</h3>
-            <p class="text-sm text-gray-600">2024年 Web 开发趋势</p>
+            <p class="text-sm text-gray-600">2024 Web development trends</p>
           </a>
           <a href="/posts/functional-programming" class="block p-3 border rounded hover:bg-gray-50">
             <h3 class="font-semibold">Functional Programming</h3>
-            <p class="text-sm text-gray-600">函数式编程思想</p>
+            <p class="text-sm text-gray-600">Functional programming concepts</p>
           </a>
         </div>
       </div>
@@ -110,50 +110,50 @@ defmodule DynamicRoutes.Pages.Posts.Slug do
     """
   end
 
-  # 模拟文章数据
+  # Mock post data
   defp find_post(slug) do
     posts = %{
       "hello-world" => %{
-        title: "Hello World - 我的 Nex 框架之旅",
-        author: "开发者",
+        title: "Hello World - My Nex Framework Journey",
+        author: "Developer",
         date: "2024-12-20",
         views: 1234,
-        excerpt: "这是使用 Nex 框架创建的第一篇文章，展示了动态路由的强大功能。",
-        topic: "Web 开发框架"
+        excerpt: "This is the first article created with Nex framework, showcasing the power of dynamic routes.",
+        topic: "Web Development Framework"
       },
       "elixir-tips" => %{
-        title: "10 个 Elixir 编程技巧",
-        author: "Elixir 专家",
+        title: "10 Elixir Programming Tips",
+        author: "Elixir Expert",
         date: "2024-12-15",
         views: 892,
-        excerpt: "分享 10 个实用的 Elixir 编程技巧，让你的代码更加优雅。",
-        topic: "Elixir 编程"
+        excerpt: "Share 10 practical Elixir programming tips to make your code more elegant.",
+        topic: "Elixir Programming"
       },
       "web-development-2024" => %{
-        title: "2024 年 Web 开发趋势",
-        author: "技术观察者",
+        title: "2024 Web Development Trends",
+        author: "Technology Observer",
         date: "2024-12-10",
         views: 2156,
-        excerpt: "探讨 2024 年 Web 开发的最新趋势，包括 HTMX、Server Components 等。",
-        topic: "Web 开发"
+        excerpt: "Explore the latest trends in 2024 Web development, including HTMX, Server Components, etc.",
+        topic: "Web Development"
       },
       "functional-programming" => %{
-        title: "函数式编程入门指南",
-        author: "函数式编程爱好者",
+        title: "Functional Programming Getting Started Guide",
+        author: "Functional Programming Enthusiast",
         date: "2024-12-05",
         views: 1567,
-        excerpt: "从零开始学习函数式编程，理解不可变性、纯函数等核心概念。",
-        topic: "编程范式"
+        excerpt: "Learn functional programming from scratch, understand core concepts like immutability and pure functions.",
+        topic: "Programming Paradigm"
       }
     }
 
     Map.get(posts, slug, %{
-      title: "未找到文章",
-      author: "系统",
+      title: "Post Not Found",
+      author: "System",
       date: "2024-12-01",
       views: 0,
-      excerpt: "抱歉，没有找到 slug 为 #{slug} 的文章。",
-      topic: "未知"
+      excerpt: "Sorry, no post found with slug #{slug}.",
+      topic: "Unknown"
     })
   end
 end

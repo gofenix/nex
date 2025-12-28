@@ -21,8 +21,8 @@ defmodule ChatbotSse.Pages.Index do
 
     <div id="chat-container" class="flex-1 bg-gray-800 rounded-2xl p-4 overflow-y-auto space-y-4 mb-4 h-[500px]">
       <div :if={length(@messages) == 0} class="text-center text-gray-500 py-10">
-        <p class="text-lg mb-2">你好！我是 AI 助手</p>
-        <p class="text-sm">使用 SSE 流式响应，实时显示生成内容</p>
+        <p class="text-lg mb-2">Hello! I'm an AI assistant</p>
+        <p class="text-sm">Using SSE streaming responses, real-time content generation display</p>
       </div>
       <.chat_message :for={msg <- Enum.reverse(@messages)} message={msg} />
     </div>
@@ -34,11 +34,11 @@ defmodule ChatbotSse.Pages.Index do
           class="flex gap-3">
       <input type="text"
              name="message"
-             placeholder="输入消息..."
+             placeholder="Enter message..."
              required
              class="flex-1 input input-bordered bg-gray-700 text-white border-gray-600 focus:border-emerald-500" />
       <button type="submit" class="btn btn-emerald">
-        发送
+        Send
       </button>
     </form>
 
