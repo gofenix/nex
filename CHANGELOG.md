@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+- **Mix.Tasks.Nex.Release**: 移除 `mix nex.release` 命令，改用 Docker 作为标准部署方式
+  - 项目生成时自动创建 Dockerfile 和 .dockerignore
+  - 简化部署流程，统一使用容器化部署
+
 ## [0.1.6] - 2025-12-28
 
 ### Fixed

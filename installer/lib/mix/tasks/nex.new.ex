@@ -84,6 +84,8 @@ defmodule Mix.Tasks.Nex.New do
       {"src/layouts.ex", layouts(assigns)},
       {"src/pages/index.ex", index(assigns)},
       {".gitignore", gitignore()},
+      {".dockerignore", dockerignore()},
+      {"Dockerfile", dockerfile()},
       {".env.example", env_example()},
       {"README.md", readme(assigns)}
     ]
@@ -232,6 +234,41 @@ defmodule Mix.Tasks.Nex.New do
     """
   end
 
+  defp dockerignore do
+    """
+    _build/
+    deps/
+    .git/
+    .gitignore
+    *.log
+    erl_crash.dump
+    .DS_Store
+    .vscode/
+    .idea/
+    .elixir_ls/
+    """
+  end
+
+  defp dockerfile do
+    """
+    FROM elixir:1.18-alpine
+
+    RUN apk add --no-cache build-base git openssl ncurses-libs
+
+    WORKDIR /app
+
+    RUN mix local.hex --force && mix local.rebar --force
+
+    COPY . .
+
+    RUN mix deps.get
+
+    EXPOSE 4000
+
+    CMD ["mix", "nex.start"]
+    """
+  end
+
   defp env_example do
     """
     PORT=4000
@@ -243,7 +280,7 @@ defmodule Mix.Tasks.Nex.New do
     """
     # #{a.module_name}
 
-    A web application built with [Nex](https://github.com/aspect-build/nex).
+    A web application built with [Nex](https://github.com/gofenix/nex).
 
     ## Getting Started
 
@@ -253,6 +290,15 @@ defmodule Mix.Tasks.Nex.New do
     ```
 
     Open http://localhost:4000
+
+    ## Deployment
+
+    Deploy with Docker:
+
+    ```bash
+    docker build -t #{a.app_name} .
+    docker run -p 4000:4000 #{a.app_name}
+    ```
     """
   end
 end
