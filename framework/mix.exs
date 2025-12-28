@@ -1,7 +1,7 @@
 defmodule Nex.MixProject do
   use Mix.Project
 
-  @version File.read!("../VERSION") |> String.trim()
+  @version File.read!("VERSION") |> String.trim()
 
   def project do
     [
@@ -29,7 +29,8 @@ defmodule Nex.MixProject do
       {:phoenix_live_view, "~> 1.0"},
       {:jason, "~> 1.4"},
       {:dotenvy, "~> 0.9"},
-      {:file_system, "~> 1.0"}
+      {:file_system, "~> 1.0"},
+      {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
     ]
   end
 
@@ -38,7 +39,7 @@ defmodule Nex.MixProject do
       maintainers: ["fenix"],
       licenses: ["MIT"],
       links: %{"GitHub" => "https://github.com/fenix/nex"},
-      files: ~w(lib mix.exs README.md CHANGELOG.md ../VERSION)
+      files: ~w(lib mix.exs README.md CHANGELOG.md VERSION)
     ]
   end
 end

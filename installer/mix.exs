@@ -1,7 +1,7 @@
 defmodule NexNew.MixProject do
   use Mix.Project
 
-  @version File.read!("../VERSION") |> String.trim()
+  @version File.read!("VERSION") |> String.trim()
 
   def project do
     [
@@ -20,7 +20,9 @@ defmodule NexNew.MixProject do
   end
 
   defp deps do
-    []
+    [
+      {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
+    ]
   end
 
   defp package do
@@ -28,7 +30,7 @@ defmodule NexNew.MixProject do
       maintainers: ["fenix"],
       licenses: ["MIT"],
       links: %{"GitHub" => "https://github.com/fenix/nex"},
-      files: ~w(lib mix.exs README.md ../VERSION)
+      files: ~w(lib mix.exs README.md VERSION)
     ]
   end
 end
