@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2] - 2025-12-28
+
+### Changed
+- **Internationalization**: Translated all project documentation and code comments to English
+  - Core documentation: AGENTS.md, CLAUDE.md, VERSIONING.md, CHANGELOG.md
+  - Framework code: Module documentation and inline comments
+  - Example projects: All README files and UI text
+  - Installer documentation: CHANGELOG.md entries
+  - Specifications: website.md and related docs
+  - Result: Project is now fully English-ready for open source release
+
 ## [0.2.1] - 2025-12-28
 
 ### Changed
