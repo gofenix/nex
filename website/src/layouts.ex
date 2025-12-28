@@ -38,55 +38,158 @@ defmodule NexWebsite.Layouts do
         <script src="https://unpkg.com/htmx.org@2.0.4"></script>
         <style>
           :root {
-            --claude-bg: #F4F1EA;
-            --claude-text: #2B1810;
-            --claude-purple: #A47764;
+            /* Claude's actual color palette */
+            --claude-bg: #F5F5F0;
+            --claude-text: #1A1A1A;
+            --claude-purple: #9B7EBD;
             --claude-gold: #D4A574;
-            --claude-muted: #6B5D54;
-            --claude-accent: #8B6F47;
+            --claude-muted: #6B6B6B;
+            --claude-accent: #7B5FA8;
+            --claude-light: #FAFAF8;
+            --claude-border: #E5E5E0;
           }
+
+          * {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+          }
+
           body {
             background-color: var(--claude-bg);
             color: var(--claude-text);
-            font-family: 'Inter', sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-weight: 400;
+            line-height: 1.6;
           }
+
+          /* Claude-style buttons */
           .btn-claude-purple {
             background-color: var(--claude-purple);
             color: white;
             border: none;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
           }
           .btn-claude-purple:hover {
             background-color: var(--claude-accent);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(155, 126, 189, 0.25);
           }
+          .btn-claude-purple:active {
+            transform: translateY(0);
+          }
+
+          /* Text colors */
           .text-claude-purple { color: var(--claude-purple); }
           .text-claude-gold { color: var(--claude-gold); }
           .text-claude-muted { color: var(--claude-muted); }
           .bg-claude-bg { background-color: var(--claude-bg); }
+          .bg-claude-light { background-color: var(--claude-light); }
           .border-claude-purple { border-color: var(--claude-purple); }
 
-          /* Custom styles for DaisyUI overrides */
+          /* Navbar */
           .navbar {
-            background-color: rgba(244, 241, 234, 0.95);
-            backdrop-filter: blur(8px);
-            border-bottom: 1px solid rgba(164, 119, 100, 0.1);
+            background-color: rgba(250, 250, 248, 0.98);
+            backdrop-filter: blur(8px) saturate(180%);
+            border-bottom: 1px solid var(--claude-border);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+          }
+          .menu li > a {
+            transition: all 0.2s ease;
+            border-radius: 8px;
           }
           .menu li > a:hover {
-            background-color: rgba(164, 119, 100, 0.1);
+            background-color: rgba(164, 119, 100, 0.08);
             color: var(--claude-purple);
           }
-          .hero { background-color: var(--claude-bg); }
 
-          /* Code block styling */
+          /* Cards */
+          .card {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 12px;
+          }
+          .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.06), 0 2px 4px rgba(0, 0, 0, 0.04);
+          }
+
+          /* Hero section */
+          .hero {
+            background: linear-gradient(180deg, #FAFAF8 0%, #F5F5F0 100%);
+          }
+
+          /* Typography */
+          h1, h2, h3, h4, h5, h6 {
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            line-height: 1.2;
+          }
+
+          h1 { font-size: clamp(2.5rem, 5vw, 4rem); }
+          h2 { font-size: clamp(2rem, 4vw, 3rem); }
+          h3 { font-size: clamp(1.5rem, 3vw, 2rem); }
+
+          /* Code blocks */
           pre {
             margin: 0;
-            padding: 1.5rem;
-            background-color: #1e1e1e;
+            padding: 1.25rem;
+            background-color: #1A1A1A;
             overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
           }
           pre code {
-            font-family: 'Courier New', Courier, monospace;
+            font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace;
             font-size: 0.875rem;
-            line-height: 1.6;
+            line-height: 1.5;
+            font-weight: 400;
+          }
+
+          code {
+            font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace;
+            font-size: 0.9em;
+            font-weight: 500;
+          }
+
+          /* Smooth animations */
+          @keyframes fadeInUp {
+            from {
+              opacity: 0;
+              transform: translateY(20px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+
+          .animate-fade-in-up {
+            animation: fadeInUp 0.6s ease-out;
+          }
+
+          /* Badge */
+          .badge {
+            font-weight: 500;
+            letter-spacing: -0.01em;
+            font-size: 0.875rem;
+          }
+
+          /* Solid color text - no gradient */
+          .gradient-text {
+            color: var(--claude-purple);
+          }
+
+          /* Spacing utilities */
+          .section-padding {
+            padding: clamp(3rem, 8vw, 6rem) 0;
+          }
+
+          /* Border utilities */
+          .border-subtle {
+            border-color: var(--claude-border);
           }
         </style>
       </head>
