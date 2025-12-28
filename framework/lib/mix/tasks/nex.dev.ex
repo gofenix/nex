@@ -26,13 +26,18 @@ defmodule Mix.Tasks.Nex.Dev do
     Mix.Task.run("compile")
 
     # Set Nex environment to dev for hot reload
-    Application.put_env(:nex, :env, :dev)
+    Application.put_env(:nex_core, :env, :dev)
 
     # Load environment
     Nex.Env.init()
 
-    # Start the user's application (this will start any supervision trees defined in Application.start/2)
-    app_name = Mix.Project.config()[:app]
+    # Get project info from mix.exs
+    app_name = Mix.Project.config()[:app] |> to_string()
+
+    # Configure app module
+    app_module = get_app_module()
+    Application.put_env(:nex_core, :app_module, app_module)
+
     if app_name do
       Application.ensure_all_started(app_name)
     end

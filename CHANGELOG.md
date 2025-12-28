@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Naming**: 重命名框架核心包为 `nex_core`，重命名项目生成器为 `nex_new`，以解决 Hex.pm 命名冲突。
+- **Version Management**: Installer and framework now share a single VERSION file for synchronized releases
+
+## [0.1.0] - 2025-12-28
+
 ### Added
 - **Nex.CSRF**: 新增 CSRF 保护模块，防止跨站请求伪造攻击
   - `Nex.CSRF.generate_token/0` - 生成 CSRF token
@@ -29,15 +35,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - 支持指定路径 `mix nex.new my_app --path ~/projects`
   - 自动生成干净的 mix.exs，无需清理 lib/ 和 test/
   - 通过 `installer/` 目录打包为 Mix archive
-- **Mix.Tasks.Nex.Init**: 在现有 Elixir 项目中初始化 Nex 结构
-  - `mix nex.init` - 创建 `src/` 目录结构和模板文件
-  - 自动清理 `mix new` 生成的残留文件（lib/、test/）
-  - 自动更新 mix.exs：添加 elixirc_paths 和 mod: 配置
-  - 清理注释并统一 Elixir 版本为 1.18
-  - 支持 `--force` 覆盖现有文件
 - **Mix.Tasks.Nex.Release**: 新增生产构建任务
   - `mix nex.release` - 编译并打包用于部署
-  - 生成启动脚本、部署指南、Dockerfile
+  - 自动生成优化后的 Dockerfile 用于容器化部署
 
 ### Changed
 - **Nex.Handler**: 重构路由解析逻辑，优先使用 `Nex.RouteDiscovery` 进行动态路由匹配
@@ -69,7 +69,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Nex.Store**: Optimized `touch_page/1` to use `:ets.match/2` instead of `:ets.foldl/3`, reducing complexity from O(n) to O(m) where m is the number of keys for a specific page. This significantly improves performance when the ETS table contains many pages.
 
 ### Removed
-- **Nex.Router.Compiler**: Removed unused 100+ line module that was never called. All routing is handled at runtime by `Nex.Handler` for better flexibility and hot reload support.
+- **Mix.Tasks.Nex.Init**: 删除了 `mix nex.init` 任务。现在推荐使用 `installer` 中的 `mix nex.new` 来创建项目，以保持框架简洁和单一职责原则。
 
 ### Fixed
 - **Nex.Env**: Fixed `.env` file loading to correctly resolve project root directory using `Mix.Project.app_path()` instead of relying on current working directory

@@ -1,10 +1,12 @@
 defmodule Nex.MixProject do
   use Mix.Project
 
+  @version File.read!("../VERSION") |> String.trim()
+
   def project do
     [
-      app: :nex,
-      version: "0.1.0",
+      app: :nex_core,
+      version: @version,
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
