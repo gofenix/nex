@@ -1,7 +1,7 @@
 {
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
-    "buildCommand": "mix do deps.get, compile"
+    "buildCommand": "mix do local.hex --force, local.rebar --force, deps.get --only prod, compile"
   },
   "deploy": {
     "startCommand": "mix nex.start",
