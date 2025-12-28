@@ -1,5 +1,5 @@
 # Build stage
-FROM hexpm/elixir:1.18.0-erlang-27.2-debian-bookworm-20241016-slim AS build
+FROM hexpm/elixir:1.18 AS build
 
 # Install build dependencies
 RUN apt-get update -y && apt-get install -y build-essential git \
@@ -25,7 +25,7 @@ COPY src ./src
 RUN mix compile
 
 # Runtime stage
-FROM hexpm/elixir:1.18.0-erlang-27.2-debian-bookworm-20241016-slim
+FROM hexpm/elixir:1.18
 
 # Install runtime dependencies
 RUN apt-get update -y && apt-get install -y libstdc++6 openssl libncurses5 locales ca-certificates \
