@@ -5,11 +5,11 @@ A simple counter application demonstrating Nex framework fundamentals: state man
 ## Features
 
 - Increment counter with + button
-- Decrement counter with - button
+- Decrement counter with - button (won't go below 0)
 - Reset counter to 0
 - Server-side state management using Nex.Store
 - HTMX-powered partial updates without page reload
-- Beautiful Tailwind CSS styling
+- Beautiful Tailwind CSS styling with gradient backgrounds
 
 ## Getting Started
 
