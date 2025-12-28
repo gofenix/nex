@@ -7,6 +7,6 @@
     "startCommand": "mix nex.start",
     "healthcheckPath": "/",
     "healthcheckTimeout": 300,
-    "restartPolicyType": "on-failure"
+    "restartPolicyType": "ON_FAILURE"
   }
 }
