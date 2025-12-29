@@ -215,6 +215,7 @@ Check out the `examples/` directory for complete working applications:
 
 ## Documentation
 
+- [**Official Documentation**](https://nex-framework.up.railway.app/docs)
 - [GitHub Repository](https://github.com/gofenix/nex)
 - [Hex Package: nex_core](https://hex.pm/packages/nex_core)
 - [Hex Package: nex_new](https://hex.pm/packages/nex_new)
