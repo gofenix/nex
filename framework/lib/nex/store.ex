@@ -46,7 +46,7 @@ defmodule Nex.Store do
     :crypto.strong_rand_bytes(12) |> Base.url_encode64()
   end
 
-  @doc "Set current page ID in process dictionary (called by framework)"
+  @doc "Set current page ID in process dictionary (called by Nex.Handler)"
   def set_page_id(page_id) do
     Process.put(@page_id_key, page_id)
     # Touch the page to update its last access time
@@ -58,7 +58,7 @@ defmodule Nex.Store do
     Process.get(@page_id_key, "unknown")
   end
 
-  @doc "Clear page_id from process dictionary (called by framework after request)"
+  @doc "Clear page_id from process dictionary (called by Nex.Handler after request)"
   def clear_process_dictionary do
     Process.delete(@page_id_key)
   end

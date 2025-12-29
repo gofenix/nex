@@ -278,7 +278,9 @@ defmodule Nex.Handler do
         end
 
       :post ->
-        # Validate CSRF token for POST requests (skip for API routes)
+        # Attempt to validate CSRF token for POST requests
+        # Note: In current stateless implementation, strict validation only occurs
+        # if token was generated in the same request (rare for POST) or if signed tokens are implemented.
         case Nex.CSRF.validate(conn) do
           :ok ->
             # POST requests call action functions
