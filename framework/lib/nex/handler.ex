@@ -201,29 +201,17 @@ defmodule Nex.Handler do
   catch
     :closed ->
       # Connection was closed by client
-      :ok
+      conn
   end
 
   defp format_sse_event(%{event: event_type, data: data, id: id}) do
-    # For HTMX SSE extension compatibility: send plain text for "message" event
-    if event_type == "message" do
-      "event: #{event_type}\ndata: #{data}\nid: #{id}\n\n"
-    else
-      # Send JSON-encoded data for custom events
-      json_data = Jason.encode!(%{event: event_type, data: data, id: id})
-      "data: #{json_data}\n\n"
-    end
+    # HTMX SSE extension expects: event: <type>\ndata: <plain_text>\n\n
+    "event: #{event_type}\ndata: #{data}\nid: #{id}\n\n"
   end
 
   defp format_sse_event(%{event: event_type, data: data}) do
-    # For HTMX SSE extension compatibility: send plain text for "message" event
-    if event_type == "message" do
-      "event: #{event_type}\ndata: #{data}\n\n"
-    else
-      # Send JSON-encoded data for custom events
-      json_data = Jason.encode!(%{event: event_type, data: data})
-      "data: #{json_data}\n\n"
-    end
+    # HTMX SSE extension expects: event: <type>\ndata: <plain_text>\n\n
+    "event: #{event_type}\ndata: #{data}\n\n"
   end
 
   defp format_sse_event(event) when is_map(event) do

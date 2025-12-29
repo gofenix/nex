@@ -4,7 +4,7 @@ defmodule NexWebsite.Pages.Docs.Path do
   def mount(params) do
     # params["path"] is a list, e.g. ["zh", "guide"] or ["guide"]
     path_segments = params["path"] || []
-    
+
     # Determine language and doc slug
     {lang, slug} = case path_segments do
       ["zh" | rest] -> {:zh, Enum.join(rest, "/")}
@@ -23,7 +23,7 @@ defmodule NexWebsite.Pages.Docs.Path do
             current_lang: lang,
             sidebar: get_sidebar(lang)
           }
-        
+
         {:error, _} ->
           %{
             title: "Document Not Found",
@@ -43,7 +43,7 @@ defmodule NexWebsite.Pages.Docs.Path do
             current_lang: lang,
             sidebar: get_sidebar(lang)
           }
-        
+
         {:error, _} ->
           # Fallback or 404 handled by returning a 404 state
           # For simplicity here, we might just render a not found message
@@ -68,13 +68,13 @@ defmodule NexWebsite.Pages.Docs.Path do
             <a href="/" class="hover:text-claude-purple">Nex</a>
             <span class="text-gray-400 text-sm font-normal">Docs</span>
           </h2>
-          
+
           <nav class="space-y-8">
             <div :for={group <- @sidebar}>
               <h3 class="font-bold text-gray-900 mb-3 text-sm uppercase tracking-wider">{group.title}</h3>
               <ul class="space-y-2">
                 <li :for={item <- group.items}>
-                  <a href={doc_link(@current_lang, item.slug)} 
+                  <a href={doc_link(@current_lang, item.slug)}
                      class={"block text-sm px-3 py-2 rounded-md transition-colors #{if @current_slug == item.slug, do: "bg-purple-100 text-claude-purple font-medium", else: "text-gray-600 hover:text-gray-900 hover:bg-gray-100"}"}>
                     {item.title}
                   </a>
@@ -103,7 +103,7 @@ defmodule NexWebsite.Pages.Docs.Path do
           <article class="prose prose-lg prose-purple max-w-none">
             {raw(@doc_content)}
           </article>
-          
+
           <!-- Footer Navigation -->
           <div class="mt-16 pt-8 border-t border-gray-200 flex justify-between">
             <!-- Ideally calculate prev/next links here -->
@@ -119,7 +119,7 @@ defmodule NexWebsite.Pages.Docs.Path do
   defp load_doc(lang, slug) do
     # Map slug to filename if needed, or assume slug matches filename
     filename = slug <> ".md"
-    
+
     # Construct path: priv/docs/zh/filename or priv/docs/filename
     base_path = Path.join(:code.priv_dir(:nex_website), "docs")
     path = if lang == :zh do
@@ -174,6 +174,7 @@ defmodule NexWebsite.Pages.Docs.Path do
         title: t(lang, "Advanced"),
         items: [
           %{title: t(lang, "JSON API"), slug: "json_api_guide"},
+          %{title: t(lang, "SSE Performance"), slug: "sse_performance"},
           %{title: t(lang, "Deployment"), slug: "deployment_guide"},
           %{title: t(lang, "Comparison"), slug: "comparison"},
           %{title: t(lang, "FAQ"), slug: "integration_faq"}
@@ -193,9 +194,10 @@ defmodule NexWebsite.Pages.Docs.Path do
   defp t(:zh, "State Management"), do: "状态管理"
   defp t(:zh, "Styling & UI"), do: "样式与 UI"
   defp t(:zh, "JSON API"), do: "JSON API"
+  defp t(:zh, "SSE Performance"), do: "SSE 性能指南"
   defp t(:zh, "Deployment"), do: "部署指南"
   defp t(:zh, "Comparison"), do: "框架对比"
   defp t(:zh, "FAQ"), do: "常见问题"
-  
+
   defp t(_, key), do: key
 end
