@@ -28,16 +28,12 @@ defmodule NexWebsite.Pages.Index do
           Ship real products fast. Built for indie hackers and startups.
         </p>
         <div class="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-          <a href="/getting_started" class="btn btn-claude-purple btn-lg px-10 rounded-full shadow-xl shadow-purple-200">
+          <a href="/docs/getting_started" class="btn btn-claude-purple btn-lg px-10 rounded-full shadow-xl shadow-purple-200">
             Get Started
           </a>
-          <div class="bg-white/50 border border-gray-200 rounded-full flex items-center px-6 py-3 font-mono text-sm shadow-sm">
-            <span class="text-claude-purple mr-2">$</span>
-            <code class="text-gray-700">mix archive.install hex nex_new</code>
-            <button class="ml-4 hover:text-claude-purple" onclick="navigator.clipboard.writeText('mix archive.install hex nex_new')">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
-            </button>
-          </div>
+          <a href="/docs" class="btn btn-outline btn-lg px-10 rounded-full border-2 border-claude-purple text-claude-purple hover:bg-claude-purple hover:text-white">
+            Documentation
+          </a>
         </div>
       </div>
     </div>

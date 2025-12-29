@@ -22,6 +22,7 @@ defmodule NexWebsite.Partials.Nav do
       <div class="navbar-end hidden lg:flex">
         <ul class="menu menu-horizontal px-1 font-semibold gap-2">
           <li><a href="/features" class="px-4">Features</a></li>
+          <li><a href="/docs" class="px-4">Docs</a></li>
           <li><a href="/getting_started" class="px-4">Get Started</a></li>
           <li><a href="https://github.com/gofenix/nex" class="px-4">GitHub</a></li>
         </ul>
