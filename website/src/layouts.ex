@@ -193,7 +193,7 @@ defmodule NexWebsite.Layouts do
           }
         </style>
       </head>
-      <body>
+      <body hx-boost="true">
         {NexWebsite.Partials.Nav.render(assigns)}
         <main>
           {raw(@inner_content)}
