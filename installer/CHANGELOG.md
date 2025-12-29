@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.3] - 2025-12-30
+
+### Changed
+- **Project Template**: Added `hx-boost="true"` to body tag in generated layout template
+  - New projects automatically get HTMX boost for smoother page transitions
+  - Converts regular links to AJAX requests while maintaining browser history
+  - Progressive enhancement: gracefully degrades when JavaScript is disabled
+
 ## [0.2.2] - 2025-12-28
 
 ### Fixed

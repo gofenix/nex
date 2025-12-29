@@ -13,7 +13,7 @@ defmodule ChatbotSse.Layouts do
         <script src="https://unpkg.com/htmx.org@2.0.4"></script>
         <script src="https://unpkg.com/htmx-ext-sse@2.2.1/sse.js"></script>
       </head>
-      <body class="bg-gray-900 min-h-screen">
+      <body class="bg-gray-900 min-h-screen" hx-boost="true">
         <div class="container mx-auto px-4 py-8 max-w-3xl h-screen flex flex-col">
           {raw(@inner_content)}
         </div>
