@@ -12,7 +12,7 @@ defmodule DynamicRoutes.Layouts do
         <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio"></script>
         <script src="https://unpkg.com/htmx.org@2.0.4"></script>
       </head>
-      <body class="bg-gray-100 min-h-screen">
+      <body class="bg-gray-100 min-h-screen" hx-boost="true">
         <nav class="bg-white shadow-sm border-b">
           <div class="max-w-4xl mx-auto px-4 py-3">
             <div class="flex space-x-6">

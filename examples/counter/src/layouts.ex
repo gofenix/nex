@@ -13,7 +13,7 @@ defmodule Counter.Layouts do
         <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.23/dist/full.min.css" rel="stylesheet" type="text/css" />
         <script src="https://unpkg.com/htmx.org@2.0.4"></script>
       </head>
-      <body class="min-h-screen bg-base-200">
+      <body class="min-h-screen bg-base-200" hx-boost="true">
         <nav class="navbar bg-base-100 shadow-sm">
           <div class="max-w-4xl mx-auto w-full px-4">
             <a href="/" class="btn btn-ghost text-xl">Counter</a>

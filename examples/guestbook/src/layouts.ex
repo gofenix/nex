@@ -13,7 +13,7 @@ defmodule Guestbook.Layouts do
         <link href="https://cdn.jsdelivr.net/npm/daisyui@5/dist/full.min.css" rel="stylesheet" type="text/css" />
         <script src="https://unpkg.com/htmx.org@2.0.4"></script>
       </head>
-      <body class="bg-gradient-to-br from-pink-100 to-purple-200 min-h-screen">
+      <body class="bg-gradient-to-br from-pink-100 to-purple-200 min-h-screen" hx-boost="true">
         <div class="container mx-auto px-4 py-8 max-w-2xl">
           {raw(@inner_content)}
         </div>
