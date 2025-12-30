@@ -265,15 +265,15 @@ defmodule Nex.Handler do
             send_error_page(conn, 404, "Page Not Found", nil)
         end
 
-      :post ->
-        # Attempt to validate CSRF token for POST requests
+      method when method in [:post, :delete, :put, :patch] ->
+        # Attempt to validate CSRF token for requests
         # Note: In current stateless implementation, strict validation only occurs
         # if token was generated in the same request (rare for POST) or if signed tokens are implemented.
         case Nex.CSRF.validate(conn) do
           :ok ->
-            # POST requests call action functions
+            # Requests call action functions
             # e.g., POST /create_todo → Index.create_todo/2
-            # e.g., POST /todos/123/toggle → Todos.Id.toggle/2
+            # e.g., DELETE /delete_todo → Index.delete_todo/2
             case resolve_action(path) do
               {:ok, module, action, params} ->
                 handle_page_action(conn, module, action, Map.merge(conn.params, params))
