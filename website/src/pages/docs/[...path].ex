@@ -130,8 +130,8 @@ defmodule NexWebsite.Pages.Docs.Path do
 
     if File.exists?(path) do
       markdown = File.read!(path)
-      # Parse markdown
-      html = Earmark.as_html!(markdown, escape: false)
+      # Parse markdown with proper code block handling
+      html = Earmark.as_html!(markdown, code_class_prefix: "language-")
       # Extract H1 title if possible, or use slug
       title = extract_title(markdown) || slug
       {:ok, html, title}
@@ -165,6 +165,7 @@ defmodule NexWebsite.Pages.Docs.Path do
         items: [
           %{title: t(lang, "Routing"), slug: "routing_guide"},
           %{title: t(lang, "HTMX Integration"), slug: "htmx_guide"},
+          %{title: t(lang, "HTMX Features"), slug: "htmx_features"},
           %{title: t(lang, "HEEx Templates"), slug: "heex_guide"},
           %{title: t(lang, "State Management"), slug: "state_management"},
           %{title: t(lang, "Styling & UI"), slug: "ui_guide"}
@@ -190,6 +191,7 @@ defmodule NexWebsite.Pages.Docs.Path do
   defp t(:zh, "Installation"), do: "安装"
   defp t(:zh, "Routing"), do: "路由系统"
   defp t(:zh, "HTMX Integration"), do: "HTMX 集成"
+  defp t(:zh, "HTMX Features"), do: "HTMX 完整特性"
   defp t(:zh, "HEEx Templates"), do: "HEEx 模板"
   defp t(:zh, "State Management"), do: "状态管理"
   defp t(:zh, "Styling & UI"), do: "样式与 UI"
