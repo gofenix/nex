@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.4] - 2025-12-30
+
+### Added
+- **RESTful API Support**: Extended HTTP method support for DELETE, PUT, and PATCH requests
+  - CSRF validation now applies to all modifying methods (POST, DELETE, PUT, PATCH)
+  - Action handlers can now respond to DELETE/PUT/PATCH requests
+  - Enables full RESTful API implementations
+- **SSE Performance Documentation**: Added comprehensive guide for Server-Sent Events
+  - Performance characteristics and concurrency limits
+  - System tuning recommendations for high-concurrency deployments
+  - Time synchronization patterns for real-time applications
+  - Production-ready SSE endpoint examples
+- **LLM Usage Guide**: Created `.cursorrules` file for AI-assisted development
+  - Complete framework architecture overview
+  - Module usage patterns and conventions
+  - Common patterns and best practices
+  - Security and performance guidelines
+- **New Example Projects**:
+  - `todos_api`: RESTful API example with HTMX integration demonstrating DELETE/PUT operations
+  - `energy_dashboard`: Time-synchronized SSE dashboard showing real-time energy prices
+- **Architecture Documentation**: Added comprehensive framework architecture guide (`arch.md`)
+
+### Fixed
+- **SSE Handler**: Fixed connection closure to return `Plug.Conn` instead of `:ok`
+  - Prevents "expected dispatch/2 to return a Plug.Conn" error
+  - Properly handles client disconnections
+- **SSE Event Format**: Corrected event format for HTMX SSE extension compatibility
+  - Changed from JSON-wrapped format to plain text format
+  - Events now properly trigger `sse-swap` updates in HTMX
+
+### Changed
+- Removed unused `test_app` and old `todos` examples for clarity
+
 ## [0.2.3] - 2025-12-30
 
 ### Changed
