@@ -1,7 +1,7 @@
 defmodule AlpineShowcase.Partials.Users.List do
   use Nex.Partial
 
-  # 渲染整个列表容器
+  # Render the entire list container
   def user_list(assigns) do
     ~H"""
     <div class="overflow-x-auto bg-base-100 rounded-box shadow-md">
@@ -14,8 +14,8 @@ defmodule AlpineShowcase.Partials.Users.List do
           </tr>
         </thead>
         <!-- 
-           ID 必须匹配 form_modal 中的 hx-target="#user-list"
-           hx-swap="beforeend" 会把新行插入到这个 tbody 内部的最末尾
+           ID must match hx-target="#user-list" in form_modal
+           hx-swap="beforeend" will insert the new row at the end of this tbody
         -->
         <tbody id="user-list">
           <.user_row :for={user <- @users} user={user} />
@@ -25,16 +25,16 @@ defmodule AlpineShowcase.Partials.Users.List do
     """
   end
 
-  # 渲染单行 (Action create_user 也会调用此函数返回新行)
+  # Render a single row (Action create_user will also call this to return the new row)
   def render_user_row(assigns) do
-    # 如果 assigns 中没有 :user 只有 :id, :name 等，需要适配一下
-    # 但通常 controller 会构造好 user map
+    # If assigns lacks :user but has :id, :name etc, adaptation might be needed
+    # But typically the controller constructs the user map
     ~H"""
     <.user_row user={@user} />
     """
   end
 
-  # 私有组件：行结构
+  # Private component: Row structure
   def user_row(assigns) do
     ~H"""
     <tr class="hover">
