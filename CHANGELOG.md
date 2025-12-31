@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2025-12-31
+
+### Added
+- **`Nex.html/2` Response Helper**: New helper function for returning HTML responses
+  - Designed for HTMX scenarios where API endpoints return HTML fragments
+  - Consistent API with other response helpers (`json`, `text`, `redirect`, `status`)
+  - Example: `Nex.html("<div>User Profile</div>", status: 200)`
+
+### Changed
+- **BREAKING: API Request Object Redesign**: Fully aligned with Next.js API Routes
+  - Removed `req.params` field (not in Next.js)
+  - Removed `req.path_params`, `req.query_params`, `req.body_params` (not in Next.js)
+  - Kept only Next.js standard fields: `req.query`, `req.body`, `req.method`, `req.headers`, `req.cookies`
+  - `req.query` now contains path params + query string (path params take precedence)
+  - `req.body` is completely independent and never merged with `req.query`
+  - Migration: Replace `req.params["id"]` with `req.query["id"]` or `req.body["name"]`
+
+### Fixed
+- **API Request Body Handling**: Fixed crash when request has no body or invalid Content-Type
+  - `req.body` is now guaranteed to be a Map (never `%Plug.Conn.Unfetched{}`)
+  - Prevents `FunctionClauseError` when using `Map.has_key?/2` on `req.body`
+  - GET requests and requests without body now have `req.body == %{}`
+
+### Improved
+- **Developer Experience**: Enhanced error messages for API handlers
+  - Development environment now returns detailed error information in JSON response
+  - Production environment returns generic error message for security
+  - Error messages now include `Nex.html/2` in the list of available helpers
+  - Added comprehensive documentation to `Nex.Req` module with Next.js comparison
+
 ## [0.2.4] - 2025-12-30
 
 ### Added

@@ -1,13 +1,13 @@
 defmodule Nex do
   @moduledoc """
   Nex - A minimalist Elixir web framework powered by HTMX.
-  
+
   ## Quick Start
-  
+
       # src/pages/index.ex
       defmodule MyApp.Pages.Index do
         use Nex.Page
-        
+
         def render(assigns) do
           ~H\"\"\"
           <h1>Hello, Nex!</h1>
@@ -20,7 +20,7 @@ defmodule Nex do
 
   @doc """
   Constructs a JSON response.
-  
+
   ## Options
     * `:status` - HTTP status code (default: 200)
     * `:headers` - Additional headers (default: %{})
@@ -28,7 +28,7 @@ defmodule Nex do
   def json(data, opts \\ []) do
     status = Keyword.get(opts, :status, 200)
     headers = Keyword.get(opts, :headers, %{})
-    
+
     %Response{
       status: status,
       body: data,
@@ -43,9 +43,40 @@ defmodule Nex do
   def text(text, opts \\ []) do
     status = Keyword.get(opts, :status, 200)
     %Response{
-      status: status, 
+      status: status,
       body: text,
       content_type: "text/plain"
+    }
+  end
+
+  @doc """
+  Constructs an HTML response.
+
+  Commonly used in HTMX scenarios to return HTML fragments.
+
+  ## Examples
+
+      def get(req) do
+        Nex.html(\"\"\"
+        <div class="user-card">
+          <h2>User Profile</h2>
+        </div>
+        \"\"\")
+      end
+
+  ## Options
+    * `:status` - HTTP status code (default: 200)
+    * `:headers` - Additional headers (default: %{})
+  """
+  def html(content, opts \\ []) do
+    status = Keyword.get(opts, :status, 200)
+    headers = Keyword.get(opts, :headers, %{})
+
+    %Response{
+      status: status,
+      body: content,
+      headers: headers,
+      content_type: "text/html"
     }
   end
 
@@ -61,7 +92,7 @@ defmodule Nex do
       content_type: "text/html"
     }
   end
-  
+
   @doc """
   Constructs a response with only a status code.
   """

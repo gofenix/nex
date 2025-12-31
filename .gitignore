@@ -33,6 +33,6 @@ Thumbs.db
 
 # Test coverage
 cover/
-
+doc/
 .specs/
 .chat/

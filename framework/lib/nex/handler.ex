@@ -120,9 +120,9 @@ defmodule Nex.Handler do
           [Nex] API Breaking Change Detected!
           The API signature for #{inspect(module)}.#{method}/1 has changed.
           It now expects a `Nex.Req` struct instead of a map.
-          
+
           Please update your code:
-          
+
               def #{method}(req) do
                 id = req.params["id"]
                 # ...
@@ -286,19 +286,42 @@ defmodule Nex.Handler do
   defp send_api_response(conn, other) do
     # API 2.0 Enforce Nex.Response
     # We do NOT implicitly convert Maps/Lists to JSON anymore to ensure strict DX.
-    Logger.error("""
+    error_msg = """
     [Nex] API Response Error!
     Your API handler returned an invalid response type.
     It must return a `%Nex.Response{}` struct using one of the helper functions:
-    
-    * `Nex.json(data)`
-    * `Nex.text(string)`
-    * `Nex.redirect(to)`
+
+    * `Nex.json(data, opts \\\\ [])`
+    * `Nex.text(string, opts \\\\ [])`
+    * `Nex.html(content, opts \\\\ [])`
+    * `Nex.redirect(to, opts \\\\ [])`
     * `Nex.status(code)`
-    
+
     Received: #{inspect(other)}
-    """)
-    send_json_error(conn, 500, "Internal Server Error: Invalid Response Type")
+    """
+
+    Logger.error(error_msg)
+
+    # Development: return detailed error in response
+    # Production: return generic error
+    if Mix.env() == :dev do
+      send_json(conn, 500, %{
+        error: "Internal Server Error: Invalid Response Type",
+        details: %{
+          received: inspect(other),
+          expected: "Nex.Response struct",
+          available_helpers: [
+            "Nex.json(data, opts \\\\ [])",
+            "Nex.text(string, opts \\\\ [])",
+            "Nex.html(content, opts \\\\ [])",
+            "Nex.redirect(to, opts \\\\ [])",
+            "Nex.status(code)"
+          ]
+        }
+      })
+    else
+      send_json_error(conn, 500, "Internal Server Error")
+    end
   end
 
   defp send_json(conn, status, data) do
