@@ -100,17 +100,40 @@ defmodule Nex.Handler do
     page_id = get_page_id_from_request(conn)
     Nex.Store.set_page_id(page_id)
 
-    # Try arity 1 first (with params), then arity 0 (no params)
-    result = cond do
-      function_exported?(module, method, 1) ->
-        apply(module, method, [params])
-      function_exported?(module, method, 0) ->
-        apply(module, method, [])
-      true ->
-        :method_not_allowed
-    end
+    # Convert Plug.Conn to Nex.Req (only path params are extracted from resolving)
+    req = Nex.Req.from_plug_conn(conn, params)
 
-    send_api_response(conn, result)
+    try do
+      # API 2.0: Always pass `req` struct
+      # We intentionally do not check for arity 0 or 1 with Map to force upgrade
+      if function_exported?(module, method, 1) do
+        result = apply(module, method, [req])
+        send_api_response(conn, result)
+      else
+        send_api_response(conn, :method_not_allowed)
+      end
+    rescue
+      e in FunctionClauseError ->
+        # Check if the error happened in the called function due to argument mismatch
+        if e.function == method and e.arity == 1 and e.module == module do
+          Logger.error("""
+          [Nex] API Breaking Change Detected!
+          The API signature for #{inspect(module)}.#{method}/1 has changed.
+          It now expects a `Nex.Req` struct instead of a map.
+          
+          Please update your code:
+          
+              def #{method}(req) do
+                id = req.params["id"]
+                # ...
+                Nex.json(%{data: ...})
+              end
+          """)
+          send_json_error(conn, 500, "Internal Server Error: API signature mismatch")
+        else
+          reraise e, __STACKTRACE__
+        end
+    end
   end
 
   # SSE handlers
@@ -206,12 +229,14 @@ defmodule Nex.Handler do
 
   defp format_sse_event(%{event: event_type, data: data, id: id}) do
     # HTMX SSE extension expects: event: <type>\ndata: <plain_text>\n\n
-    "event: #{event_type}\ndata: #{data}\nid: #{id}\n\n"
+    data_str = format_sse_data(data)
+    "event: #{event_type}\n#{data_str}\nid: #{id}\n\n"
   end
 
   defp format_sse_event(%{event: event_type, data: data}) do
     # HTMX SSE extension expects: event: <type>\ndata: <plain_text>\n\n
-    "event: #{event_type}\ndata: #{data}\n\n"
+    data_str = format_sse_data(data)
+    "event: #{event_type}\n#{data_str}\n\n"
   end
 
   defp format_sse_event(event) when is_map(event) do
@@ -219,28 +244,61 @@ defmodule Nex.Handler do
   end
 
   defp format_sse_event(event) when is_binary(event) do
-    # Plain text fallback
+    # Plain text fallback - JSON encode to ensure safety
     "data: #{Jason.encode!(event)}\n\n"
+  end
+
+  defp format_sse_data(data) when is_binary(data) do
+    # Handle multiline strings by prefixing each line with "data: "
+    # This allows sending raw HTML fragments
+    data
+    |> String.split(["\r\n", "\n"])
+    |> Enum.map(&"data: #{&1}")
+    |> Enum.join("\n")
+  end
+
+  defp format_sse_data(data) do
+    "data: #{Jason.encode!(data)}"
+  end
+
+  defp send_api_response(conn, %Nex.Response{} = response) do
+    conn =
+      Enum.reduce(response.headers, conn, fn {k, v}, conn ->
+        put_resp_header(conn, to_string(k), to_string(v))
+      end)
+
+    body =
+      if response.content_type == "application/json" and not is_binary(response.body) do
+        Jason.encode!(response.body)
+      else
+        response.body || ""
+      end
+
+    conn
+    |> put_resp_content_type(response.content_type)
+    |> send_resp(response.status, body)
   end
 
   defp send_api_response(conn, :method_not_allowed) do
     send_json_error(conn, 405, "Method Not Allowed")
   end
 
-  defp send_api_response(conn, :empty) do
-    send_resp(conn, 204, "")
-  end
-
-  defp send_api_response(conn, {:error, status, message}) do
-    send_json_error(conn, status, message)
-  end
-
-  defp send_api_response(conn, {status, data}) when is_integer(status) do
-    send_json(conn, status, data)
-  end
-
-  defp send_api_response(conn, data) when is_map(data) do
-    send_json(conn, 200, data)
+  defp send_api_response(conn, other) do
+    # API 2.0 Enforce Nex.Response
+    # We do NOT implicitly convert Maps/Lists to JSON anymore to ensure strict DX.
+    Logger.error("""
+    [Nex] API Response Error!
+    Your API handler returned an invalid response type.
+    It must return a `%Nex.Response{}` struct using one of the helper functions:
+    
+    * `Nex.json(data)`
+    * `Nex.text(string)`
+    * `Nex.redirect(to)`
+    * `Nex.status(code)`
+    
+    Received: #{inspect(other)}
+    """)
+    send_json_error(conn, 500, "Internal Server Error: Invalid Response Type")
   end
 
   defp send_json(conn, status, data) do
