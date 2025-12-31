@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2025-12-31
+
+### Changed
+- **Project Template**: Updated generated project dependency from `nex_core ~> 0.2.4` to `nex_core ~> 0.3.0`
+  - New projects will use the latest framework version with standardized request/response system
+
 ## [0.2.4] - 2025-12-30
 
 ### Changed
