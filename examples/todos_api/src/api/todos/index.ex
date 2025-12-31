@@ -1,42 +1,94 @@
 defmodule TodosApi.Api.Todos.Index do
+  @moduledoc """
+  RESTful API for todo collection.
+
+  Fully aligned with Next.js API Routes behavior.
+  """
   use Nex.Api
 
-  def get(_req) do
+  @doc """
+  GET /api/todos - List all todos with optional filtering
+
+  ## Query Parameters
+  - `completed` - Filter by completion status (optional)
+  - `limit` - Limit number of results (optional)
+
+  ## Next.js Equivalent
+  ```javascript
+  export default function handler(req, res) {
+    const { completed, limit } = req.query
+    const todos = getTodos({ completed, limit })
+    res.json({ data: todos })
+  }
+  ```
+  """
+  def get(req) do
+    # Query parameters - Next.js style
+    completed_filter = req.query["completed"]
+    limit = req.query["limit"]
+
     todos = Nex.Store.get(:todos, [])
-    Nex.json(%{data: todos})
+    |> filter_by_completed(completed_filter)
+    |> limit_results(limit)
+
+    Nex.json(%{
+      data: todos,
+      count: length(todos)
+    })
   end
 
+  @doc """
+  POST /api/todos - Create a new todo
+
+  ## Request Body
+  - `text` - Todo text (required)
+  - `completed` - Initial completion status (optional, default: false)
+
+  ## Next.js Equivalent
+  ```javascript
+  export default function handler(req, res) {
+    const { text, completed } = req.body
+    const todo = createTodo({ text, completed })
+    res.status(201).json({ data: todo })
+  }
+  ```
+  """
   def post(req) do
-    # Like Next.js req.body
-    body = req.body
+    # Request body - Next.js style
+    text = req.body["text"]
+    completed = req.body["completed"] || false
 
     cond do
-      Map.has_key?(body, "text") ->
-        text = body["text"]
-        todo = %{id: System.unique_integer([:positive, :monotonic]), text: text, completed: false}
-        Nex.Store.update(:todos, [], &[todo | &1])
-        Nex.json(%{data: todo}, status: 201)
-
-      Map.has_key?(body, "id") and body["action"] == "toggle" ->
-        id = body["id"]
-        Nex.Store.update(:todos, [], fn todos ->
-          Enum.map(todos, fn t ->
-            if t.id == id, do: %{t | completed: not t.completed}, else: t
-          end)
-        end)
-        Nex.status(204)
+      is_nil(text) or text == "" ->
+        Nex.json(%{error: "Text is required"}, status: 400)
 
       true ->
-        Nex.json(%{error: "Invalid parameters"}, status: 400)
+        todo = %{
+          id: System.unique_integer([:positive, :monotonic]),
+          text: text,
+          completed: completed,
+          created_at: DateTime.utc_now() |> DateTime.to_iso8601()
+        }
+
+        Nex.Store.update(:todos, [], &[todo | &1])
+
+        # 201 Created - standard for successful resource creation
+        Nex.json(%{data: todo}, status: 201)
     end
   end
 
-  def delete(req) do
-    # Like Next.js req.query
-    id = req.query["id"]
-    Nex.Store.update(:todos, [], fn todos ->
-      Enum.filter(todos, fn t -> t.id != id end)
-    end)
-    Nex.status(204)
+  # Private helpers
+
+  defp filter_by_completed(todos, nil), do: todos
+  defp filter_by_completed(todos, "true"), do: Enum.filter(todos, & &1.completed)
+  defp filter_by_completed(todos, "false"), do: Enum.filter(todos, &(not &1.completed))
+  defp filter_by_completed(todos, _), do: todos
+
+  defp limit_results(todos, nil), do: todos
+  defp limit_results(todos, limit_str) do
+    case Integer.parse(limit_str) do
+      {limit, _} -> Enum.take(todos, limit)
+      :error -> todos
+    end
   end
 end
