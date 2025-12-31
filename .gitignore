@@ -34,7 +34,5 @@ Thumbs.db
 # Test coverage
 cover/
 
-# Documentation
-doc/
-
-specs/
+.specs/
+.chat/
