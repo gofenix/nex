@@ -21,7 +21,7 @@ defmodule ChatbotSse.MixProject do
 
   defp deps do
     [
-      {:nex, path: "../../framework"},
+      {:nex_core, path: "../../framework"},
       {:req, "~> 0.5"},
       {:dotenvy, "~> 0.9"}
     ]

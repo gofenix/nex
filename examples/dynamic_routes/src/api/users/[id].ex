@@ -1,34 +1,38 @@
 defmodule DynamicRoutes.Api.Users.Id do
   use Nex.Api
 
-  def get(%{"id" => id}) do
+  def get(req) do
+    id = req.query["id"]
     user = find_user(id)
 
     if user do
-      %{
+      Nex.json(%{
         status: :ok,
         data: user
-      }
+      })
     else
-      %{
+      Nex.json(%{
         status: :error,
         message: "User not found"
-      }
+      })
     end
   end
 
-  def post(%{"id" => id, "action" => action}) do
+  def post(req) do
+    id = req.query["id"]
+    action = req.body["action"]
+
     case action do
       "follow" ->
         # Simulate follow operation
-        {:ok, %{"message" => "Successfully followed user #{id}"}}
+        Nex.json(%{"message" => "Successfully followed user #{id}"})
 
       "unfollow" ->
         # Simulate unfollow
-        {:ok, %{"message" => "Successfully unfollowed user #{id}"}}
+        Nex.json(%{"message" => "Successfully unfollowed user #{id}"})
 
       _ ->
-        {:error, %{"message" => "Invalid action"}}
+        Nex.json(%{"message" => "Invalid action"}, status: 400)
     end
   end
 
