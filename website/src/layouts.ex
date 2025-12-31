@@ -200,11 +200,21 @@ defmodule NexWebsite.Layouts do
         </main>
         {NexWebsite.Partials.Footer.render(assigns)}
         <script>
-          document.addEventListener('DOMContentLoaded', function() {
+          // Function to highlight all code blocks
+          function highlightCode() {
             document.querySelectorAll('pre code').forEach((block) => {
+              // Remove existing highlighting classes
+              block.className = block.className.replace(/hljs-[^\s]*/g, '').trim();
+              // Re-highlight
               hljs.highlightElement(block);
             });
-          });
+          }
+
+          // Initial highlight on page load
+          document.addEventListener('DOMContentLoaded', highlightCode);
+
+          // Re-highlight after HTMX swaps content (for language switching)
+          document.body.addEventListener('htmx:afterSwap', highlightCode);
         </script>
       </body>
     </html>
