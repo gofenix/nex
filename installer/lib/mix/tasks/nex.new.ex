@@ -83,6 +83,8 @@ defmodule Mix.Tasks.Nex.New do
       {"src/application.ex", application(assigns)},
       {"src/layouts.ex", layouts(assigns)},
       {"src/pages/index.ex", index(assigns)},
+      {"src/api/hello.ex", api_hello(assigns)},
+      {"src/partials/card.ex", partial_card(assigns)},
       {".gitignore", gitignore()},
       {".dockerignore", dockerignore()},
       {"Dockerfile", dockerfile()},
@@ -134,11 +136,61 @@ defmodule Mix.Tasks.Nex.New do
   defp application(a) do
     """
     defmodule #{a.module_name}.Application do
+      @moduledoc \"\"\"
+      The #{a.module_name} application.
+
+      ## What Nex Framework Already Does
+
+      When you run `mix nex.dev` or `mix nex.start`, the framework automatically:
+
+      1. **Starts your application** - `Application.ensure_all_started(:#{a.app_name})`
+      2. **Starts framework dependencies**:
+         - :bandit (HTTP server)
+         - :phoenix_html (HEEx templates)
+         - :phoenix_live_view (LiveView components)
+         - :file_system (hot reload file watcher, dev only)
+      3. **Starts Nex.Supervisor** - Framework-level processes:
+         - Phoenix.PubSub - Hot reload WebSocket communication
+         - Nex.Store - Page-level state storage
+         - Nex.Reloader - File watcher (dev only)
+      4. **Starts Bandit web server** - Listens on configured port
+
+      ## What This Module Is For
+
+      This is YOUR application's supervision tree.
+      Most simple apps don't need any supervised processes here.
+
+      ## When to Add Children
+
+      Add supervised processes only when you need:
+      - **Database connections** - `{#{a.module_name}.Repo, []}`
+      - **HTTP clients** - `{Finch, name: #{a.module_name}.Finch}` (for calling external APIs)
+      - **Background workers** - `{#{a.module_name}.Worker, arg}`
+      - **Custom GenServers/Agents** - Your own stateful processes
+
+      ## Example: Adding an HTTP Client
+
+          children = [
+            {Finch, name: #{a.module_name}.Finch}
+          ]
+
+      Then add to mix.exs:
+
+          {:finch, "~> 0.18"}
+      \"\"\"
+
       use Application
 
       @impl true
       def start(_type, _args) do
-        children = []
+        children = [
+          # Add your supervised processes here
+          # Examples:
+          # {Finch, name: #{a.module_name}.Finch},
+          # {#{a.module_name}.Repo, []},
+          # {#{a.module_name}.Worker, arg}
+        ]
+
         opts = [strategy: :one_for_one, name: #{a.module_name}.Supervisor]
         Supervisor.start_link(children, opts)
       end
@@ -184,6 +236,7 @@ defmodule Mix.Tasks.Nex.New do
     """
     defmodule #{a.module_name}.Pages.Index do
       use Nex.Page
+      alias #{a.module_name}.Partials.Card
 
       def mount(_params) do
         %{
@@ -194,25 +247,121 @@ defmodule Mix.Tasks.Nex.New do
 
       def render(assigns) do
         ~H\"\"\"
-        <div class="text-center py-12">
-          <h1 class="text-4xl font-bold mb-4">{@message}</h1>
-          <p class="text-base-content/70 mb-8">
-            Edit <code class="bg-base-300 px-2 py-1 rounded">src/pages/index.ex</code> to get started.
-          </p>
+        <div class="space-y-8">
+          <div class="text-center py-8">
+            <h1 class="text-4xl font-bold mb-4">{@message}</h1>
+            <p class="text-base-content/70 mb-8">
+              Edit <code class="bg-base-300 px-2 py-1 rounded">src/pages/index.ex</code> to get started.
+            </p>
+          </div>
 
-          <div class="card bg-base-100 shadow-xl max-w-md mx-auto">
-            <div class="card-body">
-              <h2 class="card-title">Project Structure</h2>
-              <ul class="space-y-2 text-left mt-4">
-                <li>📁 <code>src/pages/</code> - Page components</li>
-                <li>🔌 <code>src/api/</code> - API endpoints</li>
-                <li>🧩 <code>src/partials/</code> - Reusable components</li>
-                <li>🎨 <code>src/layouts.ex</code> - Layout template</li>
-              </ul>
-              <div class="card-actions justify-end mt-4">
-                <a href="https://github.com/gofenix/nex" class="btn btn-primary">Documentation</a>
+          <div class="grid md:grid-cols-2 gap-6">
+            <Card.card title="📁 Project Structure" description="Nex follows a simple, intuitive structure" />
+
+            <div class="card bg-base-100 shadow-xl">
+              <div class="card-body">
+                <h2 class="card-title">🚀 Try the API</h2>
+                <button
+                  class="btn btn-primary w-full"
+                  hx-get="/api/hello?name=Developer"
+                  hx-target="#api-response"
+                  hx-swap="innerHTML"
+                >
+                  Test GET /api/hello
+                </button>
+                <div id="api-response" class="p-4 bg-base-200 rounded min-h-[60px]">
+                  <span class="text-base-content/50">Click to test the API</span>
+                </div>
               </div>
             </div>
+          </div>
+
+          <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+              <h2 class="card-title">📚 Next Steps</h2>
+              <ul class="space-y-2">
+                <li>✅ Create pages in <code>src/pages/</code></li>
+                <li>✅ Add API endpoints in <code>src/api/</code> (Next.js style)</li>
+                <li>✅ Build components in <code>src/partials/</code></li>
+                <li>✅ Check the <a href="https://github.com/gofenix/nex" class="link link-primary">docs</a></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        \"\"\"
+      end
+    end
+    """
+  end
+
+  defp api_hello(a) do
+    """
+    defmodule #{a.module_name}.Api.Hello do
+      @moduledoc \"\"\"
+      Example API endpoint - Next.js style.
+
+      ## Endpoints
+      - GET /api/hello?name=World
+      - POST /api/hello with body: {"name": "Alice"}
+
+      ## Next.js API Routes Alignment
+      - `req.query` - Path params + query string (path params take precedence)
+      - `req.body` - Request body (always a Map, never nil)
+      - `Nex.json/2` - JSON response helper
+      \"\"\"
+      use Nex.Api
+
+      def get(req) do
+        # Access query parameters - Next.js style
+        name = req.query["name"] || "World"
+
+        Nex.json(%{
+          message: "Hello, \#{name}!",
+          timestamp: DateTime.utc_now() |> DateTime.to_iso8601()
+        })
+      end
+
+      def post(req) do
+        # Access request body - Next.js style
+        name = req.body["name"]
+
+        cond do
+          is_nil(name) or name == "" ->
+            Nex.json(%{error: "Name is required"}, status: 400)
+
+          true ->
+            Nex.json(%{
+              message: "Hello, \#{name}! Welcome to Nex.",
+              created_at: DateTime.utc_now() |> DateTime.to_iso8601()
+            }, status: 201)
+        end
+      end
+    end
+    """
+  end
+
+  defp partial_card(a) do
+    """
+    defmodule #{a.module_name}.Partials.Card do
+      @moduledoc \"\"\"
+      Reusable card component.
+
+      ## Usage in Pages
+
+          # Import the module
+          alias #{a.module_name}.Partials.Card
+
+          # Use in HEEx template
+          <Card.card title="Welcome" description="Get started" />
+      \"\"\"
+      use Nex.Partial
+
+      def card(assigns) do
+        ~H\"\"\"
+        <div class="card bg-base-100 shadow-xl">
+          <div class="card-body">
+            <h2 class="card-title">{@title}</h2>
+            <p class="text-base-content/70">{@description}</p>
           </div>
         </div>
         \"\"\"
@@ -271,8 +420,13 @@ defmodule Mix.Tasks.Nex.New do
 
   defp env_example do
     """
+    # Server Configuration
     PORT=4000
     HOST=localhost
+
+    # Add your environment variables here
+    # DATABASE_URL=postgres://user:pass@localhost/myapp_dev
+    # API_KEY=your_api_key_here
     """
   end
 
@@ -291,14 +445,100 @@ defmodule Mix.Tasks.Nex.New do
 
     Open http://localhost:4000
 
+    ## Project Structure
+
+    ```
+    #{a.app_name}/
+    ├── src/
+    │   ├── application.ex      # Application supervision tree
+    │   ├── layouts.ex          # HTML layout template
+    │   ├── pages/              # Page components (routes)
+    │   │   └── index.ex        # Homepage (/)
+    │   ├── api/                # API endpoints (Next.js style)
+    │   │   └── hello.ex        # Example: GET/POST /api/hello
+    │   └── partials/           # Reusable components
+    │       └── card.ex         # Example card component
+    ├── mix.exs                 # Project configuration
+    └── .env.example            # Environment variables template
+    ```
+
+    ## Creating Pages
+
+    ```elixir
+    # src/pages/about.ex -> /about
+    defmodule #{a.module_name}.Pages.About do
+      use Nex.Page
+
+      def render(assigns) do
+        ~H\"\"\"
+        <h1>About Us</h1>
+        \"\"\"
+      end
+    end
+    ```
+
+    ## Creating API Endpoints (Next.js Style)
+
+    ```elixir
+    # src/api/users.ex -> /api/users
+    defmodule #{a.module_name}.Api.Users do
+      use Nex.Api
+
+      def get(req) do
+        # req.query - path params + query string
+        id = req.query["id"]
+        Nex.json(%{users: []})
+      end
+
+      def post(req) do
+        # req.body - request body (always a Map)
+        name = req.body["name"]
+        Nex.json(%{created: true}, status: 201)
+      end
+    end
+    ```
+
+    ## Creating Partials
+
+    ```elixir
+    # src/partials/button.ex
+    defmodule #{a.module_name}.Partials.Button do
+      use Nex.Partial
+
+      def button(assigns) do
+        ~H\"\"\"
+        <button class="btn">{@text}</button>
+        \"\"\"
+      end
+    end
+    ```
+
+    Use in pages:
+
+    ```elixir
+    alias #{a.module_name}.Partials.Button
+
+    ~H\"\"\"
+    <Button.button text="Click me" />
+    \"\"\"
+    ```
+
     ## Deployment
 
-    Deploy with Docker:
-
     ```bash
+    # Docker
     docker build -t #{a.app_name} .
     docker run -p 4000:4000 #{a.app_name}
+
+    # Production
+    MIX_ENV=prod mix nex.start
     ```
+
+    ## Resources
+
+    - [Nex Documentation](https://hexdocs.pm/nex_core)
+    - [Nex GitHub](https://github.com/gofenix/nex)
+    - [HTMX](https://htmx.org)
     """
   end
 end
