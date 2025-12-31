@@ -5,8 +5,8 @@ defmodule AlpineShowcase.Pages.Index do
   import AlpineShowcase.Partials.Profile.Settings
 
   def mount(_params) do
-    # 初始化服务器端数据
-    # 在真实应用中，这会来自数据库
+    # Initialize server-side data
+    # In a real app, this would come from a database
     users = Nex.Store.get(:users, [
       %{id: 1, name: "Alice", email: "alice@example.com"},
       %{id: 2, name: "Bob", email: "bob@example.com"}
@@ -14,9 +14,9 @@ defmodule AlpineShowcase.Pages.Index do
     %{title: "Alpine Integration Demo", users: users}
   end
 
-  # 定义 Alpine 的数据结构
-  # tab: 当前激活的选项卡
-  # userModalOpen: 控制用户创建模态框
+  # Define Alpine data structure
+  # tab: Current active tab
+  # userModalOpen: Controls the user creation modal
   def render(assigns) do
     ~H"""
     <div x-data="{ currentTab: 'users', userModalOpen: false }" class="container mx-auto max-w-4xl">
@@ -26,7 +26,7 @@ defmodule AlpineShowcase.Pages.Index do
         <p class="text-base-content/70">A comprehensive example of "The STACK"</p>
       </div>
 
-      <!-- Tabs 导航 (纯客户端切换) -->
+      <!-- Tabs Navigation (Client-side switching) -->
       <div role="tablist" class="tabs tabs-boxed mb-8 bg-base-100 p-2 shadow-sm">
         <a role="tab" class="tab tab-lg" 
            x-bind:class="{ 'tab-active': currentTab === 'users' }" 
@@ -36,25 +36,25 @@ defmodule AlpineShowcase.Pages.Index do
            x-on:click="currentTab = 'profile'">Profile Settings</a>
       </div>
 
-      <!-- Tab 内容区 1: Users -->
+      <!-- Tab Content 1: Users -->
       <div x-show="currentTab === 'users'" x-transition:enter.duration.300ms>
         <div class="flex justify-between items-center mb-6">
           <h2 class="text-2xl font-bold">User Directory</h2>
-          <!-- 点击按钮打开模态框，并自动聚焦输入框 ($nextTick 确保 DOM 更新后执行) -->
+          <!-- Open modal on click, and auto-focus input ($nextTick ensures DOM update) -->
           <button 
             class="btn btn-primary" 
             x-on:click="userModalOpen = true; $nextTick(() => $refs.nameInput.focus())"
           >Add User</button>
         </div>
         
-        <!-- 用户列表组件 -->
+        <!-- User List Component -->
         <.user_list users={@users} />
         
-        <!-- 用户表单模态框组件 (传入 users 列表用于更新) -->
+        <!-- User Form Modal Component (Pass users list for updates) -->
         <.user_form_modal />
       </div>
 
-      <!-- Tab 内容区 2: Profile -->
+      <!-- Tab Content 2: Profile -->
       <div x-show="currentTab === 'profile'" style="display: none;" x-transition:enter.duration.300ms>
         <.profile_settings />
       </div>
@@ -63,7 +63,7 @@ defmodule AlpineShowcase.Pages.Index do
     """
   end
 
-  # 处理添加用户: 对应 POST /create_user
+  # Handle Add User: Maps to POST /create_user
   def create_user(params) do
     new_user = %{
       id: System.unique_integer([:positive]),
@@ -71,24 +71,24 @@ defmodule AlpineShowcase.Pages.Index do
       email: params["email"]
     }
     
-    # 1. 更新数据库/Store
+    # 1. Update Database/Store
     users = Nex.Store.get(:users, [
       %{id: 1, name: "Alice", email: "alice@example.com"},
       %{id: 2, name: "Bob", email: "bob@example.com"}
     ]) ++ [new_user]
     Nex.Store.put(:users, users)
     
-    # 2. 返回 HTML 片段用于追加到列表
-    # 注意：这里调用的是 Partial 模块的渲染函数
+    # 2. Return HTML fragment to append to list
+    # Note: Calls the render function from the Partial module
     render_user_row(%{user: new_user})
   end
 
-  # 处理更新配置: 对应 PUT /update_settings
+  # Handle Update Settings: Maps to PUT /update_settings
   def update_settings(_params) do
-    # 模拟保存耗时
+    # Simulate save delay
     Process.sleep(500) 
     
-    # 返回空内容 (前端不进行 DOM 替换，仅监听事件)
+    # Return empty content (Frontend doesn't replace DOM, just listens for event)
     :empty
   end
 end

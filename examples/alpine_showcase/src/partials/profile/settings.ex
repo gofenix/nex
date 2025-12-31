@@ -3,7 +3,7 @@ defmodule AlpineShowcase.Partials.Profile.Settings do
 
   def profile_settings(assigns) do
     ~H"""
-    <!-- 初始化本地数据: bio 和 isDirty -->
+    <!-- Initialize local state: bio and isDirty -->
     <div class="card bg-base-100 shadow-xl">
       <div class="card-body">
         <h2 class="card-title mb-4">Edit Profile</h2>
@@ -21,13 +21,13 @@ defmodule AlpineShowcase.Partials.Profile.Settings do
           <div class="form-control">
             <label class="label">
               <span class="label-text">Your Bio</span>
-              <!-- 实时字数统计 -->
+              <!-- Real-time character count -->
               <span class="label-text-alt" x-bind:class="{ 'text-error': charsCount > 100 }">
                 <span x-text="charsCount"></span>/100
               </span>
             </label>
             
-            <!-- x-model 绑定输入 -->
+            <!-- x-model binds input to state -->
             <textarea 
               name="bio" 
               class="textarea textarea-bordered h-24" 
@@ -36,7 +36,7 @@ defmodule AlpineShowcase.Partials.Profile.Settings do
             ></textarea>
           </div>
 
-          <!-- 技能标签 (Tags Input) - 展示 x-for 和纯客户端数组操作 -->
+          <!-- Skills Tags (Tags Input) - Demonstrates x-for and client-side array manipulation -->
           <div class="form-control mt-4" x-data="{ newTag: '', tags: ['Elixir', 'Alpine'] }">
              <label class="label"><span class="label-text">Skills (Press Enter to add)</span></label>
              <div class="flex gap-2 mb-2">
@@ -53,7 +53,7 @@ defmodule AlpineShowcase.Partials.Profile.Settings do
                    <div class="badge badge-info gap-2 p-3">
                       <span x-text="tag"></span>
                       <button type="button" x-on:click="tags.splice(index, 1)" class="btn btn-xs btn-ghost btn-circle">x</button>
-                      <!-- 隐藏域用于提交数据 -->
+                      <!-- Hidden input for submitting data -->
                       <input type="hidden" name="skills[]" x-bind:value="tag" />
                    </div>
                 </template>
@@ -61,7 +61,7 @@ defmodule AlpineShowcase.Partials.Profile.Settings do
           </div>
 
           <div class="card-actions justify-end mt-6">
-            <!-- 仅当内容被修改时才高亮保存按钮，否则禁用或置灰 -->
+            <!-- Save button is disabled if content is unchanged -->
             <button 
               type="submit" 
               class="btn btn-primary"

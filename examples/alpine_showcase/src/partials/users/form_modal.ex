@@ -3,13 +3,13 @@ defmodule AlpineShowcase.Partials.Users.FormModal do
 
   def user_form_modal(assigns) do
     ~H"""
-    <!-- 模态框背景遮罩 -->
+    <!-- Modal Backdrop -->
     <div class="modal" x-bind:class="{ 'modal-open': userModalOpen }">
       <div class="modal-box">
         <h3 class="font-bold text-lg">Add New User</h3>
         
-        <!-- HTMX 表单 
-             注意：Action URL "/create_user" 直接映射到 Page 模块中的 create_user/1 函数
+        <!-- HTMX Form 
+             Note: Action URL "/create_user" maps directly to the create_user/1 function in the Page module
         -->
         <form 
           id="create-user-form"
@@ -20,7 +20,7 @@ defmodule AlpineShowcase.Partials.Users.FormModal do
         >
           <div class="form-control w-full my-4">
             <label class="label"><span class="label-text">Name</span></label>
-            <!-- x-ref: 注册引用，供外部通过 $refs.nameInput 访问 -->
+            <!-- x-ref: Registers reference for programmatic access via $refs.nameInput -->
             <input 
               x-ref="nameInput"
               type="text" name="name" required class="input input-bordered w-full" 
@@ -34,12 +34,12 @@ defmodule AlpineShowcase.Partials.Users.FormModal do
 
           <div class="modal-action">
             <button type="submit" class="btn btn-primary">Save</button>
-            <!-- 取消按钮：纯 Alpine 关闭 -->
+            <!-- Cancel Button: Pure Alpine Logic -->
             <button type="button" class="btn" x-on:click="userModalOpen = false">Cancel</button>
           </div>
         </form>
       </div>
-      <!-- 点击背景关闭 -->
+      <!-- Click backdrop to close -->
       <form method="dialog" class="modal-backdrop">
         <button x-on:click="userModalOpen = false">close</button>
       </form>
