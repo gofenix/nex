@@ -261,6 +261,63 @@ defmodule Nex.Handler do
     "data: #{Jason.encode!(data)}"
   end
 
+  # Format data for SSE streaming (used by Nex.stream/1)
+  defp format_sse_chunk(data) when is_binary(data) do
+    "data: #{data}\n\n"
+  end
+
+  defp format_sse_chunk(%{event: event, data: data}) do
+    "event: #{event}\ndata: #{encode_sse_data(data)}\n\n"
+  end
+
+  defp format_sse_chunk(data) when is_map(data) or is_list(data) do
+    "data: #{Jason.encode!(data)}\n\n"
+  end
+
+  defp encode_sse_data(data) when is_binary(data), do: data
+  defp encode_sse_data(data), do: Jason.encode!(data)
+
+  defp send_api_response(conn, %Nex.Response{content_type: "text/event-stream"} = response) do
+    # Handle SSE streaming response
+    conn =
+      conn
+      |> put_resp_header("content-type", "text/event-stream; charset=utf-8")
+      |> put_resp_header("cache-control", "no-cache, no-transform")
+      |> put_resp_header("connection", "keep-alive")
+
+    # Apply additional headers
+    conn =
+      Enum.reduce(response.headers, conn, fn {k, v}, conn ->
+        put_resp_header(conn, to_string(k), to_string(v))
+      end)
+
+    conn = send_chunked(conn, response.status)
+
+    # Execute the callback function
+    callback = response.body
+
+    send_fn = fn data ->
+      chunk = format_sse_chunk(data)
+      case Plug.Conn.chunk(conn, chunk) do
+        {:ok, conn} -> conn
+        {:error, :closed} -> throw(:connection_closed)
+      end
+    end
+
+    try do
+      callback.(send_fn)
+      conn
+    rescue
+      e ->
+        Logger.error("SSE stream error: #{inspect(e)}\n#{Exception.format_stacktrace(__STACKTRACE__)}")
+        conn
+    catch
+      :connection_closed ->
+        Logger.debug("SSE connection closed by client")
+        conn
+    end
+  end
+
   defp send_api_response(conn, %Nex.Response{} = response) do
     conn =
       Enum.reduce(response.headers, conn, fn {k, v}, conn ->

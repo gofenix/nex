@@ -16,6 +16,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Provides the simplest possible developer experience
   - Fully aligned with Next.js convention-over-configuration philosophy
 
+- **`Nex.stream/1` - Server-Sent Events (SSE) Support**: Native streaming response for AI applications
+  - Simple callback function API: `Nex.stream(fn send -> send.("message") end)`
+  - Similar to Python's `StreamingResponse` with generators and Next.js's `ReadableStream`
+  - Automatic SSE formatting and header management
+  - Zero boilerplate - simpler than Python FastAPI and Next.js
+  - Perfect for AI streaming responses (OpenAI, Anthropic, etc.)
+  - Automatic connection close detection and error handling
+  - Example: 5 lines of code for complete streaming response
+
 ### Changed
 - **BREAKING: Removed `Nex.Page`, `Nex.Api`, `Nex.Partial`, and `Nex.SSE` modules**: Use `use Nex` instead
   - All `use Nex.*` modules have been completely removed
