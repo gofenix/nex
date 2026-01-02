@@ -1,4 +1,6 @@
 defmodule TodosApi.Api.Todos.Id do
+  use Nex
+
   @moduledoc """
   RESTful API for individual todo items.
 

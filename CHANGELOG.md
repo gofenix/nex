@@ -7,20 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Unified `use Nex` Interface**: One statement for all module types
+  - All modules (Pages, APIs, Partials, Layouts) now use the same `use Nex` statement
+  - Framework automatically detects module type based on path (`.Api.`, `.Pages.`, `.Partials.`, `.Layouts`)
+  - API modules: no imports (pure functions)
+  - Page/Partial/Layout modules: automatic HEEx + CSRF imports
+  - Provides the simplest possible developer experience
+  - Fully aligned with Next.js convention-over-configuration philosophy
+
 ### Changed
-- **BREAKING: Removed `use Nex.Api`**: Simplified API module design
-  - Removed `__using__` macro from `Nex.Api` module (it provided no functionality)
-  - API modules are now plain Elixir modules without any `use` statement
-  - `Nex.Api` module now serves purely as documentation and conventions guide
-  - Updated all examples to remove `use Nex.Api`
-  - Migration: Simply remove `use Nex.Api` line from your API modules
+- **BREAKING: `use Nex.Page` is deprecated**: Use `use Nex` instead
+  - `Nex.Page` still works but emits deprecation warning
+  - Will be removed in a future version
+  - Migration: Replace `use Nex.Page` with `use Nex`
+  - Framework automatically detects page modules and imports HEEx support
 
 ### Improved
-- **`Nex.Api` Documentation**: Updated module documentation to reflect current API 2.0 conventions
-  - Removed outdated API 1.0 examples (bare maps, tuple returns)
-  - Added comprehensive examples showing `Nex.Req` struct usage and `Nex.Response` returns
-  - Added dynamic routes examples and Next.js alignment comparison table
-  - Emphasized convention-based approach fully aligned with Next.js API Routes
+- **Simplified Module API**: Reduced cognitive load for developers
+  - No need to remember different `use` statements for different module types
+  - One unified interface: `use Nex`
+  - Better alignment with Next.js simplicity
+- **`Nex.Api` Documentation**: Updated to recommend `use Nex`
+  - Clarified that API modules are detected automatically by path
+  - Added examples using unified `use Nex` interface
 
 ## [0.3.0] - 2025-12-31
 

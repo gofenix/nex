@@ -1,4 +1,6 @@
 defmodule TodosApi.Api.Todos.Index do
+  use Nex
+
   @moduledoc """
   RESTful API for todo collection.
 

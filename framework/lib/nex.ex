@@ -2,11 +2,12 @@ defmodule Nex do
   @moduledoc """
   Nex - A minimalist Elixir web framework powered by HTMX.
 
-  ## Quick Start
+  ## Unified Interface
 
-      # src/pages/index.ex
+  All Nex modules use the same simple statement:
+
       defmodule MyApp.Pages.Index do
-        use Nex.Page
+        use Nex  # ← One statement for everything
 
         def render(assigns) do
           ~H\"\"\"
@@ -14,9 +15,110 @@ defmodule Nex do
           \"\"\"
         end
       end
+
+  Nex automatically detects the module type based on its path:
+
+  - `*.Api.*` → API module (no imports needed)
+  - `*.Pages.*` → Page module (imports HEEx + CSRF)
+  - `*.Partials.*` → Partial module (imports HEEx + CSRF)
+  - `*.Layouts` → Layout module (imports HEEx + CSRF)
+
+  ## Examples
+
+  ### Page Module
+
+      defmodule MyApp.Pages.Users.Index do
+        use Nex
+
+        def render(assigns) do
+          ~H\"\"\"
+          <div>Users List</div>
+          \"\"\"
+        end
+      end
+
+  ### API Module
+
+      defmodule MyApp.Api.Users.Index do
+        use Nex
+
+        def get(req) do
+          Nex.json(%{data: users})
+        end
+      end
+
+  ### Partial Component
+
+      defmodule MyApp.Partials.Users.Card do
+        use Nex
+
+        def render(assigns) do
+          ~H\"\"\"
+          <div class="card">{@user.name}</div>
+          \"\"\"
+        end
+      end
+
+  ### Layout Module
+
+      defmodule MyApp.Layouts do
+        use Nex
+
+        def render(assigns) do
+          ~H\"\"\"
+          <!DOCTYPE html>
+          <html>
+            <body>{raw(@inner_content)}</body>
+          </html>
+          \"\"\"
+        end
+      end
   """
 
   alias Nex.Response
+
+  @doc """
+  Unified macro for all Nex modules.
+
+  Automatically detects module type based on path and imports appropriate functions.
+  """
+  defmacro __using__(_opts) do
+    quote do
+      @before_compile Nex
+    end
+  end
+
+  @doc false
+  defmacro __before_compile__(env) do
+    module_name = env.module |> Module.split() |> Enum.join(".")
+
+    cond do
+      # API modules - no imports needed (pure functions)
+      String.contains?(module_name, ".Api.") ->
+        quote do
+          # API modules are pure Elixir modules
+          # No imports needed - just define get/1, post/1, etc.
+        end
+
+      # Page/Partial/Layout modules - need HEEx support
+      String.contains?(module_name, ".Pages.") or
+      String.contains?(module_name, ".Partials.") or
+          String.ends_with?(module_name, ".Layouts") ->
+        quote do
+          import Phoenix.Component, only: [sigil_H: 2]
+          import Phoenix.HTML, only: [raw: 1]
+          import Nex.CSRF, only: [input_tag: 0, hx_headers: 0, meta_tag: 0, get_token: 0]
+        end
+
+      # Default: treat as page module
+      true ->
+        quote do
+          import Phoenix.Component, only: [sigil_H: 2]
+          import Phoenix.HTML, only: [raw: 1]
+          import Nex.CSRF, only: [input_tag: 0, hx_headers: 0, meta_tag: 0, get_token: 0]
+        end
+    end
+  end
 
   @doc """
   Constructs a JSON response.

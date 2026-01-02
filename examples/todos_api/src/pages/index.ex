@@ -1,5 +1,5 @@
 defmodule TodosApi.Pages.Index do
-  use Nex.Page
+  use Nex
 
   def render(assigns) do
     ~H"""
@@ -173,6 +173,8 @@ defmodule TodosApi.Pages.Index do
         <div class="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <pre class="text-sm"><code>
             defmodule TodosApi.Api.Todos.Index do
+              use Nex
+
               def get(req) do
                 # Query parameters - Next.js style
                 completed_filter = req.query["completed"]
