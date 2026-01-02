@@ -29,11 +29,7 @@ defmodule Nex.Handler do
 
         # API routes: /api/*
         match?(["api" | _], path) ->
-          handle_api_or_sse(conn, method, path)
-
-        # SSE endpoint: /sse/*
-        match?(["sse" | _], path) ->
-          handle_sse(conn, method, path)
+          handle_api(conn, method, path)
 
         # Page routes
         true ->
@@ -50,8 +46,8 @@ defmodule Nex.Handler do
     end
   end
 
-  # API or SSE handlers
-  defp handle_api_or_sse(conn, method, path) do
+  # API handlers
+  defp handle_api(conn, method, path) do
     api_path = case path do
       ["api" | rest] -> rest
       _ -> path
@@ -59,39 +55,10 @@ defmodule Nex.Handler do
 
     case resolve_api_module(api_path) do
       {:ok, module, params} ->
-        # Check if this is an SSE endpoint
-        is_sse = Code.ensure_loaded?(module) and function_exported?(module, :__sse_endpoint__, 0)
-
-        if is_sse do
-          # Handle as SSE endpoint
-          handle_sse_endpoint(conn, module, Map.merge(conn.params, params))
-        else
-          # Handle as regular API endpoint
-          handle_api_endpoint(conn, method, module, Map.merge(conn.params, params))
-        end
+        handle_api_endpoint(conn, method, module, Map.merge(conn.params, params))
 
       :error ->
         send_json_error(conn, 404, "Not Found")
-    end
-  end
-
-  # Handle SSE endpoint
-  defp handle_sse_endpoint(conn, module, params) do
-    page_id = get_page_id_from_request(conn)
-    Nex.Store.set_page_id(page_id)
-
-    # Check for stream/2 callback function
-    has_stream = function_exported?(module, :stream, 2)
-
-    if has_stream do
-      conn
-      |> put_resp_header("content-type", "text/event-stream")
-      |> put_resp_header("cache-control", "no-cache")
-      |> put_resp_header("connection", "keep-alive")
-      |> send_chunked(200)
-      |> send_sse_stream(module, params)
-    else
-      send_json_error(conn, 500, "SSE endpoint must implement stream/2")
     end
   end
 
@@ -135,131 +102,6 @@ defmodule Nex.Handler do
           reraise e, __STACKTRACE__
         end
     end
-  end
-
-  # SSE handlers
-  defp handle_sse(conn, _method, path) do
-    sse_path = case path do
-      ["sse" | rest] -> rest
-      _ -> path
-    end
-
-    app_module = get_app_module()
-    # Convert path segments to PascalCase (e.g., "stream" -> "Stream")
-    camelized_path = Enum.map(sse_path, &Macro.camelize/1)
-    module_name = [app_module, "Sse" | camelized_path] |> Enum.join(".")
-
-    # Use safe module resolution to prevent atom exhaustion
-    case safe_to_existing_module(module_name) do
-      {:ok, module} ->
-        if function_exported?(module, :stream, 2) or function_exported?(module, :stream, 1) do
-          page_id = get_page_id_from_request(conn)
-          Nex.Store.set_page_id(page_id)
-          params = conn.params
-
-          # Send SSE headers and stream response
-          conn
-          |> put_resp_header("content-type", "text/event-stream")
-          |> put_resp_header("cache-control", "no-cache")
-          |> put_resp_header("connection", "keep-alive")
-          |> send_chunked(200)
-          |> send_sse_stream(module, params)
-        else
-          try_sse_index_module(conn, module_name)
-        end
-
-      :error ->
-        try_sse_index_module(conn, module_name)
-    end
-  end
-
-  defp try_sse_index_module(conn, module_name) do
-    case safe_to_existing_module("#{module_name}.Index") do
-      {:ok, index_module} ->
-        if function_exported?(index_module, :stream, 2) or function_exported?(index_module, :stream, 1) do
-          page_id = get_page_id_from_request(conn)
-          Nex.Store.set_page_id(page_id)
-          params = conn.params
-
-          conn
-          |> put_resp_header("content-type", "text/event-stream")
-          |> put_resp_header("cache-control", "no-cache")
-          |> put_resp_header("connection", "keep-alive")
-          |> put_resp_header("x-nex-page-id", page_id)
-          |> send_chunked(200)
-          |> send_sse_stream(index_module, params)
-        else
-          send_json_error(conn, 404, "SSE endpoint not found")
-        end
-
-      :error ->
-        send_json_error(conn, 404, "SSE endpoint not found")
-    end
-  end
-
-  defp send_sse_stream(conn, module, params) do
-    # Check if module supports callback-based streaming
-    if function_exported?(module, :stream, 2) do
-      # Callback-based streaming: stream(params, send_fn)
-      # send_fn is called for each event to send immediately
-      apply(module, :stream, [params, fn event ->
-        sse_data = format_sse_event(event)
-        case chunk(conn, sse_data) do
-          {:ok, _} -> :ok
-          {:error, _} -> throw(:closed)
-        end
-      end])
-      conn
-    else
-      # Legacy: return list of events
-      events = apply(module, :stream, [params])
-
-      Enum.reduce(events, conn, fn event, conn ->
-        sse_data = format_sse_event(event)
-        case chunk(conn, sse_data) do
-          {:ok, conn} -> conn
-          {:error, _} -> throw(:closed)
-        end
-      end)
-    end
-  catch
-    :closed ->
-      # Connection was closed by client
-      conn
-  end
-
-  defp format_sse_event(%{event: event_type, data: data, id: id}) do
-    # HTMX SSE extension expects: event: <type>\ndata: <plain_text>\n\n
-    data_str = format_sse_data(data)
-    "event: #{event_type}\n#{data_str}\nid: #{id}\n\n"
-  end
-
-  defp format_sse_event(%{event: event_type, data: data}) do
-    # HTMX SSE extension expects: event: <type>\ndata: <plain_text>\n\n
-    data_str = format_sse_data(data)
-    "event: #{event_type}\n#{data_str}\n\n"
-  end
-
-  defp format_sse_event(event) when is_map(event) do
-    "data: #{Jason.encode!(event)}\n\n"
-  end
-
-  defp format_sse_event(event) when is_binary(event) do
-    # Plain text fallback - JSON encode to ensure safety
-    "data: #{Jason.encode!(event)}\n\n"
-  end
-
-  defp format_sse_data(data) when is_binary(data) do
-    # Handle multiline strings by prefixing each line with "data: "
-    # This allows sending raw HTML fragments
-    data
-    |> String.split(["\r\n", "\n"])
-    |> Enum.map(&"data: #{&1}")
-    |> Enum.join("\n")
-  end
-
-  defp format_sse_data(data) do
-    "data: #{Jason.encode!(data)}"
   end
 
   # Format data for SSE streaming (used by Nex.stream/1)

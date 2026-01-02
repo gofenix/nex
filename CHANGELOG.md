@@ -104,6 +104,15 @@ end
   - Better alignment with Next.js simplicity
   - Automatic type detection based on module path
 
+### Removed
+- **Legacy SSE Code Cleanup**: Removed ~160 lines of deprecated SSE handling code
+  - Deleted old `handle_sse/3`, `handle_sse_endpoint/3`, `try_sse_index_module/2`, `send_sse_stream/3`
+  - Deleted old `format_sse_event/1` (4 overloads) and `format_sse_data/1` (2 overloads)
+  - Removed `/sse/*` route (use `/api/*` with `Nex.stream/1` instead)
+  - Removed `__sse_endpoint__` marker check
+  - Handler module reduced from 872 lines to 714 lines (-18%)
+  - All SSE functionality now uses the unified `Nex.stream/1` API
+
 ## [0.3.0] - 2025-12-31
 
 ### Added
