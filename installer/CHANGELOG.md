@@ -5,13 +5,15 @@ All notable changes to the Nex framework will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.1] - 2026-01-02
 
 ### Changed
 - **BREAKING: Unified `use Nex` Interface**: All generated templates now use `use Nex` instead of `use Nex.Page`, `use Nex.Api`, etc.
   - Framework automatically detects module type based on path
   - Generated projects use the simplified, unified interface
   - Aligns with framework's breaking change to remove all `use Nex.*` modules
+- **Project Template**: Updated generated project dependency from `nex_core ~> 0.3.0` to `nex_core ~> 0.3.1`
+- **Removed AI Helper Files**: Removed CLAUDE.md and .cursor/rules generation to keep project templates minimal
 
 ## [0.3.0] - 2025-12-31
 
