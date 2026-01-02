@@ -108,7 +108,7 @@ For real-time streaming:
 
 ```elixir
 defmodule MyApp.Api.Stream do
-  use Nex.SSE
+  use Nex
 
   def stream(conn, _params) do
     SSE.stream(conn, fn send_event ->

@@ -1,11 +1,11 @@
 defmodule ChatbotSse.Api.Sse.Stream do
-  use Nex.SSE
+  use Nex
 
   @moduledoc """
   SSE (Server-Sent Events) endpoint for streaming AI responses.
 
   Uses HTMX SSE extension for zero-JS streaming.
-  Identified as SSE endpoint by `use Nex.SSE`.
+  Identified as SSE endpoint by `use Nex`.
   """
   require Logger
 
