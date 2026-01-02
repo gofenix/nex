@@ -53,7 +53,7 @@ defmodule Nex.Handler do
       _ -> path
     end
 
-    case resolve_api_module(api_path) do
+    case Nex.RouteDiscovery.resolve(:api, api_path) do
       {:ok, module, params} ->
         handle_api_endpoint(conn, method, module, Map.merge(conn.params, params))
 
@@ -238,7 +238,7 @@ defmodule Nex.Handler do
     case method do
       :get ->
         # GET requests render pages
-        case resolve_page_module(path) do
+        case Nex.RouteDiscovery.resolve(:pages, path) do
           {:ok, module, params} ->
             handle_page_render(conn, module, Map.merge(conn.params, params))
 
@@ -255,7 +255,7 @@ defmodule Nex.Handler do
             # Requests call action functions
             # e.g., POST /create_todo → Index.create_todo/2
             # e.g., DELETE /delete_todo → Index.delete_todo/2
-            case resolve_action(path) do
+            case Nex.RouteDiscovery.resolve(:action, path) do
               {:ok, module, action, params} ->
                 handle_page_action(conn, module, action, Map.merge(conn.params, params))
 
@@ -384,185 +384,8 @@ defmodule Nex.Handler do
     |> send_resp(200, html)
   end
 
-  defp resolve_action(path) do
-    # Resolve POST action: find module and action function
-    # e.g., POST /create_todo → Index.create_todo/2
-    # e.g., POST /todos/toggle_todo → Todos.Index.toggle_todo/2
-    # e.g., POST /todos/123/delete → resolve module path, last segment is action
-
-    app_module = get_app_module()
-    src_path = get_src_path()
-
-    case path do
-      [] ->
-        # POST / → Index.index
-        case safe_to_existing_module("#{app_module}.Pages.Index") do
-          {:ok, module} -> {:ok, module, "index", %{}}
-          :error -> :error
-        end
-
-      [action] ->
-        # POST /create_todo → Index.create_todo
-        # Also try: POST /stream → Stream.stream
-        action_module_name = [app_module, "Pages", Macro.camelize(action)] |> Enum.join(".")
-
-        with {:ok, action_module} <- safe_to_existing_module(action_module_name),
-             {:ok, action_atom} <- safe_to_existing_atom(action),
-             true <- function_exported?(action_module, action_atom, 1) do
-          {:ok, action_module, action, %{}}
-        else
-          _ ->
-            case safe_to_existing_module("#{app_module}.Pages.Index") do
-              {:ok, module} -> {:ok, module, action, %{}}
-              :error -> :error
-            end
-        end
-
-      segments ->
-        # POST /todos/123/delete → resolve module path, last segment is action
-        {module_path, [action]} = Enum.split(segments, -1)
-
-        # Try dynamic route discovery first
-        routes = Nex.RouteDiscovery.get_routes(src_path, :pages)
-
-        case Nex.RouteDiscovery.match_route(routes, module_path, app_module, "Pages") do
-          {:ok, module_name, params} ->
-            case safe_to_existing_module(module_name) do
-              {:ok, module} -> {:ok, module, action, params}
-              :error -> resolve_action_legacy(module_path, action, app_module)
-            end
-
-          :error ->
-            resolve_action_legacy(module_path, action, app_module)
-        end
-    end
-  end
-
-  defp resolve_action_legacy(module_path, action, app_module) do
-    {module_parts, params} = path_to_module_parts(module_path)
-    module_name = [app_module, "Pages" | module_parts] |> Enum.join(".")
-
-    case safe_to_existing_module(module_name) do
-      {:ok, module} ->
-        {:ok, module, action, params}
-
-      :error ->
-        case safe_to_existing_module("#{module_name}.Index") do
-          {:ok, index_module} -> {:ok, index_module, action, params}
-          :error -> :error
-        end
-    end
-  end
-
-  defp resolve_page_module(path) do
-    # Try dynamic route discovery first, then fall back to legacy behavior
-    app_module = get_app_module()
-    src_path = get_src_path()
-
-    # Get cached routes
-    routes = Nex.RouteDiscovery.get_routes(src_path, :pages)
-
-    case Nex.RouteDiscovery.match_route(routes, path, app_module, "Pages") do
-      {:ok, module_name, params} ->
-        case safe_to_existing_module(module_name) do
-          {:ok, module} -> {:ok, module, params}
-          :error -> resolve_page_module_legacy(path, app_module)
-        end
-
-      :error ->
-        resolve_page_module_legacy(path, app_module)
-    end
-  end
-
-  defp resolve_page_module_legacy(path, app_module) do
-    # Legacy behavior for backward compatibility
-    {module_parts, params} = path_to_module_parts(path)
-
-    module_name =
-      [app_module, "Pages" | module_parts]
-      |> Enum.join(".")
-
-    case safe_to_existing_module(module_name) do
-      {:ok, module} ->
-        {:ok, module, params}
-
-      :error ->
-        case safe_to_existing_module("#{module_name}.Index") do
-          {:ok, index_module} -> {:ok, index_module, params}
-          :error -> :error
-        end
-    end
-  end
-
-  defp resolve_api_module(path) do
-    app_module = get_app_module()
-    src_path = get_src_path()
-
-    # Get cached routes for API
-    routes = Nex.RouteDiscovery.get_routes(src_path, :api)
-
-    case Nex.RouteDiscovery.match_route(routes, path, app_module, "Api") do
-      {:ok, module_name, params} ->
-        case safe_to_existing_module(module_name) do
-          {:ok, module} -> {:ok, module, params}
-          :error -> resolve_api_module_legacy(path, app_module)
-        end
-
-      :error ->
-        resolve_api_module_legacy(path, app_module)
-    end
-  end
-
-  defp resolve_api_module_legacy(path, app_module) do
-    # Legacy behavior for backward compatibility
-    {module_parts, params} = path_to_module_parts(path)
-
-    module_name =
-      [app_module, "Api" | module_parts]
-      |> Enum.join(".")
-
-    case safe_to_existing_module(module_name) do
-      {:ok, module} ->
-        {:ok, module, params}
-
-      :error ->
-        case safe_to_existing_module("#{module_name}.Index") do
-          {:ok, index_module} -> {:ok, index_module, params}
-          :error -> :error
-        end
-    end
-  end
-
-  defp path_to_module_parts(path) do
-    # Convert path segments to module parts, extracting dynamic params
-    # e.g., ["todos", "123"] with [id].ex → (["Todos", "Id"], %{"id" => "123"})
-
-    # For MVP, we'll use a simple approach:
-    # Assume dynamic segments are IDs
-    path
-    |> Enum.reduce({[], %{}}, fn segment, {parts, params} ->
-      if is_dynamic_segment?(segment) do
-        # This is a dynamic value, add "Id" as module part
-        {parts ++ ["Id"], Map.put(params, "id", segment)}
-      else
-        {parts ++ [Macro.camelize(segment)], params}
-      end
-    end)
-  end
-
-  defp is_dynamic_segment?(segment) do
-    # A segment is dynamic if it looks like an ID (numeric or UUID-like)
-    String.match?(segment, ~r/^[0-9a-f-]+$/i)
-  end
-
   defp get_app_module do
-    # Get the app module name from application config
     Application.get_env(:nex_core, :app_module, "MyApp")
-  end
-
-  defp get_src_path do
-    # Get the source path from application config
-    Application.get_env(:nex_core, :src_path, "src")
   end
 
   defp get_layout_module do
