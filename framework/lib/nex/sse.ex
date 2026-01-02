@@ -3,12 +3,12 @@ defmodule Nex.SSE do
   Behaviour for Server-Sent Events (SSE) endpoints.
 
   SSE endpoints can be placed anywhere in your application structure
-  (e.g., `src/api/chat/stream.ex`) and are identified by `use Nex.SSE`.
+  (e.g., `src/api/chat/stream.ex`) and are identified by `use Nex`.
 
   ## Example
 
       defmodule MyApp.Api.Chat.Stream do
-        use Nex.SSE
+        use Nex
 
         @impl true
         def stream(params, send_fn) do

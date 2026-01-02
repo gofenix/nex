@@ -1,5 +1,5 @@
 defmodule EnergyDashboard.Api.EnergyStream do
-  use Nex.SSE
+  use Nex
   require Logger
 
   @base_price 45.0

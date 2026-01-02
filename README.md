@@ -156,7 +156,7 @@ end
 
 ```elixir
 defmodule MyApp.Api.Chat.Stream do
-  use Nex.SSE
+  use Nex
 
   @impl true
   def stream(%{"message" => msg}, send_fn) do
