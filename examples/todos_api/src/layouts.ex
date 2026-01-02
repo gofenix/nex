@@ -1,5 +1,5 @@
 defmodule TodosApi.Layouts do
-  use Nex.Page
+  use Nex
 
   def render(assigns) do
     ~H"""

@@ -1,5 +1,5 @@
 defmodule Guestbook.Pages.Index do
-  use Nex.Page
+  use Nex
   import Guestbook.Partials.Guestbook.Message
 
   def mount(_params) do

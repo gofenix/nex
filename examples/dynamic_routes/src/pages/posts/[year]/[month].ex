@@ -1,5 +1,5 @@
 defmodule DynamicRoutes.Pages.Posts.Year.Month do
-  use Nex.Page
+  use Nex
 
   def mount(%{"year" => year, "month" => month}) do
     %{

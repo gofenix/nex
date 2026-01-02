@@ -5,7 +5,7 @@ defmodule ChatbotSse.Pages.Index do
   Uses Server-Sent Events (SSE) instead of HTMX polling
   to stream AI responses character by character.
   """
-  use Nex.Page
+  use Nex
   import ChatbotSse.Partials.Chat.ChatMessage
 
   def mount(_params) do

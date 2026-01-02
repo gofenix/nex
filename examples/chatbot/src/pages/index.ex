@@ -1,5 +1,5 @@
 defmodule Chatbot.Pages.Index do
-  use Nex.Page
+  use Nex
   import Chatbot.Partials.Chat.ChatMessage
 
   def mount(_params) do

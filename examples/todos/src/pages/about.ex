@@ -1,5 +1,5 @@
 defmodule Todos.Pages.About do
-  use Nex.Page
+  use Nex
 
   def mount(_params) do
     %{

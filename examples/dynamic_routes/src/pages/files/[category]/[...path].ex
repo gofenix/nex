@@ -1,5 +1,5 @@
 defmodule DynamicRoutes.Pages.Files.Category.Path do
-  use Nex.Page
+  use Nex
 
   def mount(%{"category" => category, "path" => path}) do
     path_string = Enum.join(path, "/")

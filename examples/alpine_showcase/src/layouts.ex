@@ -1,5 +1,5 @@
 defmodule AlpineShowcase.Layouts do
-  use Nex.Page
+  use Nex
 
   def render(assigns) do
     ~H"""
@@ -11,22 +11,22 @@ defmodule AlpineShowcase.Layouts do
         <!-- Import DaisyUI & Tailwind -->
         <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.19/dist/full.min.css" rel="stylesheet" type="text/css" />
         <script src="https://cdn.tailwindcss.com"></script>
-        
+
         <!-- Import HTMX -->
         <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-        
+
         <!-- Import Alpine.js (defer is required) -->
         <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
       </head>
-      <!-- 
+      <!--
          hx-boost="true": Enables SPA-like navigation
          x-data: Initialize theme, watch for changes and persist to localStorage
       -->
-      <body 
-        hx-boost="true" 
+      <body
+        hx-boost="true"
         class="bg-base-200 min-h-screen p-8"
-        x-data="{ 
-          theme: localStorage.getItem('theme') || 'light' 
+        x-data="{
+          theme: localStorage.getItem('theme') || 'light'
         }"
         x-init="$watch('theme', val => localStorage.setItem('theme', val))"
         x-bind:data-theme="theme"
@@ -41,7 +41,7 @@ defmodule AlpineShowcase.Layouts do
         {raw(@inner_content)}
 
         <!-- Global Toast Container (Listens for Alpine events) -->
-        <div 
+        <div
           x-data="{ show: false, message: '' }"
           x-on:show-toast.window="show = true; message = $event.detail; setTimeout(() => show = false, 3000)"
           x-show="show"
