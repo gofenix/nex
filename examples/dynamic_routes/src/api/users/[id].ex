@@ -1,4 +1,6 @@
 defmodule DynamicRoutes.Api.Users.Id do
+  use Nex
+
   def get(req) do
     id = req.query["id"]
     user = find_user(id)

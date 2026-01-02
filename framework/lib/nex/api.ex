@@ -2,6 +2,20 @@ defmodule Nex.Api do
   @moduledoc """
   Conventions for API endpoints.
 
+  ## Recommended Usage
+
+  Use `use Nex` instead of importing this module:
+
+      defmodule MyApp.Api.Users.Index do
+        use Nex  # ← Unified interface
+
+        def get(req) do
+          Nex.json(%{data: users})
+        end
+      end
+
+  The framework automatically detects API modules based on the `.Api.` path segment.
+
   API modules are regular Elixir modules that export HTTP method functions.
   They follow Next.js API Routes conventions for simplicity and familiarity.
 
