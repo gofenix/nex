@@ -165,14 +165,11 @@ defmodule Nex do
     * `:status` - HTTP status code (default: 200)
     * `:headers` - Additional headers (default: %{})
   """
-  def html(content, opts \\ []) do
+  def html(html, opts \\ []) do
     status = Keyword.get(opts, :status, 200)
-    headers = Keyword.get(opts, :headers, %{})
-
     %Response{
       status: status,
-      body: content,
-      headers: headers,
+      body: html,
       content_type: "text/html"
     }
   end
@@ -191,9 +188,69 @@ defmodule Nex do
   end
 
   @doc """
-  Constructs a response with only a status code.
+  Constructs a response with custom status code.
   """
-  def status(code) do
-    %Response{status: code, body: ""}
+  def status(code, body \\ "") do
+    %Response{
+      status: code,
+      body: body,
+      content_type: "text/plain"
+    }
+  end
+
+  @doc """
+  Constructs a Server-Sent Events (SSE) streaming response.
+
+  Similar to Python's `StreamingResponse` with generators and Next.js's `ReadableStream`.
+
+  ## Example
+
+      Nex.stream(fn send ->
+        send.("Thinking...")
+        send.("Processing...")
+        send.("Done!")
+      end)
+
+  ## Data Formats
+
+  The `send` function accepts:
+  - String: `send.("Hello")` → `data: Hello\\n\\n`
+  - Map/List: `send.(%{user: "Alice"})` → `data: {"user":"Alice"}\\n\\n`
+  - Event with data: `send.(%{event: "message", data: "Hello"})` → `event: message\\ndata: Hello\\n\\n`
+
+  ## AI Streaming Example
+
+      def post(req) do
+        message = req.body["message"]
+
+        Nex.stream(fn send ->
+          # Stream from OpenAI
+          accumulated = ""
+
+          Req.post!("https://api.openai.com/v1/chat/completions",
+            json: %{model: "gpt-3.5-turbo", messages: [...], stream: true},
+            into: fn {:data, chunk}, acc ->
+              case parse_chunk(chunk) do
+                {:ok, content} ->
+                  new_acc = acc <> content
+                  send.(new_acc)
+                  {:cont, new_acc}
+                _ -> {:cont, acc}
+              end
+            end
+          )
+        end)
+      end
+  """
+  def stream(callback) when is_function(callback, 1) do
+    %Response{
+      status: 200,
+      content_type: "text/event-stream",
+      body: callback,
+      headers: %{
+        "cache-control" => "no-cache, no-transform",
+        "connection" => "keep-alive"
+      }
+    }
   end
 end
