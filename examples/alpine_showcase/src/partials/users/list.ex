@@ -1,5 +1,5 @@
 defmodule AlpineShowcase.Partials.Users.List do
-  use Nex.Partial
+  use Nex
 
   # Render the entire list container
   def user_list(assigns) do
@@ -13,7 +13,7 @@ defmodule AlpineShowcase.Partials.Users.List do
             <th>Email</th>
           </tr>
         </thead>
-        <!-- 
+        <!--
            ID must match hx-target="#user-list" in form_modal
            hx-swap="beforeend" will insert the new row at the end of this tbody
         -->

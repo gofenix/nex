@@ -354,7 +354,7 @@ defmodule Mix.Tasks.Nex.New do
           # Use in HEEx template
           <Card.card title="Welcome" description="Get started" />
       \"\"\"
-      use Nex.Partial
+      use Nex
 
       def card(assigns) do
         ~H\"\"\"
@@ -503,7 +503,7 @@ defmodule Mix.Tasks.Nex.New do
     ```elixir
     # src/partials/button.ex
     defmodule #{a.module_name}.Partials.Button do
-      use Nex.Partial
+      use Nex
 
       def button(assigns) do
         ~H\"\"\"

@@ -1,5 +1,5 @@
 defmodule Todos.Partials.Todos.Item do
-  use Nex.Partial
+  use Nex
 
   @doc """
   Render a single todo item.

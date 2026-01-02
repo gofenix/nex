@@ -1,5 +1,5 @@
 defmodule Chatbot.Partials.Chat.ChatMessage do
-  use Nex.Partial
+  use Nex
 
   @doc """
   Render a single chat message.
