@@ -4,7 +4,6 @@ defmodule TodosApi.Api.Todos.Index do
 
   Fully aligned with Next.js API Routes behavior.
   """
-  use Nex.Api
 
   @doc """
   GET /api/todos - List all todos with optional filtering

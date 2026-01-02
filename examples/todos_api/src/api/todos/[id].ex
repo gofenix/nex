@@ -4,7 +4,6 @@ defmodule TodosApi.Api.Todos.Id do
 
   Demonstrates Next.js-style dynamic route parameters.
   """
-  use Nex.Api
 
   @doc """
   GET /api/todos/[id] - Get a single todo by ID
