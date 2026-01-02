@@ -9,8 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Unified `use Nex` Interface**: One statement for all module types
-  - All modules (Pages, APIs, Partials, Layouts) now use the same `use Nex` statement
-  - Framework automatically detects module type based on path (`.Api.`, `.Pages.`, `.Partials.`, `.Layouts`)
+  - All modules (Pages, APIs, Components, Layouts) now use the same `use Nex` statement
+  - Framework automatically detects module type based on path (`.Api.`, `.Pages.`, `.Components.`, `.Layouts`)
   - API modules: no imports (pure functions)
   - Page/Partial/Layout modules: automatic HEEx + CSRF imports
   - Provides the simplest possible developer experience

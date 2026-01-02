@@ -124,7 +124,8 @@ defmodule Nex.Handler do
           Please update your code:
 
               def #{method}(req) do
-                id = req.params["id"]
+                id = req.query["id"]  # Use req.query for path/query params
+                name = req.body["name"]  # Use req.body for POST data
                 # ...
                 Nex.json(%{data: ...})
               end
