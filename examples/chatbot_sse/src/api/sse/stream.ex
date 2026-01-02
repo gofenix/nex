@@ -5,11 +5,9 @@ defmodule ChatbotSse.Api.Sse.Stream do
   SSE (Server-Sent Events) endpoint for streaming AI responses.
 
   Uses HTMX SSE extension for zero-JS streaming.
-  Identified as SSE endpoint by `use Nex`.
   """
   require Logger
 
-  @impl true
   def stream(params, send_fn) do
     message = params["message"]
 

@@ -5,7 +5,6 @@ defmodule EnergyDashboard.Api.EnergyStream do
   @base_price 45.0
   @price_variance 15.0
 
-  @impl true
   def stream(params, send_fn) do
     # Get the offset from client (seconds since start of hour)
     offset = String.to_integer(params["offset"] || "0")
