@@ -1,4 +1,4 @@
-defmodule Todos.Partials.Todos.Item do
+defmodule Todos.Components.Todos.Item do
   use Nex
 
   @doc """
@@ -6,13 +6,13 @@ defmodule Todos.Partials.Todos.Item do
 
   ## Usage
 
-      alias Todos.Partials.Todos.Item
+      alias Todos.Components.Todos.Item
 
       # In HEEx template
       <Item.todo_item todo={todo} />
 
       # Or with alias
-      alias Todos.Partials.Todos.Item, as: TodoItem
+      alias Todos.Components.Todos.Item, as: TodoItem
       <TodoItem.todo_item todo={todo} />
   """
   def todo_item(assigns) do

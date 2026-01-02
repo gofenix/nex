@@ -1,4 +1,4 @@
-defmodule AlpineShowcase.Partials.Profile.Settings do
+defmodule AlpineShowcase.Components.Profile.Settings do
   use Nex
 
   def profile_settings(assigns) do

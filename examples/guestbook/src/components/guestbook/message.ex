@@ -1,4 +1,4 @@
-defmodule Guestbook.Partials.Guestbook.Message do
+defmodule Guestbook.Components.Guestbook.Message do
   use Nex
 
   @doc """
@@ -6,7 +6,7 @@ defmodule Guestbook.Partials.Guestbook.Message do
 
   ## Usage
 
-      alias Guestbook.Partials.Guestbook.Message
+      alias Guestbook.Components.Guestbook.Message
 
       <Message.guestbook_message message={message} />
   """

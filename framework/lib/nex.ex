@@ -20,7 +20,7 @@ defmodule Nex do
 
   - `*.Api.*` → API module (no imports needed)
   - `*.Pages.*` → Page module (imports HEEx + CSRF)
-  - `*.Partials.*` → Partial module (imports HEEx + CSRF)
+  - `*.Components.*` → Component module (imports HEEx + CSRF)
   - `*.Layouts` → Layout module (imports HEEx + CSRF)
 
   ## Examples
@@ -47,9 +47,9 @@ defmodule Nex do
         end
       end
 
-  ### Partial Component
+  ### Component
 
-      defmodule MyApp.Partials.Users.Card do
+      defmodule MyApp.Components.Users.Card do
         use Nex
 
         def render(assigns) do
@@ -95,9 +95,9 @@ defmodule Nex do
           # No imports needed - just define get/1, post/1, etc.
         end
 
-      # Page/Partial/Layout modules - need HEEx support
+      # Page/Component/Layout modules - need HEEx support
       String.contains?(module_name, ".Pages.") or
-      String.contains?(module_name, ".Partials.") or
+      String.contains?(module_name, ".Components.") or
       String.ends_with?(module_name, ".Layouts") ->
         quote do
           import Phoenix.Component, only: [sigil_H: 2]

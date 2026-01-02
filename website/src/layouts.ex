@@ -194,11 +194,11 @@ defmodule NexWebsite.Layouts do
         </style>
       </head>
       <body hx-boost="true">
-        {NexWebsite.Partials.Nav.render(assigns)}
+        {NexWebsite.Components.Nav.render(assigns)}
         <main>
           {raw(@inner_content)}
         </main>
-        {NexWebsite.Partials.Footer.render(assigns)}
+        {NexWebsite.Components.Footer.render(assigns)}
         <script>
           // Function to highlight all code blocks
           function highlightCode() {

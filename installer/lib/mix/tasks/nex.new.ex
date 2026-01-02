@@ -71,7 +71,7 @@ defmodule Mix.Tasks.Nex.New do
 
   defp create_project(path, assigns) do
     # Create directories
-    dirs = [path, "#{path}/src", "#{path}/src/pages", "#{path}/src/api", "#{path}/src/partials"]
+    dirs = [path, "#{path}/src", "#{path}/src/pages", "#{path}/src/api", "#{path}/src/components"]
     Enum.each(dirs, fn dir ->
       File.mkdir_p!(dir)
       Mix.shell().info("  Created: #{dir}/")
@@ -84,7 +84,7 @@ defmodule Mix.Tasks.Nex.New do
       {"src/layouts.ex", layouts(assigns)},
       {"src/pages/index.ex", index(assigns)},
       {"src/api/hello.ex", api_hello(assigns)},
-      {"src/partials/card.ex", partial_card(assigns)},
+      {"src/components/card.ex", partial_card(assigns)},
       {".gitignore", gitignore()},
       {".dockerignore", dockerignore()},
       {"Dockerfile", dockerfile()},
@@ -236,7 +236,6 @@ defmodule Mix.Tasks.Nex.New do
     """
     defmodule #{a.module_name}.Pages.Index do
       use Nex
-      alias #{a.module_name}.Partials.Card
 
       def mount(_params) do
         %{
@@ -256,7 +255,7 @@ defmodule Mix.Tasks.Nex.New do
           </div>
 
           <div class="grid md:grid-cols-2 gap-6">
-            <Card.card title="📁 Project Structure" description="Nex follows a simple, intuitive structure" />
+            <#{a.module_name}.Components.Card.card title="📁 Project Structure" description="Nex follows a simple, intuitive structure" />
 
             <div class="card bg-base-100 shadow-xl">
               <div class="card-body">
@@ -282,7 +281,7 @@ defmodule Mix.Tasks.Nex.New do
               <ul class="space-y-2">
                 <li>✅ Create pages in <code>src/pages/</code></li>
                 <li>✅ Add API endpoints in <code>src/api/</code> (Next.js style)</li>
-                <li>✅ Build components in <code>src/partials/</code></li>
+                <li>✅ Build components in <code>src/components/</code></li>
                 <li>✅ Check the <a href="https://github.com/gofenix/nex" class="link link-primary">docs</a></li>
               </ul>
             </div>
@@ -342,17 +341,14 @@ defmodule Mix.Tasks.Nex.New do
 
   defp partial_card(a) do
     """
-    defmodule #{a.module_name}.Partials.Card do
+    defmodule #{a.module_name}.Components.Card do
       @moduledoc \"\"\"
       Reusable card component.
 
       ## Usage in Pages
 
-          # Import the module
-          alias #{a.module_name}.Partials.Card
-
-          # Use in HEEx template
-          <Card.card title="Welcome" description="Get started" />
+          # Use directly in HEEx template (no alias needed)
+          <#{a.module_name}.Components.Card.card title="Welcome" description="Get started" />
       \"\"\"
       use Nex
 
@@ -456,7 +452,7 @@ defmodule Mix.Tasks.Nex.New do
     │   │   └── index.ex        # Homepage (/)
     │   ├── api/                # API endpoints (Next.js style)
     │   │   └── hello.ex        # Example: GET/POST /api/hello
-    │   └── partials/           # Reusable components
+    │   └── components/           # Reusable components
     │       └── card.ex         # Example card component
     ├── mix.exs                 # Project configuration
     └── .env.example            # Environment variables template
@@ -501,8 +497,8 @@ defmodule Mix.Tasks.Nex.New do
     ## Creating Partials
 
     ```elixir
-    # src/partials/button.ex
-    defmodule #{a.module_name}.Partials.Button do
+    # src/components/button.ex
+    defmodule #{a.module_name}.Components.Button do
       use Nex
 
       def button(assigns) do
@@ -516,10 +512,8 @@ defmodule Mix.Tasks.Nex.New do
     Use in pages:
 
     ```elixir
-    alias #{a.module_name}.Partials.Button
-
     ~H\"\"\"
-    <Button.button text="Click me" />
+    <#{a.module_name}.Components.Button.button text="Click me" />
     \"\"\"
     ```
 

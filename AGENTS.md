@@ -6,3 +6,7 @@ I will give you instructions when it's time to upgrade versions. You will determ
 # Principle 2
 
 When creating example projects, such as those in website or examples, if you determine that we need to modify the framework code to support them, please let me know. I will evaluate whether to make those changes.
+
+# Principle 3
+
+when upgrading the framework, you should check the changelog really update, and the version number really upgrade, and the installer's code really update.
