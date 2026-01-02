@@ -1,12 +1,48 @@
-# Nex 0.3.0 设计理念：一次翻天覆地的重构
+# Nex 0.3.x 设计理念：极简主义的演进
 
-> 从 0.2.x 到 0.3.0 - 为什么我们要做这些看似激进的改变？
+> 从 0.2.x 到 0.3.x - 一个框架如何找到自己的身份
+
+## 🙏 写在前面
+
+这篇文档记录了我在开发 Nex 过程中的思考。
+
+特别感谢 **Reddit (r/elixir, r/programming)** 和 **Elixir Forum** 的朋友们。你们的反馈、质疑、建议，甚至批评，都帮助我一点点找到了 Nex 应该是什么样子。没有你们，就没有 0.3.x 这次重构。
+
+也感谢 **Next.js**、**Phoenix**、**HTMX** 团队，你们的工作给了我无数灵感。
+
+---
+
+## 版本历程
+
+- **0.3.0** (2025-12-31): 统一接口，对齐 Next.js，SSE 流式响应
+- **0.3.1** (2026-01-02): 统一路由解析，删除 legacy 代码，代码净减少 229 行
+
+---
+
+## 📖 TL;DR
+
+如果你只有 2 分钟，这里是核心要点：
+
+**0.2.x 的问题**:
+- 4 个不同的 `use` 语句（Page, Api, Partial, SSE）
+- API 请求对象有 4 个参数字段（params, path_params, query_params, body_params）
+- 使用 `partials/` 目录而非 `components/`
+- SSE 需要特殊的 `use Nex.SSE` 标记
+
+**0.3.x 的解决方案**:
+- ✅ **统一为 `use Nex`** - 框架自动识别模块类型
+- ✅ **JSON API 路由** - `req.query` 和 `req.body`，完全对齐 Next.js
+- ✅ **改为 `components/`** - 对齐现代前端框架标准
+- ✅ **`Nex.stream/1`** - 任何 API 都可以返回流式响应
+- ✅ **统一路由解析** - 所有路由逻辑集中到 RouteDiscovery
+
+**结果**: 代码更简洁（-229 行），学习成本更低（4个概念 → 1个概念），完全对齐 Next.js
 
 ---
 
 ## 🎯 核心问题：框架的本质是什么？
 
-在开发 Nex 0.2.x 的过程中，我逐渐意识到一个问题：**我们在模仿 Phoenix，但这真的是 Nex 应该走的路吗？**
+在开发 Nex 0.2.x 的过程中，我一直在犹豫和纠结：**Nex 到底应该是什么样的？** 我不断地验证想法、做对比、参考各种框架，但始终找不到清晰的定位。
 
 ### 0.2.x 的困境
 
@@ -238,53 +274,49 @@ MyApp.Partials.* → MyApp.Components.*
 
 ---
 
-## 💡 设计决策 3：API 请求对象完全对齐 Next.js
+## 💡 设计决策 3：REST API 体验的革命性提升
 
 ### 问题分析
 
-在 0.2.x 中，我们的 API 请求对象是这样的：
+在 0.2.x 中，我们的 API 请求对象设计得非常繁琐：
 
 ```elixir
-# 0.2.x
-%Nex.Req{
-  params: %{},        # Nex 特有
-  path_params: %{},   # Nex 特有
-  query_params: %{},  # Nex 特有
-  body_params: %{},   # Nex 特有
-  method: "GET",
-  headers: %{},
-  cookies: %{}
-}
+# 0.2.x 的噩梦
+def get(req) do
+  # 我该用哪个？
+  id = req.params["id"]
+  # 还是这个？
+  id = req.path_params["id"]
+  # 还是这个？
+  page = req.query_params["page"]
+end
 ```
 
-**问题在哪里？**
+这种设计让写 REST API 变得异常痛苦。用户需要记住 4 个不同的参数字段，而且经常混淆。
 
-1. **不符合 Next.js**: Next.js 只有 `req.query` 和 `req.body`
-2. **过度设计**: 4 个参数字段，但用户只需要 2 个
-3. **认知负担**: 用户需要理解 `params` vs `path_params` vs `query_params`
-4. **违背初衷**: Nex 的目标是"像 Next.js 一样简单"
+### 0.3.0 的改变：向 Next.js 致敬
 
-### Next.js 的设计
+我们决定彻底简化这一点，让写 REST API 变成一种享受。
 
-```javascript
-// Next.js API Routes
-export default function handler(req, res) {
-  // GET /api/users/123?page=2
-  req.query.id    // => "123" (from path)
-  req.query.page  // => "2"   (from query string)
+```elixir
+# 0.3.0 的优雅
+def get(req) do
+  # GET 请求：只有 query
+  id = req.query["id"]      # 自动合并路径参数和查询参数
+  page = req.query["page"]
   
-  // POST /api/users
-  req.body.name   // => "Alice"
-  req.body.email  // => "alice@example.com"
-}
+  # POST 请求：只有 body
+  user = req.body["user"]
+end
 ```
 
-**Next.js 做对了什么？**
+### 为什么这是一个巨大的进步？
 
-- ✅ **只有 2 个字段**: `req.query` 和 `req.body`
-- ✅ **语义清晰**: query 是 GET 参数，body 是 POST 参数
-- ✅ **自动合并**: 路径参数和查询参数自动合并到 `req.query`
-- ✅ **优先级明确**: 路径参数优先于查询参数
+1. **认知负担归零**：你只需要知道 `req.query` (GET) 和 `req.body` (POST/PUT)。
+2. **符合直觉**：就像你在 Postman 里调试一样，Query Params vs Body。
+3. **开发效率提升**：不再需要查文档确认参数在哪个字段里。
+
+这是 Nex 0.3.0 中**最大、最重要**的改动之一。它不仅仅是字段重命名，而是为了让开发者能更顺畅地构建 REST API。
 
 ### 解决方案
 
@@ -596,21 +628,19 @@ end
 
 ### 下一步计划
 
-1. **更好的 TypeScript 支持**
-   - 自动生成 API 类型定义
-   - 前后端类型安全
+1. **拥抱 Datastar (呼声最高)**
+   - 响应社区强烈需求，探索 Datastar 集成
+   - 让超媒体 (Hypermedia) 开发更进一步，超越 HTMX 的局限
+   - 提供更细粒度的状态更新和更强的交互能力
 
-2. **更强的 AI 集成**
-   - 内置 AI SDK
-   - 流式响应优化
+2. **极致的开发者体验 (DX)**
+   - 让框架"更好用"，而不是"功能更多"
+   - 更智能的错误提示和调试工具
+   - 更完善的文档和实战范例
 
-3. **更简单的部署**
-   - 一键部署到 Fly.io/Railway
-   - 自动 Docker 优化
-
-4. **更完善的生态**
-   - 官方组件库
-   - 插件系统
+3. **更丰富的生态**
+   - 官方 UI 组件库
+   - 更多真实场景的示例项目
 
 ### 核心不变
 
@@ -624,24 +654,15 @@ end
 
 ## 💭 写给开发者的话
 
-### 为什么要做 Breaking Changes？
+### 关于 Breaking Changes
 
-我知道 Breaking Changes 会给用户带来迁移成本，但我相信：
+Nex 目前还处于早期快速迭代阶段，为了追求极致的开发体验，随时可能会有破坏性的变更。
 
-**短期的痛苦，换来长期的收益。**
+但我承诺：**我会详细记录每一次重构背后的思考过程和心路历程。**
 
-如果我们不在 0.3.0 做这些改变，那么：
+并不是为了变更而变更，而是为了探索出最适合 Elixir 的开发体验。我希望通过分享这些思考，能和大家一起交流、学习，共同打磨出一个真正好用的框架。
 
-1. **技术债会越积越多**: 4 个 `use` 语句会一直存在
-2. **新用户会更困惑**: "为什么 Nex 这么复杂？"
-3. **生态会分裂**: 一部分人用旧 API，一部分人用新 API
-4. **框架会失去竞争力**: 无法与 Next.js 竞争
-
-**现在是最好的时机**:
-
-- ✅ 用户基数还不大，迁移成本可控
-- ✅ 框架还在快速迭代期，可以大胆改进
-- ✅ AI 时代刚开始，现在布局正当时
+而不是给出一个冷冰冰的"升级指南"，我更愿意告诉你"为什么我要这样做"。
 
 ### 给迁移用户的承诺
 
@@ -659,19 +680,6 @@ end
 
 ---
 
-## 🙏 致谢
-
-感谢所有在 0.2.x 阶段提供反馈的用户，你们的意见让 Nex 变得更好。
-
-特别感谢：
-
-- **Next.js 团队**: 提供了极简框架的最佳实践
-- **Phoenix 团队**: 提供了 Elixir Web 开发的基础
-- **HTMX 社区**: 证明了服务端渲染的现代化可能性
-- **AI 社区**: 推动了流式响应的普及
-
----
-
 ## 📚 延伸阅读
 
 - [UPGRADE_GUIDE.md](./UPGRADE_GUIDE.md) - 详细的升级指南
@@ -682,6 +690,6 @@ end
 
 ---
 
-**Nex 0.3.0 - 极简、现代、实用的 Elixir Web 框架**
+**Nex 0.3.x - 极简、现代、实用的 Elixir Web 框架**
 
 让我们一起构建更好的 Web 应用！🚀
