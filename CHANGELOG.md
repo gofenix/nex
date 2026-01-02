@@ -17,20 +17,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Fully aligned with Next.js convention-over-configuration philosophy
 
 ### Changed
-- **BREAKING: `use Nex` is deprecated**: Use `use Nex` instead
-  - `Nex.Page` still works but emits deprecation warning
-  - Will be removed in a future version
-  - Migration: Replace `use Nex` with `use Nex`
-  - Framework automatically detects page modules and imports HEEx support
+- **BREAKING: Removed `Nex.Page`, `Nex.Api`, `Nex.Partial`, and `Nex.SSE` modules**: Use `use Nex` instead
+  - All `use Nex.*` modules have been completely removed
+  - Using `use Nex.Page`, `use Nex.Api`, `use Nex.Partial`, or `use Nex.SSE` will now cause compilation errors
+  - **Migration required**: Replace all with `use Nex`
+  - Framework automatically detects module type based on path and imports appropriate functions
+  - SSE implementation will be redesigned in a future version
+  - This is a hard breaking change - old code will not compile until updated
+
+### Migration Guide
+
+**Before:**
+```elixir
+defmodule MyApp.Pages.Index do
+  use Nex.Page  # ❌ Will cause compilation error
+end
+
+defmodule MyApp.Api.Users do
+  use Nex.Api  # ❌ Will cause compilation error
+end
+
+defmodule MyApp.Partials.Header do
+  use Nex.Partial  # ❌ Will cause compilation error
+end
+```
+
+**After:**
+```elixir
+defmodule MyApp.Pages.Index do
+  use Nex  # ✅ Unified interface
+end
+
+defmodule MyApp.Api.Users do
+  use Nex  # ✅ Unified interface
+end
+
+defmodule MyApp.Partials.Header do
+  use Nex  # ✅ Unified interface
+end
+
+# SSE endpoints also use unified interface
+defmodule MyApp.Api.Chat.Stream do
+  use Nex  # ✅ Unified interface
+
+  def stream(params, send_fn) do
+    # SSE implementation will be redesigned
+  end
+end
+```
 
 ### Improved
 - **Simplified Module API**: Reduced cognitive load for developers
   - No need to remember different `use` statements for different module types
   - One unified interface: `use Nex`
   - Better alignment with Next.js simplicity
-- **`Nex.Api` Documentation**: Updated to recommend `use Nex`
-  - Clarified that API modules are detected automatically by path
-  - Added examples using unified `use Nex` interface
+  - Automatic type detection based on module path
 
 ## [0.3.0] - 2025-12-31
 
