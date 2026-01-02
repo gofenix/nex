@@ -318,7 +318,7 @@ SSE is excellent for most real-time use cases, but consider alternatives when:
 
 ```elixir
 defmodule MyApp.Api.Stream do
-  use Nex.SSE
+  use Nex
   require Logger
 
   @max_duration_ms 3_600_000  # 1 hour max connection time

@@ -42,7 +42,7 @@ Nex 支持三种类型的路由段：
 ```elixir
 # src/pages/users/[id].ex
 defmodule MyApp.Pages.Users.Id do
-  use Nex.Page
+  use Nex
 
   def mount(params) do
     # params = %{"id" => "123"}
@@ -60,7 +60,7 @@ end
 ```elixir
 # src/pages/docs/[...path].ex
 defmodule MyApp.Pages.Docs.Path do
-  use Nex.Page
+  use Nex
 
   def mount(params) do
     # 访问 /docs/api/v1

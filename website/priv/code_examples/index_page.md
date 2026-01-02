@@ -1,6 +1,6 @@
 ```elixir
 defmodule MyApp.Pages.Index do
-  use Nex.Page
+  use Nex
 
   def mount(_params) do
     %{count: Nex.Store.get(:count, 0)}

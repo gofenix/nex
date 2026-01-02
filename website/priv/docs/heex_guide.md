@@ -159,7 +159,7 @@ Import the component module in the Page module, then use the `<.function_name />
 
 ```elixir
 defmodule MyApp.Pages.Index do
-  use Nex.Page
+  use Nex
   # 1. Import component module
   import MyApp.Partials.Button
 
@@ -177,7 +177,7 @@ end
 ```elixir
 # src/partials/button.ex
 defmodule MyApp.Partials.Button do
-  use Nex.Partial
+  use Nex
 
   def button(assigns) do
     ~H"""
@@ -412,7 +412,7 @@ end
 Action functions do not receive `conn` or old `assigns`. If you use `~H` templates in an Action and reference variables (like `{@count}`), you must explicitly define the `assigns` variable within the function.
 
 ### 2. Helper Usage in Partial Components
-`use Nex.Page` automatically imports helpers like `csrf_input_tag`. However, in components using `use Nex.Partial`, these helpers are not available.
+`use Nex` automatically imports helpers like `csrf_input_tag`. However, in components using `use Nex`, these helpers are not available.
 *   **Recommendation**: Use full name invocation in Partials, e.g., `Nex.CSRF.input_tag()`.
 *   **Or**: Pass needed values via `assigns`.
 

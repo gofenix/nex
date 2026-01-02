@@ -56,13 +56,13 @@ Nex 采用文件系统路由（File-system Routing），通过 `Nex.RouteDiscove
 
 Nex 提供了两种主要的 UI 组件类型：
 
-1.  **Nex.Page (`use Nex.Page`)**:
+1.  **Nex (`use Nex`)** - 统一模块类型，可用于 Page、Api、SSE:
     *   **有状态**: 通过 `Nex.Store` 维持页面级状态。
     *   **路由映射**: 直接对应 URL 路由。
     *   **生命周期**: `mount/1` (初始化数据), `render/1` (渲染 UI), Action Functions (处理 POST 请求)。
     *   **HTMX 集成**: 自动处理 CSRF Token 和 Page ID。
 
-2.  **Nex.Partial (`use Nex.Partial`)**:
+2.  **Nex (`use Nex`) - Partial 组件**:
     *   **无状态**: 纯函数组件。
     *   **无路由**: 仅供 Page 调用。
     *   **复用性**: 用于构建可复用的 UI 元素（如按钮、列表项）。
@@ -102,7 +102,7 @@ graph TD
 ### 2.6 Server-Sent Events (SSE)
 
 Nex 通过 `Nex.SSE` 模块提供对 SSE 的原生支持。
-*   **定义**: 通过 `use Nex.SSE` 定义流式端点。
+*   **定义**: 通过 `use Nex` 定义流式端点。
 *   **实现**: `Nex.Handler` 识别 SSE 端点，设置正确的 Headers (`text/event-stream`)，并建立长连接。
 *   **回调**: 支持 `stream/2` 回调模式，允许实时推送数据。
 

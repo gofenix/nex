@@ -42,7 +42,7 @@ Matches a single URL path segment. The parameter name is defined inside brackets
 ```elixir
 # src/pages/users/[id].ex
 defmodule MyApp.Pages.Users.Id do
-  use Nex.Page
+  use Nex
 
   def mount(params) do
     # params = %{"id" => "123"}
@@ -60,7 +60,7 @@ Matches all remaining path segments. Must be placed at the end of the path.
 ```elixir
 # src/pages/docs/[...path].ex
 defmodule MyApp.Pages.Docs.Path do
-  use Nex.Page
+  use Nex
 
   def mount(params) do
     # Visiting /docs/api/v1

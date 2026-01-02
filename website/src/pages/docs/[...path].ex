@@ -1,5 +1,5 @@
 defmodule NexWebsite.Pages.Docs.Path do
-  use Nex.Page
+  use Nex
 
   def mount(params) do
     # params["path"] is a list, e.g. ["zh", "guide"] or ["guide"]

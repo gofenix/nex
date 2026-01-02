@@ -159,7 +159,7 @@ end
 
 ```elixir
 defmodule MyApp.Pages.Index do
-  use Nex.Page
+  use Nex
   # 1. 导入组件模块
   import MyApp.Partials.Button
 
@@ -177,7 +177,7 @@ end
 ```elixir
 # src/partials/button.ex
 defmodule MyApp.Partials.Button do
-  use Nex.Partial
+  use Nex
 
   def button(assigns) do
     ~H"""
@@ -412,7 +412,7 @@ end
 Action 函数不接收 `conn` 或旧的 `assigns`。如果你在 Action 中使用 `~H` 模板并引用了变量（如 `{@count}`），你必须在函数内显式定义 `assigns` 变量。
 
 ### 2. Partial 组件中的 Helper 使用
-`use Nex.Page` 会自动导入 `csrf_input_tag` 等辅助函数。但在 `use Nex.Partial` 的组件中，这些辅助函数不可用。
+`use Nex` 会自动导入 `csrf_input_tag` 等辅助函数。但在 `use Nex` 的组件中，这些辅助函数不可用。
 *   **推荐**：在 Partial 中使用全名调用，如 `Nex.CSRF.input_tag()`。
 *   **或者**：通过 `assigns` 传递需要的值。
 

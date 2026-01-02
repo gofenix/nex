@@ -200,7 +200,7 @@ Nex 结合 HTMX 的 SSE 扩展 (`hx-ext="sse"`) 可以实现类似 ChatGPT 的�
 在 `src/api/sse/stream.ex` 中：
 ```elixir
 defmodule MyApp.Api.Sse.Stream do
-  use Nex.SSE
+  use Nex
 
   def stream(params, send_fn) do
     # 模拟流式推送

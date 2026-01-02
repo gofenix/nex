@@ -1,6 +1,6 @@
 ```elixir
 defmodule MyApp.Pages.Tasks do
-  use Nex.Page
+  use Nex
 
   def toggle_status(%{"id" => id}) do
     status = DB.toggle(id)
