@@ -2,117 +2,166 @@ defmodule ChatbotSse.Api.Sse.Stream do
   use Nex
 
   @moduledoc """
-  SSE (Server-Sent Events) endpoint for streaming AI responses.
+  SSE (Server-Sent Events) endpoint for streaming AI responses from OpenAI.
 
-  Uses HTMX SSE extension for zero-JS streaming.
+  Uses HTMX SSE extension for zero-JS streaming with Nex.stream/1.
+
+  ## Usage
+
+  HTMX SSE extension uses GET requests with query parameters:
+
+      GET /api/sse/stream?message=Hello
+
+  ## Environment Variables
+
+  - `OPENAI_API_KEY`: OpenAI API key (required)
+  - `OPENAI_BASE_URL`: OpenAI API base URL (default: https://api.openai.com/v1)
+
+  ## Example
+
+      # Set your API key
+      export OPENAI_API_KEY=sk-...
+
+      # Start the server
+      mix nex.dev
+
+      # Test the endpoint
+      curl "http://localhost:4000/api/sse/stream?msg_id=123"
   """
   require Logger
 
-  def stream(params, send_fn) do
-    message = params["message"]
+  def get(req) do
+    # Get message from Store using msg_id
+    msg_id_str = req.query["msg_id"]
+    api_key = Nex.Env.get(:OPENAI_API_KEY)
+    base_url = Nex.Env.get(:OPENAI_BASE_URL, "https://api.openai.com/v1")
 
-    if message do
-      api_key = Nex.Env.get(:OPENAI_API_KEY)
-      base_url = Nex.Env.get(:OPENAI_BASE_URL, "https://api.openai.com/v1")
+    cond do
+      !msg_id_str ->
+        Nex.json(%{error: "Missing msg_id parameter"}, status: 400)
 
-      if api_key == nil or api_key == "" do
-        simulate_streaming_response(message, send_fn)
-      else
-        call_openai_stream(base_url, api_key, message, send_fn)
-      end
-    else
-      send_fn.(%{event: "error", data: "Missing message parameter"})
-    end
-  end
-
-  defp simulate_streaming_response(user_message, send_fn) do
-    input = String.downcase(user_message)
-
-    response_text = cond do
-      String.contains?(input, "hello") ->
-        "Hello! Nice to meet you. Is there anything I can help you with?"
-
-      String.contains?(input, "name") ->
-        "I'm an SSE chatbot for the Nex framework, implementing zero-JS streaming responses using HTMX SSE extension!"
-
-      String.contains?(input, "who") or String.contains?(input, "what") ->
-        "I'm an AI chatbot using SSE streaming. Nex framework + HTMX SSE extension = Zero JS!"
+      !api_key ->
+        Nex.json(%{error: "OPENAI_API_KEY not configured"}, status: 500)
 
       true ->
-        "This is a simulated reply. Configure OPENAI_API_KEY environment variable to use real AI!"
+        # Get the pending message from Store
+        pending = Nex.Store.get(:pending_message)
+
+        if pending && to_string(pending.msg_id) == msg_id_str do
+          # Get chat history from Store
+          chat_messages = Nex.Store.get(:chat_messages, [])
+
+          # Clean up pending message
+          Nex.Store.delete(:pending_message)
+
+          Nex.stream(fn send ->
+            call_openai_stream(base_url, api_key, pending.message, chat_messages, send)
+          end)
+        else
+          Nex.json(%{error: "Message not found"}, status: 404)
+        end
     end
-
-    # Stream each character with cumulative content for HTMX SSE
-    response_text
-    |> String.graphemes()
-    |> Enum.reduce("", fn char, acc ->
-      new_content = acc <> char
-      send_fn.(%{event: "message", data: new_content})
-      Process.sleep(30)
-      new_content
-    end)
-
-    :ok
   end
 
-  defp call_openai_stream(base_url, api_key, user_message, send_fn) do
-    messages = [
-      %{"role" => "system", "content" => "You are a friendly AI assistant."},
-      %{"role" => "user", "content" => user_message}
+  defp call_openai_stream(base_url, api_key, user_message, chat_messages, send) do
+    Logger.info("Streaming OpenAI response for: #{String.slice(user_message, 0, 50)}...")
+
+    url = "#{String.trim_trailing(base_url, "/")}/chat/completions"
+
+    # Build message history from chat_messages
+    # chat_messages is in reverse order (newest first), so we need to reverse it
+    history_messages =
+      chat_messages
+      |> Enum.reverse()
+      |> Enum.map(fn msg ->
+        role = case msg.role do
+          :user -> "user"
+          :assistant -> "assistant"
+          _ -> "user"
+        end
+        %{"role" => role, "content" => msg.content}
+      end)
+
+    # Combine system message + history + current message
+    all_messages = [
+      %{"role" => "system", "content" => "You are a friendly AI assistant."}
+      | history_messages
     ]
 
-    body = %{
+    request_body = Jason.encode!(%{
       "model" => "gpt-3.5-turbo",
-      "messages" => messages,
+      "messages" => all_messages,
       "stream" => true
-    }
+    })
 
-    base_url = String.trim_trailing(base_url, "/")
-    url = "#{base_url}/chat/completions"
+    # Build Finch request
+    request = Finch.build(:post, url, [
+      {"authorization", "Bearer #{api_key}"},
+      {"content-type", "application/json"}
+    ], request_body)
 
-    case Req.post(url, json: body, auth: {:bearer, api_key}, finch: MyFinch) do
-      {:ok, %{status: 200, body: body}} when is_binary(body) ->
-        parse_and_send_sse_chunks(body, send_fn)
+    # Stream the response
+    accumulated = ""
+    buffer = ""
 
-      {:ok, %{status: 200, body: %{"choices" => [%{"message" => %{"content" => content}} | _]}}} ->
-        # Non-streaming response: send cumulative content
-        content
-        |> String.graphemes()
-        |> Enum.reduce("", fn char, acc ->
-          new_content = acc <> char
-          send_fn.(%{event: "message", data: new_content})
-          Process.sleep(30)
-          new_content
-        end)
-        :ok
+    stream_fun = fn
+      {:status, _status}, acc ->
+        acc
 
-      {:ok, %{status: status, body: _body}} ->
-        send_fn.(%{event: "error", data: "Request failed (HTTP #{status})"})
+      {:headers, _headers}, acc ->
+        acc
+
+      {:data, chunk}, {buf, acc} ->
+        # Process each chunk as it arrives
+        new_buffer = buf <> chunk
+        {remaining, new_acc} = process_sse_buffer(new_buffer, acc, send)
+        {remaining, new_acc}
+    end
+
+    case Finch.stream(request, MyFinch, {buffer, accumulated}, stream_fun) do
+      {:ok, _final_acc} ->
+        send.(%{event: "close", data: ""})
+        Logger.info("OpenAI streaming complete")
 
       {:error, reason} ->
-        send_fn.(%{event: "error", data: "Request failed: #{inspect(reason)}"})
+        error_msg = "Request failed: #{inspect(reason)}"
+        Logger.error("OpenAI request failed: #{error_msg}")
+        send.(%{event: "error", data: error_msg})
     end
   end
 
-  defp parse_and_send_sse_chunks(body, send_fn) do
-    # Parse OpenAI streaming response and send cumulative content
-    body
-    |> String.split("\n\n", trim: true)
-    |> Enum.reduce("", fn line, acc ->
-      case String.trim_leading(line, "data: ") do
-        "[DONE]" -> acc
-        json_str ->
-          case Jason.decode(json_str) do
-            {:ok, %{"choices" => [%{"delta" => %{"content" => content}} | _]}}
-            when content != "" and not is_nil(content) ->
-              new_content = acc <> content
-              send_fn.(%{event: "message", data: new_content})
-              new_content
-            _ -> acc
-          end
-      end
-    end)
+  # Process SSE buffer and extract complete messages
+  defp process_sse_buffer(buffer, accumulated, send) do
+    case String.split(buffer, "\n\n", parts: 2) do
+      [complete_msg, rest] ->
+        # Process the complete message
+        new_accumulated = process_sse_message(complete_msg, accumulated, send)
+        # Continue processing remaining buffer
+        process_sse_buffer(rest, new_accumulated, send)
 
-    :ok
+      [incomplete] ->
+        # Not enough data yet, keep in buffer
+        {incomplete, accumulated}
+    end
+  end
+
+  # Process a single SSE message
+  defp process_sse_message(message, accumulated, send) do
+    case String.trim_leading(message, "data: ") do
+      "[DONE]" ->
+        accumulated
+
+      json_str ->
+        case Jason.decode(json_str) do
+          {:ok, %{"choices" => [%{"delta" => %{"content" => content}} | _]}}
+          when content != "" and not is_nil(content) ->
+            new_accumulated = accumulated <> content
+            send.(new_accumulated)
+            new_accumulated
+
+          _ ->
+            accumulated
+        end
+    end
   end
 end
