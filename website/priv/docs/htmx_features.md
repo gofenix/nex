@@ -39,7 +39,7 @@ Issue a GET request to the specified URL.
 **Nex Integration:**
 ```elixir
 defmodule MyApp.Api.Users do
-  use Nex.Api
+  use Nex
 
   def get(_params) do
     users = ["Alice", "Bob", "Charlie"]
@@ -62,7 +62,7 @@ Issue a POST request to the specified URL.
 **Nex Integration:**
 ```elixir
 defmodule MyApp.Pages.Index do
-  use Nex.Page
+  use Nex
 
   def submit(params) do
     email = params["email"]
@@ -84,7 +84,7 @@ Issue a PUT request to the specified URL.
 **Nex Integration (v0.2.4+):**
 ```elixir
 defmodule MyApp.Api.Todos.Id do
-  use Nex.Api
+  use Nex
 
   def put(params) do
     id = params["id"]
@@ -105,7 +105,7 @@ Issue a PATCH request to the specified URL.
 **Nex Integration (v0.2.4+):**
 ```elixir
 defmodule MyApp.Api.Users.Id do
-  use Nex.Api
+  use Nex
 
   def patch(params) do
     id = params["id"]
@@ -126,7 +126,7 @@ Issue a DELETE request to the specified URL.
 **Nex Integration (v0.2.4+):**
 ```elixir
 defmodule MyApp.Api.Todos.Id do
-  use Nex.Api
+  use Nex
 
   def delete(params) do
     id = params["id"]
@@ -719,7 +719,7 @@ Nex has first-class SSE support with `Nex.SSE`:
 
 ```elixir
 defmodule MyApp.Api.Stream do
-  use Nex.SSE
+  use Nex
 
   @impl true
   def stream(params, send_fn) do

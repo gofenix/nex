@@ -200,7 +200,7 @@ Nex combined with HTMX's SSE extension (`hx-ext="sse"`) can implement typewriter
 In `src/api/sse/stream.ex`:
 ```elixir
 defmodule MyApp.Api.Sse.Stream do
-  use Nex.SSE
+  use Nex
 
   def stream(params, send_fn) do
     # Simulate streaming push

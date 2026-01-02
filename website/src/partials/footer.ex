@@ -1,5 +1,5 @@
 defmodule NexWebsite.Partials.Footer do
-  use Nex.Page
+  use Nex
 
   def render(assigns) do
     ~H"""

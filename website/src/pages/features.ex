@@ -1,5 +1,5 @@
 defmodule NexWebsite.Pages.Features do
-  use Nex.Page
+  use Nex
   alias NexWebsite.CodeExamples
 
   def mount(_params) do

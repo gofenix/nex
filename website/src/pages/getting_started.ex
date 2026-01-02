@@ -1,5 +1,5 @@
 defmodule NexWebsite.Pages.GettingStarted do
-  use Nex.Page
+  use Nex
 
   def mount(_params) do
     %{

@@ -22,7 +22,7 @@ Create an API endpoint in `src/api/hello.ex`:
 
 ```elixir
 defmodule MyApp.Api.Hello do
-  use Nex.Api
+  use Nex
 
   def get(req) do
     name = req.query["name"] || "World"
@@ -226,7 +226,7 @@ Define handler functions for different HTTP methods:
 
 ```elixir
 defmodule MyApp.Api.Users do
-  use Nex.Api
+  use Nex
 
   # GET /api/users
   def get(req) do
@@ -271,7 +271,7 @@ Use `[param]` syntax for dynamic route segments:
 ```elixir
 # src/api/users/[id].ex
 defmodule MyApp.Api.Users.Id do
-  use Nex.Api
+  use Nex
 
   # GET /api/users/123
   def get(req) do
@@ -308,7 +308,7 @@ end
 ```elixir
 # src/api/posts/[post_id]/comments/[id].ex
 defmodule MyApp.Api.Posts.PostId.Comments.Id do
-  use Nex.Api
+  use Nex
 
   # GET /api/posts/456/comments/789
   def get(req) do
@@ -408,7 +408,7 @@ defmodule MyApp.Api.Todos.Index do
   - GET /api/todos - List todos with filtering
   - POST /api/todos - Create a new todo
   """
-  use Nex.Api
+  use Nex
 
   # GET /api/todos?completed=false&limit=10
   def get(req) do
@@ -479,7 +479,7 @@ defmodule MyApp.Api.Todos.Id do
   - PUT /api/todos/:id - Update a todo
   - DELETE /api/todos/:id - Delete a todo
   """
-  use Nex.Api
+  use Nex
 
   # GET /api/todos/123
   def get(req) do

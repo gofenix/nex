@@ -83,14 +83,9 @@ defmodule Nex do
   Automatically detects module type based on path and imports appropriate functions.
   """
   defmacro __using__(_opts) do
-    quote do
-      @before_compile Nex
-    end
-  end
-
-  @doc false
-  defmacro __before_compile__(env) do
-    module_name = env.module |> Module.split() |> Enum.join(".")
+    # Get the calling module name at compile time
+    caller_module = __CALLER__.module
+    module_name = caller_module |> Module.split() |> Enum.join(".")
 
     cond do
       # API modules - no imports needed (pure functions)
@@ -103,7 +98,7 @@ defmodule Nex do
       # Page/Partial/Layout modules - need HEEx support
       String.contains?(module_name, ".Pages.") or
       String.contains?(module_name, ".Partials.") or
-          String.ends_with?(module_name, ".Layouts") ->
+      String.ends_with?(module_name, ".Layouts") ->
         quote do
           import Phoenix.Component, only: [sigil_H: 2]
           import Phoenix.HTML, only: [raw: 1]
