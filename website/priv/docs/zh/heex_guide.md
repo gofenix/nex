@@ -151,7 +151,7 @@ end
 
 ### 调用 Partial 组件
 
-组件通常定义在 `src/partials/` 目录下。Nex 推荐使用 `import` 方式调用组件。
+组件通常定义在 `src/components/` 目录下。组件可以直接在 HEEx 模板中使用完整模块名调用。
 
 #### 使用 `import`
 
@@ -161,7 +161,7 @@ end
 defmodule MyApp.Pages.Index do
   use Nex
   # 1. 导入组件模块
-  import MyApp.Partials.Button
+  import MyApp.Components.Button
 
   def render(assigns) do
     ~H"""
@@ -175,8 +175,8 @@ end
 **组件定义示例**：
 
 ```elixir
-# src/partials/button.ex
-defmodule MyApp.Partials.Button do
+# src/components/button.ex
+defmodule MyApp.Components.Button do
   use Nex
 
   def button(assigns) do
@@ -439,4 +439,4 @@ end
 ```
 
 ### 4. Partial 组件命名
-通常与文件名保持一致，例如 `src/partials/ui/button.ex` 对应 `MyApp.Partials.Ui.Button`。这将有助于代码组织和查找。
+通常与文件名保持一致，例如 `src/components/ui/button.ex` 对应 `MyApp.Components.Ui.Button`。这将有助于代码组织和查找。

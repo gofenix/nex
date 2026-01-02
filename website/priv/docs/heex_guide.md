@@ -151,7 +151,7 @@ end
 
 ### Invoking Partial Components
 
-Components are typically defined in the `src/partials/` directory. Nex recommends using `import` to invoke components.
+Components are typically defined in the `src/components/` directory. Components can be invoked directly in HEEx templates using their full module name.
 
 #### Using `import`
 
@@ -161,7 +161,7 @@ Import the component module in the Page module, then use the `<.function_name />
 defmodule MyApp.Pages.Index do
   use Nex
   # 1. Import component module
-  import MyApp.Partials.Button
+  import MyApp.Components.Button
 
   def render(assigns) do
     ~H"""
@@ -175,8 +175,8 @@ end
 **Component Definition Example**:
 
 ```elixir
-# src/partials/button.ex
-defmodule MyApp.Partials.Button do
+# src/components/button.ex
+defmodule MyApp.Components.Button do
   use Nex
 
   def button(assigns) do
@@ -413,7 +413,7 @@ Action functions do not receive `conn` or old `assigns`. If you use `~H` templat
 
 ### 2. Helper Usage in Partial Components
 `use Nex` automatically imports helpers like `csrf_input_tag`. However, in components using `use Nex`, these helpers are not available.
-*   **Recommendation**: Use full name invocation in Partials, e.g., `Nex.CSRF.input_tag()`.
+*   **Recommendation**: Use full name invocation in Components, e.g., `Nex.CSRF.input_tag()`.
 *   **Or**: Pass needed values via `assigns`.
 
 ### 3. Keep Templates Simple
@@ -439,4 +439,4 @@ end
 ```
 
 ### 4. Partial Component Naming
-Usually matches the filename, e.g., `src/partials/ui/button.ex` corresponds to `MyApp.Partials.Ui.Button`. This helps with code organization and lookup.
+Usually matches the filename, e.g., `src/components/ui/button.ex` corresponds to `MyApp.Components.Ui.Button`. This helps with code organization and lookup.

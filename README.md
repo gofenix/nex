@@ -72,7 +72,7 @@ my_app/
 │   ├── api/             # API endpoints (JSON)
 │   │   └── todos/
 │   │       └── index.ex # GET/POST /api/todos
-│   ├── partials/        # Reusable components
+│   ├── components/      # Reusable components
 │   └── layouts.ex       # Layout template
 ├── mix.exs
 └── Dockerfile           # Production deployment

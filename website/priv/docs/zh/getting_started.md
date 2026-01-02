@@ -30,7 +30,7 @@ my_app/
 │   ├── api/             # JSON API 端点
 │   │   └── todos/
 │   │       └── index.ex # GET/POST /api/todos
-│   ├── partials/        # 可复用组件
+│   ├── components/      # 可复用组件
 │   └── layouts.ex       # 布局模板
 ├── mix.exs
 └── Dockerfile           # 生产环境部署

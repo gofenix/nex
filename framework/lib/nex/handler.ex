@@ -27,11 +27,11 @@ defmodule Nex.Handler do
         path == ["nex", "live-reload"] ->
           handle_live_reload(conn)
 
-        # API routes: /api/* (check for SSE endpoints first)
+        # API routes: /api/*
         match?(["api" | _], path) ->
           handle_api_or_sse(conn, method, path)
 
-        # Legacy SSE endpoint: /sse/* (for backward compatibility)
+        # SSE endpoint: /sse/*
         match?(["sse" | _], path) ->
           handle_sse(conn, method, path)
 
@@ -50,7 +50,7 @@ defmodule Nex.Handler do
     end
   end
 
-  # API or SSE handlers - check if module uses Nex.SSE
+  # API or SSE handlers
   defp handle_api_or_sse(conn, method, path) do
     api_path = case path do
       ["api" | rest] -> rest
@@ -59,7 +59,7 @@ defmodule Nex.Handler do
 
     case resolve_api_module(api_path) do
       {:ok, module, params} ->
-        # Check if this is an SSE endpoint (has __sse_endpoint__ function)
+        # Check if this is an SSE endpoint
         is_sse = Code.ensure_loaded?(module) and function_exported?(module, :__sse_endpoint__, 0)
 
         if is_sse do
@@ -75,7 +75,7 @@ defmodule Nex.Handler do
     end
   end
 
-  # Handle SSE endpoint (module uses Nex.SSE)
+  # Handle SSE endpoint
   defp handle_sse_endpoint(conn, module, params) do
     page_id = get_page_id_from_request(conn)
     Nex.Store.set_page_id(page_id)

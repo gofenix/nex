@@ -20,7 +20,7 @@ defmodule Myapp.Pages.Index do
         <ul class="space-y-2 text-left">
           <li>📁 <code>src/pages/</code> - Page components</li>
           <li>🔌 <code>src/api/</code> - API endpoints</li>
-          <li>🧩 <code>src/partials/</code> - Reusable components</li>
+          <li>🧩 <code>src/components/</code> - Reusable components</li>
           <li>🎨 <code>src/layouts.ex</code> - Layout template</li>
         </ul>
       </div>

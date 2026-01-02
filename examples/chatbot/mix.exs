@@ -21,7 +21,7 @@ defmodule Chatbot.MixProject do
 
   defp deps do
     [
-      {:nex, path: "../../framework"},
+      {:nex_core, path: "../../framework"},
       {:req, "~> 0.5"}  # Elixir HTTP client (includes Finch)
     ]
   end

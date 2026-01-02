@@ -6,7 +6,7 @@ defmodule Nex.Router do
 
   - `src/pages/*.ex` → Page routes (GET for render, POST for actions)
   - `src/api/*.ex` → API routes (function name = HTTP method)
-  - `src/partials/*.ex` → No routes (pure components)
+  - `src/components/*.ex` → No routes (pure components)
   """
 
   use Plug.Router

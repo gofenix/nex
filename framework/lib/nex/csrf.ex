@@ -76,11 +76,19 @@ defmodule Nex.CSRF do
   Validates the CSRF token from the request.
   Returns :ok if valid, {:error, reason} otherwise.
 
-  Note: Since Nex is stateless and does not use server-side sessions, strict token
-  validation requires the token to be present in the process dictionary (generated
-  during the same request cycle) or implementing a stateless signed token mechanism.
-  Currently, if no expected token is found (e.g. stateless POST), validation passes
-  to allow the request to proceed, but this behavior may be tightened in future versions.
+  ## Security Limitation (TODO)
+
+  **Current Implementation**: Since Nex is stateless and does not use server-side sessions,
+  CSRF validation is limited. If no expected token is found in the process dictionary
+  (i.e., the token was not generated during the same request cycle), validation passes
+  and returns `:ok`.
+
+  **Security Impact**: This means that stateless POST requests without a valid token
+  will be accepted. This is a **temporary implementation** to maintain stateless architecture.
+
+  **TODO**: Implement signed token mechanism for stateless CSRF protection.
+  Consider using Phoenix.Token or similar cryptographic signing to validate tokens
+  across request cycles without server-side session storage.
   """
   def validate(conn) do
     expected_token = Process.get(:csrf_token)
