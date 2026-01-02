@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **BREAKING: Removed `use Nex.Api`**: Simplified API module design
+  - Removed `__using__` macro from `Nex.Api` module (it provided no functionality)
+  - API modules are now plain Elixir modules without any `use` statement
+  - `Nex.Api` module now serves purely as documentation and conventions guide
+  - Updated all examples to remove `use Nex.Api`
+  - Migration: Simply remove `use Nex.Api` line from your API modules
+
+### Improved
+- **`Nex.Api` Documentation**: Updated module documentation to reflect current API 2.0 conventions
+  - Removed outdated API 1.0 examples (bare maps, tuple returns)
+  - Added comprehensive examples showing `Nex.Req` struct usage and `Nex.Response` returns
+  - Added dynamic routes examples and Next.js alignment comparison table
+  - Emphasized convention-based approach fully aligned with Next.js API Routes
+
 ## [0.3.0] - 2025-12-31
 
 ### Added
