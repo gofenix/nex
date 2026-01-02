@@ -123,6 +123,7 @@ end
   - RouteDiscovery reduced from 394 lines to 342 lines (-13%)
   - Clearer separation of concerns: Handler = request processing, RouteDiscovery = routing
   - **Breaking**: Dynamic routes now require explicit file-system routing (e.g., `[id].ex`)
+  - Fixed: `index.ex` files now correctly match their parent path (e.g., `pages/index.ex` → `/`, `users/index.ex` → `/users`)
 
 ## [0.3.0] - 2025-12-31
 
