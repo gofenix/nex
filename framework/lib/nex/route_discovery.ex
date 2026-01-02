@@ -58,11 +58,18 @@ defmodule Nex.RouteDiscovery do
     # Split into segments
     segments = Path.split(relative)
 
+    # Special case: "index" at the end means it matches the parent path
+    # e.g., "index" -> [], "users/index" -> ["users"]
+    segments = case List.last(segments) do
+      "index" -> List.delete_at(segments, -1)
+      _ -> segments
+    end
+
     # Parse each segment into route parts
     {pattern, param_names} = parse_segments(segments)
 
-    # Build module name
-    module_parts = segments_to_module_parts(segments)
+    # Build module name (always include Index for index files)
+    module_parts = segments_to_module_parts(Path.split(relative))
 
     %{
       file_path: file_path,
