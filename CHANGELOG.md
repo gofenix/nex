@@ -110,8 +110,19 @@ end
   - Deleted old `format_sse_event/1` (4 overloads) and `format_sse_data/1` (2 overloads)
   - Removed `/sse/*` route (use `/api/*` with `Nex.stream/1` instead)
   - Removed `__sse_endpoint__` marker check
-  - Handler module reduced from 872 lines to 714 lines (-18%)
   - All SSE functionality now uses the unified `Nex.stream/1` API
+
+### Refactored
+- **Unified Route Resolution**: Consolidated all route resolution logic into `RouteDiscovery`
+  - Moved `resolve_action`, `resolve_page_module`, `resolve_api_module` from Handler to RouteDiscovery
+  - **Removed all legacy fallback code** - now only uses file-system based routing
+  - Deleted `resolve_legacy`, `resolve_action_legacy`, `path_to_module_parts`, `is_dynamic_segment?`
+  - New unified API: `RouteDiscovery.resolve(:pages | :api | :action, path)`
+  - Handler now only orchestrates request handling, RouteDiscovery handles all routing
+  - Handler reduced from 714 lines to 537 lines (-25%)
+  - RouteDiscovery reduced from 394 lines to 342 lines (-13%)
+  - Clearer separation of concerns: Handler = request processing, RouteDiscovery = routing
+  - **Breaking**: Dynamic routes now require explicit file-system routing (e.g., `[id].ex`)
 
 ## [0.3.0] - 2025-12-31
 

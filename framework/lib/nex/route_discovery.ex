@@ -226,4 +226,117 @@ defmodule Nex.RouteDiscovery do
     end
     :ok
   end
+
+  # =============================================================================
+  # Unified Route Resolution API
+  # =============================================================================
+
+  @doc """
+  Unified route resolution entry point.
+
+  ## Examples
+
+      resolve(:pages, ["users", "123"])
+      # => {:ok, MyApp.Pages.Users.Id, %{"id" => "123"}}
+
+      resolve(:api, ["users"])
+      # => {:ok, MyApp.Api.Users, %{}}
+
+      resolve(:action, ["todos", "create_todo"])
+      # => {:ok, MyApp.Pages.Todos, "create_todo", %{}}
+  """
+  def resolve(type, path)
+
+  def resolve(type, path) when type in [:pages, :api] do
+    app_module = get_app_module()
+    src_path = get_src_path()
+    prefix = if type == :pages, do: "Pages", else: "Api"
+
+    routes = get_routes(src_path, type)
+
+    case match_route(routes, path, app_module, prefix) do
+      {:ok, module_name, params} ->
+        case safe_to_existing_module(module_name) do
+          {:ok, module} -> {:ok, module, params}
+          :error -> :error
+        end
+
+      :error ->
+        :error
+    end
+  end
+
+  def resolve(:action, path) do
+    app_module = get_app_module()
+    src_path = get_src_path()
+
+    case path do
+      [] ->
+        # POST / → Index.index
+        case safe_to_existing_module("#{app_module}.Pages.Index") do
+          {:ok, module} -> {:ok, module, "index", %{}}
+          :error -> :error
+        end
+
+      [action] ->
+        # POST /create_todo → Index.create_todo
+        # Also try: POST /stream → Stream.stream
+        action_module_name = [app_module, "Pages", Macro.camelize(action)] |> Enum.join(".")
+
+        with {:ok, action_module} <- safe_to_existing_module(action_module_name),
+             {:ok, action_atom} <- safe_to_existing_atom(action),
+             true <- function_exported?(action_module, action_atom, 1) do
+          {:ok, action_module, action, %{}}
+        else
+          _ ->
+            case safe_to_existing_module("#{app_module}.Pages.Index") do
+              {:ok, module} -> {:ok, module, action, %{}}
+              :error -> :error
+            end
+        end
+
+      segments ->
+        # POST /todos/123/delete → resolve module path, last segment is action
+        {module_path, [action]} = Enum.split(segments, -1)
+
+        routes = get_routes(src_path, :pages)
+
+        case match_route(routes, module_path, app_module, "Pages") do
+          {:ok, module_name, params} ->
+            case safe_to_existing_module(module_name) do
+              {:ok, module} -> {:ok, module, action, params}
+              :error -> :error
+            end
+
+          :error ->
+            :error
+        end
+    end
+  end
+
+  # Config helpers
+  defp get_app_module do
+    Application.get_env(:nex_core, :app_module, "MyApp")
+  end
+
+  defp get_src_path do
+    Application.get_env(:nex_core, :src_path, "src")
+  end
+
+  # Safe atom/module conversion to prevent atom exhaustion attacks
+  defp safe_to_existing_atom(string) do
+    {:ok, String.to_existing_atom(string)}
+  rescue
+    ArgumentError -> :error
+  end
+
+  defp safe_to_existing_module(module_name) do
+    case safe_to_existing_atom("Elixir.#{module_name}") do
+      {:ok, module} ->
+        if Code.ensure_loaded?(module), do: {:ok, module}, else: :error
+
+      :error ->
+        :error
+    end
+  end
 end
