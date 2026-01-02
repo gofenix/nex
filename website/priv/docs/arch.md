@@ -115,7 +115,7 @@ Nex 通过 `Nex.SSE` 模块提供对 SSE 的原生支持。
 *   **目录结构**:
     *   `src/pages`: 页面代码
     *   `src/api`: API 代码
-    *   `src/partials`: 组件代码
+    *   `src/components`: 组件代码
     *   `src/layouts.ex`: 布局定义
     *   `mix.exs`: 项目配置
     *   `Dockerfile`: 容器化部署支持

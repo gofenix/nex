@@ -40,7 +40,7 @@ website/
 │   │   ├── index.ex         # Homepage
 │   │   ├── features.ex      # Features page
 │   │   └── getting_started.ex # Getting started guide
-│   └── partials/            # Reusable components
+│   └── components/          # Reusable components
 │       ├── nav.ex           # Navigation bar
 │       └── footer.ex        # Footer
 ├── mix.exs                  # Project configuration

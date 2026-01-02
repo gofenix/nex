@@ -21,7 +21,7 @@ defmodule Guestbook.MixProject do
 
   defp deps do
     [
-      {:nex, path: "../../framework"}
+      {:nex_core, path: "../../framework"}
     ]
   end
 end

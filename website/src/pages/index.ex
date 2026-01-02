@@ -186,7 +186,7 @@ defmodule NexWebsite.Pages.Index do
             <p class="text-claude-muted mb-6 leading-relaxed">Classic todo app with partial updates. Learn HTMX patterns and state management.</p>
             <div class="flex gap-3">
               <span class="px-3 py-1 bg-gray-100 rounded-full text-xs font-semibold text-claude-muted">HTMX</span>
-              <span class="px-3 py-1 bg-gray-100 rounded-full text-xs font-semibold text-claude-muted">Partials</span>
+              <span class="px-3 py-1 bg-gray-100 rounded-full text-xs font-semibold text-claude-muted">Components</span>
             </div>
           </div>
         </div>

@@ -494,7 +494,7 @@ defmodule Mix.Tasks.Nex.New do
     end
     ```
 
-    ## Creating Partials
+    ## Creating Components
 
     ```elixir
     # src/components/button.ex
