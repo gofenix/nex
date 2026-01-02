@@ -1,5 +1,5 @@
 defmodule Guestbook.Partials.Guestbook.Message do
-  use Nex.Partial
+  use Nex
 
   @doc """
   Render a single guestbook message.

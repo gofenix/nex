@@ -1,5 +1,5 @@
 defmodule AlpineShowcase.Partials.Profile.Settings do
-  use Nex.Partial
+  use Nex
 
   def profile_settings(assigns) do
     ~H"""
@@ -7,9 +7,9 @@ defmodule AlpineShowcase.Partials.Profile.Settings do
     <div class="card bg-base-100 shadow-xl">
       <div class="card-body">
         <h2 class="card-title mb-4">Edit Profile</h2>
-        <form 
-          x-data="{ 
-            bio: 'Original bio content...', 
+        <form
+          x-data="{
+            bio: 'Original bio content...',
             originalBio: 'Original bio content...',
             get charsCount() { return this.bio.length; },
             get isDirty() { return this.bio !== this.originalBio; }
@@ -26,11 +26,11 @@ defmodule AlpineShowcase.Partials.Profile.Settings do
                 <span x-text="charsCount"></span>/100
               </span>
             </label>
-            
+
             <!-- x-model binds input to state -->
-            <textarea 
-              name="bio" 
-              class="textarea textarea-bordered h-24" 
+            <textarea
+              name="bio"
+              class="textarea textarea-bordered h-24"
               x-model="bio"
               maxlength="100"
             ></textarea>
@@ -40,8 +40,8 @@ defmodule AlpineShowcase.Partials.Profile.Settings do
           <div class="form-control mt-4" x-data="{ newTag: '', tags: ['Elixir', 'Alpine'] }">
              <label class="label"><span class="label-text">Skills (Press Enter to add)</span></label>
              <div class="flex gap-2 mb-2">
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   class="input input-bordered w-full max-w-xs"
                   placeholder="Add a skill..."
                   x-model="newTag"
@@ -62,8 +62,8 @@ defmodule AlpineShowcase.Partials.Profile.Settings do
 
           <div class="card-actions justify-end mt-6">
             <!-- Save button is disabled if content is unchanged -->
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               class="btn btn-primary"
               x-bind:disabled="!isDirty"
             >

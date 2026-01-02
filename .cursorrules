@@ -133,7 +133,7 @@ For shared UI components:
 
 ```elixir
 defmodule MyApp.Partials.Nav do
-  use Nex.Partial
+  use Nex
 
   def render(assigns) do
     ~H"""

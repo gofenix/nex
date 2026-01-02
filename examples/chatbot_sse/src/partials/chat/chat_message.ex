@@ -1,5 +1,5 @@
 defmodule ChatbotSse.Partials.Chat.ChatMessage do
-  use Nex.Partial
+  use Nex
 
   def chat_message(assigns) do
     assigns = Map.put(assigns, :is_user, assigns.message.role == :user)
