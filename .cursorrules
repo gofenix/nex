@@ -39,7 +39,7 @@ Pages are the primary building blocks. Each page module has two functions:
 
 ```elixir
 defmodule MyApp.Pages.Index do
-  use Nex.Page
+  use Nex
 
   # Called on GET request - returns initial state
   def mount(_params) do
@@ -82,7 +82,7 @@ For REST APIs, use `Nex.Api`:
 
 ```elixir
 defmodule MyApp.Api.Todos do
-  use Nex.Api
+  use Nex
 
   def get(_params) do
     {:ok, %{todos: ["Buy milk", "Write code"]}}

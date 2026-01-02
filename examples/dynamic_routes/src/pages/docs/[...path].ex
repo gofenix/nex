@@ -1,5 +1,5 @@
 defmodule DynamicRoutes.Pages.Docs.Path do
-  use Nex.Page
+  use Nex
 
   def mount(%{"path" => path}) do
     path_string = Enum.join(path, "/")

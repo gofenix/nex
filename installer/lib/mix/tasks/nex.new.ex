@@ -201,7 +201,7 @@ defmodule Mix.Tasks.Nex.New do
   defp layouts(a) do
     """
     defmodule #{a.module_name}.Layouts do
-      use Nex.Page
+      use Nex
 
       def render(assigns) do
         ~H\"\"\"
@@ -235,7 +235,7 @@ defmodule Mix.Tasks.Nex.New do
   defp index(a) do
     """
     defmodule #{a.module_name}.Pages.Index do
-      use Nex.Page
+      use Nex
       alias #{a.module_name}.Partials.Card
 
       def mount(_params) do
@@ -309,7 +309,7 @@ defmodule Mix.Tasks.Nex.New do
       - `req.body` - Request body (always a Map, never nil)
       - `Nex.json/2` - JSON response helper
       \"\"\"
-      use Nex.Api
+      use Nex
 
       def get(req) do
         # Access query parameters - Next.js style
@@ -467,7 +467,7 @@ defmodule Mix.Tasks.Nex.New do
     ```elixir
     # src/pages/about.ex -> /about
     defmodule #{a.module_name}.Pages.About do
-      use Nex.Page
+      use Nex
 
       def render(assigns) do
         ~H\"\"\"
@@ -482,7 +482,7 @@ defmodule Mix.Tasks.Nex.New do
     ```elixir
     # src/api/users.ex -> /api/users
     defmodule #{a.module_name}.Api.Users do
-      use Nex.Api
+      use Nex
 
       def get(req) do
         # req.query - path params + query string

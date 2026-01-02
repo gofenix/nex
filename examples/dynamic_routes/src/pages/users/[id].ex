@@ -1,5 +1,5 @@
 defmodule DynamicRoutes.Pages.Users.Id do
-  use Nex.Page
+  use Nex
 
   def mount(%{"id" => id}) do
     %{

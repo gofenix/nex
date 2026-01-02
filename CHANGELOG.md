@@ -17,10 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Fully aligned with Next.js convention-over-configuration philosophy
 
 ### Changed
-- **BREAKING: `use Nex.Page` is deprecated**: Use `use Nex` instead
+- **BREAKING: `use Nex` is deprecated**: Use `use Nex` instead
   - `Nex.Page` still works but emits deprecation warning
   - Will be removed in a future version
-  - Migration: Replace `use Nex.Page` with `use Nex`
+  - Migration: Replace `use Nex` with `use Nex`
   - Framework automatically detects page modules and imports HEEx support
 
 ### Improved

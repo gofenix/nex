@@ -84,7 +84,7 @@ my_app/
 
 ```elixir
 defmodule MyApp.Pages.Index do
-  use Nex.Page
+  use Nex
 
   def mount(_params) do
     %{count: Nex.Store.get(:count, 0)}
@@ -125,7 +125,7 @@ end
 
 ```elixir
 defmodule MyApp.Pages.Todos do
-  use Nex.Page
+  use Nex
 
   def mount(_params) do
     %{todos: fetch_todos()}
@@ -176,7 +176,7 @@ end
 
 ```elixir
 defmodule MyApp.Api.Todos.Index do
-  use Nex.Api
+  use Nex
 
   def get do
     %{data: fetch_todos()}

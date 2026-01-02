@@ -9,7 +9,7 @@ defmodule Nex.Page do
   Change:
 
       defmodule MyApp.Pages.Index do
-        use Nex.Page
+        use Nex
       end
 
   To:
@@ -34,13 +34,13 @@ defmodule Nex.Page do
 
   defmacro __using__(_opts) do
     IO.warn("""
-    `use Nex.Page` is deprecated. Please use `use Nex` instead.
+    `use Nex` is deprecated. Please use `use Nex` instead.
 
     The framework will automatically detect your module type based on its path.
 
     Migration:
       defmodule MyApp.Pages.Index do
-        use Nex  # ← Change from `use Nex.Page`
+        use Nex  # ← Change from `use Nex`
       end
     """, Macro.Env.stacktrace(__CALLER__))
 

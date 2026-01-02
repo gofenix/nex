@@ -1,5 +1,5 @@
 defmodule AlpineShowcase.Pages.Index do
-  use Nex.Page
+  use Nex
   import AlpineShowcase.Partials.Users.List
   import AlpineShowcase.Partials.Users.FormModal
   import AlpineShowcase.Partials.Profile.Settings
@@ -20,7 +20,7 @@ defmodule AlpineShowcase.Pages.Index do
   def render(assigns) do
     ~H"""
     <div x-data="{ currentTab: 'users', userModalOpen: false }" class="container mx-auto max-w-4xl">
-      
+
       <div class="text-center mb-8">
         <h1 class="text-4xl font-bold mb-2">Nex + Alpine.js Showcase</h1>
         <p class="text-base-content/70">A comprehensive example of "The STACK"</p>
@@ -28,11 +28,11 @@ defmodule AlpineShowcase.Pages.Index do
 
       <!-- Tabs Navigation (Client-side switching) -->
       <div role="tablist" class="tabs tabs-boxed mb-8 bg-base-100 p-2 shadow-sm">
-        <a role="tab" class="tab tab-lg" 
-           x-bind:class="{ 'tab-active': currentTab === 'users' }" 
+        <a role="tab" class="tab tab-lg"
+           x-bind:class="{ 'tab-active': currentTab === 'users' }"
            x-on:click="currentTab = 'users'">User Management</a>
-        <a role="tab" class="tab tab-lg" 
-           x-bind:class="{ 'tab-active': currentTab === 'profile' }" 
+        <a role="tab" class="tab tab-lg"
+           x-bind:class="{ 'tab-active': currentTab === 'profile' }"
            x-on:click="currentTab = 'profile'">Profile Settings</a>
       </div>
 
@@ -41,15 +41,15 @@ defmodule AlpineShowcase.Pages.Index do
         <div class="flex justify-between items-center mb-6">
           <h2 class="text-2xl font-bold">User Directory</h2>
           <!-- Open modal on click, and auto-focus input ($nextTick ensures DOM update) -->
-          <button 
-            class="btn btn-primary" 
+          <button
+            class="btn btn-primary"
             x-on:click="userModalOpen = true; $nextTick(() => $refs.nameInput.focus())"
           >Add User</button>
         </div>
-        
+
         <!-- User List Component -->
         <.user_list users={@users} />
-        
+
         <!-- User Form Modal Component (Pass users list for updates) -->
         <.user_form_modal />
       </div>
@@ -70,14 +70,14 @@ defmodule AlpineShowcase.Pages.Index do
       name: params["name"],
       email: params["email"]
     }
-    
+
     # 1. Update Database/Store
     users = Nex.Store.get(:users, [
       %{id: 1, name: "Alice", email: "alice@example.com"},
       %{id: 2, name: "Bob", email: "bob@example.com"}
     ]) ++ [new_user]
     Nex.Store.put(:users, users)
-    
+
     # 2. Return HTML fragment to append to list
     # Note: Calls the render function from the Partial module
     render_user_row(%{user: new_user})
@@ -86,8 +86,8 @@ defmodule AlpineShowcase.Pages.Index do
   # Handle Update Settings: Maps to PUT /update_settings
   def update_settings(_params) do
     # Simulate save delay
-    Process.sleep(500) 
-    
+    Process.sleep(500)
+
     # Return empty content (Frontend doesn't replace DOM, just listens for event)
     :empty
   end

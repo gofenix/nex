@@ -1,5 +1,5 @@
 defmodule EnergyDashboard.Pages.Index do
-  use Nex.Page
+  use Nex
 
   def mount(_params) do
     # Calculate offset from the start of the current hour

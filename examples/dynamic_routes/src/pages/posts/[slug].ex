@@ -1,5 +1,5 @@
 defmodule DynamicRoutes.Pages.Posts.Slug do
-  use Nex.Page
+  use Nex
 
   def mount(%{"slug" => slug}) do
     %{
