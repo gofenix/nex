@@ -2,28 +2,35 @@ defmodule EnergyDashboard.Api.EnergyStream do
   use Nex
   require Logger
 
+  @moduledoc """
+  Real-time energy price streaming endpoint using Server-Sent Events (SSE).
+
+  Simulates real-time energy pricing with smooth wave patterns.
+
+  ## Usage
+
+  Connect to this endpoint to receive real-time energy price updates:
+
+      GET /api/energy_stream
+
+  The stream will send three types of events:
+  - `price`: Current energy price ($/MWh)
+  - `time`: Current UTC time
+  - `data_points`: Seconds since start of hour
+  """
+
   @base_price 45.0
   @price_variance 15.0
 
-  def stream(params, send_fn) do
-    # Get the offset from client (seconds since start of hour)
-    offset = String.to_integer(params["offset"] || "0")
+  def get(_req) do
+    Logger.info("SSE connection started")
 
-    Logger.info("SSE connection started with offset: #{offset}s")
-
-    # Stream loop - will run until connection closes
-    try do
-      stream_loop(send_fn)
-    catch
-      :throw, :closed ->
-        Logger.info("SSE connection closed by client")
-    end
-
-    Logger.info("SSE stream ended")
-    :ok
+    Nex.stream(fn send ->
+      stream_loop(send)
+    end)
   end
 
-  defp stream_loop(send_fn) do
+  defp stream_loop(send) do
     # Calculate current time
     now = DateTime.utc_now()
     hour_start = %{now | minute: 0, second: 0, microsecond: {0, 0}}
@@ -34,19 +41,19 @@ defmodule EnergyDashboard.Api.EnergyStream do
     price = calculate_price(current_offset)
 
     # Send price update
-    send_fn.(%{event: "price", data: format_price(price)})
+    send.(%{event: "price", data: format_price(price)})
 
     # Send time update
-    send_fn.(%{event: "time", data: format_time(now)})
+    send.(%{event: "time", data: format_time(now)})
 
     # Send data points (simulated)
-    send_fn.(%{event: "data_points", data: "#{current_offset}"})
+    send.(%{event: "data_points", data: "#{current_offset}"})
 
     # Wait 1 second before next update
-    :timer.sleep(1000)
+    Process.sleep(1000)
 
     # Continue streaming
-    stream_loop(send_fn)
+    stream_loop(send)
   end
 
   # Calculate price based on seconds within the hour

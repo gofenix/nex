@@ -58,9 +58,15 @@ defmodule ChatbotSse.Pages.Index do
 
     Nex.Store.update(:chat_messages, [], &[user_msg | &1])
 
+    # Store the pending message for SSE to pick up
     current_page_id = Nex.Store.get_page_id()
+    Nex.Store.put(:pending_message, %{
+      msg_id: msg_id,
+      message: user_message,
+      page_id: current_page_id
+    })
 
-    sse_url = "/api/sse/stream?message=#{URI.encode_www_form(user_message)}&_page_id=#{current_page_id}"
+    sse_url = "/api/sse/stream?msg_id=#{msg_id}&_page_id=#{current_page_id}"
     assigns = %{user_msg: user_msg, msg_id: msg_id, sse_url: sse_url}
     ~H"""
     <.chat_message message={@user_msg} />
@@ -73,7 +79,16 @@ defmodule ChatbotSse.Pages.Index do
              class="bg-gray-700 text-gray-100 px-4 py-3 rounded-2xl whitespace-pre-wrap min-h-[44px]"
              hx-ext="sse"
              sse-connect={@sse_url}
-             sse-swap="message">
+             sse-swap="message"
+             sse-close="close"
+             hx-on:htmx:sse-close="
+               const content = this.textContent.trim();
+               if (content && content !== '...') {
+                 htmx.ajax('POST', '/save_ai_response', {
+                   values: {msg_id: #{@msg_id}, content: content}
+                 });
+               }
+             ">
           <span class="inline-flex gap-1">
             <span class="animate-bounce w-2 h-2 bg-gray-400 rounded-full"></span>
             <span class="animate-bounce w-2 h-2 bg-gray-400 rounded-full" style="animation-delay: 0.1s"></span>
@@ -83,6 +98,23 @@ defmodule ChatbotSse.Pages.Index do
       </div>
     </div>
     """
+  end
+
+  def save_ai_response(%{"msg_id" => msg_id_str, "content" => content} = _params) do
+    msg_id = String.to_integer(msg_id_str)
+    timestamp = format_time()
+
+    ai_msg = %{
+      id: msg_id,
+      role: :assistant,
+      content: content,
+      timestamp: timestamp
+    }
+
+    Nex.Store.update(:chat_messages, [], &[ai_msg | &1])
+
+    # Return empty HTML response
+    Nex.html("")
   end
 
   defp format_time do
