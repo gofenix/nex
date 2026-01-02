@@ -1,8 +1,8 @@
 defmodule AlpineShowcase.Pages.Index do
   use Nex
-  import AlpineShowcase.Partials.Users.List
-  import AlpineShowcase.Partials.Users.FormModal
-  import AlpineShowcase.Partials.Profile.Settings
+  import AlpineShowcase.Components.Users.List
+  import AlpineShowcase.Components.Users.FormModal
+  import AlpineShowcase.Components.Profile.Settings
 
   def mount(_params) do
     # Initialize server-side data

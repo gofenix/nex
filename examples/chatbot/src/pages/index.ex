@@ -1,6 +1,6 @@
 defmodule Chatbot.Pages.Index do
   use Nex
-  import Chatbot.Partials.Chat.ChatMessage
+  import Chatbot.Components.Chat.ChatMessage
 
   def mount(_params) do
     %{

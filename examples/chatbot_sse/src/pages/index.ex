@@ -6,7 +6,7 @@ defmodule ChatbotSse.Pages.Index do
   to stream AI responses character by character.
   """
   use Nex
-  import ChatbotSse.Partials.Chat.ChatMessage
+  import ChatbotSse.Components.Chat.ChatMessage
 
   def mount(_params) do
     %{

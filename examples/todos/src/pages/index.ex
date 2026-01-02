@@ -1,6 +1,6 @@
 defmodule Todos.Pages.Index do
   use Nex
-  import Todos.Partials.Todos.Item
+  import Todos.Components.Todos.Item
 
   def mount(_params) do
     %{

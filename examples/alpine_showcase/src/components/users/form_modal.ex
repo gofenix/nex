@@ -1,4 +1,4 @@
-defmodule AlpineShowcase.Partials.Users.FormModal do
+defmodule AlpineShowcase.Components.Users.FormModal do
   use Nex
 
   def user_form_modal(assigns) do

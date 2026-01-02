@@ -1,4 +1,4 @@
-defmodule NexWebsite.Partials.Nav do
+defmodule NexWebsite.Components.Nav do
   use Nex
 
   def render(assigns) do

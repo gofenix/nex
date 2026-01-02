@@ -19,11 +19,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`Nex.stream/1` - Server-Sent Events (SSE) Support**: Native streaming response for AI applications
   - Simple callback function API: `Nex.stream(fn send -> send.("message") end)`
   - Similar to Python's `StreamingResponse` with generators and Next.js's `ReadableStream`
+  - Real-time streaming using `Finch.stream` - data is sent as it arrives (true typewriter effect)
   - Automatic SSE formatting and header management
-  - Zero boilerplate - simpler than Python FastAPI and Next.js
+  - Zero boilerplate - simpler than Python FastAPI and Next.js (5 lines vs 7 lines vs 15 lines)
   - Perfect for AI streaming responses (OpenAI, Anthropic, etc.)
   - Automatic connection close detection and error handling
-  - Example: 5 lines of code for complete streaming response
+  - Smart history management using `Nex.Store` to avoid URL length limits
+  - Supports custom events: `send.(%{event: "message", data: "content"})`
+  - Example: Complete AI chatbot with history in under 50 lines of code
 
 ### Changed
 - **BREAKING: Removed `Nex.Page`, `Nex.Api`, `Nex.Partial`, and `Nex.SSE` modules**: Use `use Nex` instead
@@ -31,8 +34,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Using `use Nex.Page`, `use Nex.Api`, `use Nex.Partial`, or `use Nex.SSE` will now cause compilation errors
   - **Migration required**: Replace all with `use Nex`
   - Framework automatically detects module type based on path and imports appropriate functions
-  - SSE implementation will be redesigned in a future version
   - This is a hard breaking change - old code will not compile until updated
+
+- **BREAKING: Renamed `partials/` to `components/`**: Better alignment with modern frameworks
+  - Directory: `src/partials/` → `src/components/`
+  - Module namespace: `MyApp.Partials.*` → `MyApp.Components.*`
+  - Path detection: `.Partials.` → `.Components.`
+  - **Reason**: Aligns with React, Vue, Svelte, and Phoenix 1.7+ conventions
+  - **Migration required**: Rename directories and update module names
+  - Improves DX for developers familiar with modern frontend frameworks
 
 ### Migration Guide
 
@@ -49,6 +59,9 @@ end
 defmodule MyApp.Partials.Header do
   use Nex.Partial  # ❌ Will cause compilation error
 end
+
+# Old directory structure
+src/partials/  # ❌ Old naming
 ```
 
 **After:**
@@ -61,16 +74,25 @@ defmodule MyApp.Api.Users do
   use Nex  # ✅ Unified interface
 end
 
-defmodule MyApp.Partials.Header do
-  use Nex  # ✅ Unified interface
+defmodule MyApp.Components.Header do
+  use Nex  # ✅ Unified interface + new naming
 end
 
-# SSE endpoints also use unified interface
+# New directory structure
+src/components/  # ✅ Modern naming (aligned with React/Vue/Phoenix)
+
+# SSE endpoints use unified interface with Nex.stream/1
 defmodule MyApp.Api.Chat.Stream do
   use Nex  # ✅ Unified interface
 
-  def stream(params, send_fn) do
-    # SSE implementation will be redesigned
+  def get(req) do
+    message = req.query["message"]
+    
+    Nex.stream(fn send ->
+      send.("Thinking...")
+      send.("Processing...")
+      send.("Done!")
+    end)
   end
 end
 ```

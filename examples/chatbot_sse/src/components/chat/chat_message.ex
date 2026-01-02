@@ -1,4 +1,4 @@
-defmodule ChatbotSse.Partials.Chat.ChatMessage do
+defmodule ChatbotSse.Components.Chat.ChatMessage do
   use Nex
 
   def chat_message(assigns) do

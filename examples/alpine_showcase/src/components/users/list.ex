@@ -1,4 +1,4 @@
-defmodule AlpineShowcase.Partials.Users.List do
+defmodule AlpineShowcase.Components.Users.List do
   use Nex
 
   # Render the entire list container

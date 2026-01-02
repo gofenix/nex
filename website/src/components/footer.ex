@@ -1,4 +1,4 @@
-defmodule NexWebsite.Partials.Footer do
+defmodule NexWebsite.Components.Footer do
   use Nex
 
   def render(assigns) do

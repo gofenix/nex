@@ -1,4 +1,4 @@
-defmodule Chatbot.Partials.Chat.ChatMessage do
+defmodule Chatbot.Components.Chat.ChatMessage do
   use Nex
 
   @doc """
@@ -6,7 +6,7 @@ defmodule Chatbot.Partials.Chat.ChatMessage do
 
   ## Usage
 
-      alias Chatbot.Partials.Chat.ChatMessage
+      alias Chatbot.Components.Chat.ChatMessage
 
       <ChatMessage.chat_message message={message} />
   """
