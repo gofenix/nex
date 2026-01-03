@@ -273,7 +273,7 @@ defmodule Nex.RouteDiscovery do
     end
   end
 
-  def resolve(:action, path) do
+  def resolve(:action, path, referer_path \\ []) do
     app_module = get_app_module()
     src_path = get_src_path()
 
@@ -286,20 +286,28 @@ defmodule Nex.RouteDiscovery do
         end
 
       [action] ->
-        # POST /create_todo → Index.create_todo
-        # Also try: POST /stream → Stream.stream
-        action_module_name = [app_module, "Pages", Macro.camelize(action)] |> Enum.join(".")
+        # POST /action_name → resolve based on referer context
+        # e.g., from /requests page: POST /fetch_message → Requests.fetch_message
+        case safe_to_existing_atom(action) do
+          {:ok, action_atom} ->
+            # Get the current page module from referer path
+            current_module = get_current_page_module(app_module, referer_path)
 
-        with {:ok, action_module} <- safe_to_existing_module(action_module_name),
-             {:ok, action_atom} <- safe_to_existing_atom(action),
-             true <- function_exported?(action_module, action_atom, 1) do
-          {:ok, action_module, action, %{}}
-        else
-          _ ->
-            case safe_to_existing_module("#{app_module}.Pages.Index") do
-              {:ok, module} -> {:ok, module, action, %{}}
-              :error -> :error
+            # Only search in the current page module
+            case current_module do
+              {:ok, module} ->
+                if function_exported?(module, action_atom, 1) do
+                  {:ok, module, action, %{}}
+                else
+                  :error
+                end
+
+              :error ->
+                :error
             end
+
+          :error ->
+            :error
         end
 
       segments ->
@@ -344,6 +352,35 @@ defmodule Nex.RouteDiscovery do
 
       :error ->
         :error
+    end
+  end
+
+  # Get current page module from referer path
+  defp get_current_page_module(app_module, referer_path) do
+    case referer_path do
+      [] ->
+        # No referer or root path, use Index
+        safe_to_existing_module("#{app_module}.Pages.Index")
+
+      path ->
+        # Try to resolve the referer path to a page module
+        # e.g., ["requests"] -> Pages.Requests
+        routes = get_routes(get_src_path(), :pages)
+
+        case match_route(routes, path, app_module, "Pages") do
+          {:ok, module_name, _params} ->
+            safe_to_existing_module(module_name)
+
+          :error ->
+            # Fallback: try to construct module name directly from path
+            # e.g., ["requests"] -> "Pages.Requests"
+            module_name = path
+              |> Enum.map(&Macro.camelize/1)
+              |> then(&([app_module, "Pages" | &1]))
+              |> Enum.join(".")
+
+            safe_to_existing_module(module_name)
+        end
     end
   end
 end
