@@ -1,8 +1,0 @@
-/deps/
-/_build/
-.env
-.env.local
-*.beam
-erl_crash.dump
-.elixir_ls/
-.DS_Store
