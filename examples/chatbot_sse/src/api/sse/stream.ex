@@ -44,15 +44,19 @@ defmodule ChatbotSse.Api.Sse.Stream do
         Nex.json(%{error: "OPENAI_API_KEY not configured"}, status: 500)
 
       true ->
-        # Get the pending message from Store
-        pending = Nex.Store.get(:pending_message)
+        # Get the pending message from ETS using msg_id as key
+        msg_id_int = String.to_integer(msg_id_str)
+        pending = case :ets.lookup(:chatbot_sse_pending, msg_id_int) do
+          [{^msg_id_int, data}] -> data
+          [] -> nil
+        end
 
-        if pending && to_string(pending.msg_id) == msg_id_str do
+        if pending do
           # Get chat history from Store
-          chat_messages = Nex.Store.get(:chat_messages, [])
+          chat_messages = Nex.Store.get(:sse_chat_messages, [])
 
           # Clean up pending message
-          Nex.Store.delete(:pending_message)
+          :ets.delete(:chatbot_sse_pending, msg_id_int)
 
           Nex.stream(fn send ->
             call_openai_stream(base_url, api_key, pending.message, chat_messages, send)
@@ -86,7 +90,7 @@ defmodule ChatbotSse.Api.Sse.Stream do
     all_messages = [
       %{"role" => "system", "content" => "You are a friendly AI assistant."}
       | history_messages
-    ]
+    ] ++ [%{"role" => "user", "content" => user_message}]
 
     request_body = Jason.encode!(%{
       "model" => "gpt-3.5-turbo",
