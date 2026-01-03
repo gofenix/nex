@@ -157,49 +157,98 @@ defmodule NexWebsite.Pages.Docs.Path do
       %{
         title: t(lang, "Getting Started"),
         items: [
-          %{title: t(lang, "Introduction"), slug: "getting_started"}
+          %{title: t(lang, "Introduction"), slug: "intro"},
+          %{title: t(lang, "Quick Start"), slug: "getting_started"},
+          %{title: t(lang, "Learning Path"), slug: "learning_path"}
+        ]
+      },
+      %{
+        title: t(lang, "Tutorials"),
+        items: [
+          %{title: t(lang, "01. First Page"), slug: "tutorial_01_first_page"},
+          %{title: t(lang, "02. Actions"), slug: "tutorial_02_actions"},
+          %{title: t(lang, "03. Forms"), slug: "tutorial_03_forms"},
+          %{title: t(lang, "04. State"), slug: "tutorial_04_state"},
+          %{title: t(lang, "05. Routing"), slug: "tutorial_05_routing"},
+          %{title: t(lang, "06. Deployment"), slug: "tutorial_06_deployment"}
         ]
       },
       %{
         title: t(lang, "Core Concepts"),
         items: [
-          %{title: t(lang, "Routing"), slug: "routing_guide"},
-          %{title: t(lang, "HTMX Integration"), slug: "htmx_guide"},
-          %{title: t(lang, "HTMX Features"), slug: "htmx_features"},
-          %{title: t(lang, "HEEx Templates"), slug: "heex_guide"},
-          %{title: t(lang, "State Management"), slug: "state_management"},
-          %{title: t(lang, "Styling & UI"), slug: "ui_guide"}
+          %{title: t(lang, "Rendering Lifecycle"), slug: "core_render_guide"},
+          %{title: t(lang, "Action Routing"), slug: "core_action_guide"},
+          %{title: t(lang, "State Management"), slug: "core_state_guide"},
+          %{title: t(lang, "Env Configuration"), slug: "core_env_guide"},
+          %{title: t(lang, "Interaction Protocol"), slug: "core_htmx_guide"}
+        ]
+      },
+      %{
+        title: t(lang, "Interactivity"),
+        items: [
+          %{title: t(lang, "Alpine.js"), slug: "ext_alpine_guide"},
+          %{title: t(lang, "Datastar"), slug: "ext_datastar_guide"},
+          %{title: t(lang, "SSE Real-time"), slug: "ext_sse_guide"}
         ]
       },
       %{
         title: t(lang, "Advanced"),
         items: [
-          %{title: t(lang, "JSON API"), slug: "json_api_guide"},
-          %{title: t(lang, "SSE Performance"), slug: "sse_performance"},
-          %{title: t(lang, "Deployment"), slug: "deployment_guide"},
-          %{title: t(lang, "Comparison"), slug: "comparison"},
-          %{title: t(lang, "FAQ"), slug: "integration_faq"}
+          %{title: t(lang, "JSON API"), slug: "adv_api_guide"},
+          %{title: t(lang, "Components"), slug: "adv_component_guide"}
+        ]
+      },
+      %{
+        title: t(lang, "Architecture & AI"),
+        items: [
+          %{title: t(lang, "Architecture"), slug: "arch_overview"},
+          %{title: t(lang, "Vibe Coding"), slug: "vibe_coding_guide"}
+        ]
+      },
+      %{
+        title: t(lang, "Reference"),
+        items: [
+          %{title: t(lang, "FAQ"), slug: "reference_faq"}
         ]
       }
     ]
   end
 
-  defp t(:zh, "Getting Started"), do: "快速开始"
+  defp t(:zh, "Getting Started"), do: "入门指南"
+  defp t(:zh, "Tutorials"), do: "分步教程"
   defp t(:zh, "Core Concepts"), do: "核心概念"
+  defp t(:zh, "Interactivity"), do: "扩展增强"
   defp t(:zh, "Advanced"), do: "进阶指南"
-  defp t(:zh, "Introduction"), do: "简介"
-  defp t(:zh, "Installation"), do: "安装"
-  defp t(:zh, "Routing"), do: "路由系统"
-  defp t(:zh, "HTMX Integration"), do: "HTMX 集成"
-  defp t(:zh, "HTMX Features"), do: "HTMX 完整特性"
-  defp t(:zh, "HEEx Templates"), do: "HEEx 模板"
-  defp t(:zh, "State Management"), do: "状态管理"
-  defp t(:zh, "Styling & UI"), do: "样式与 UI"
-  defp t(:zh, "JSON API"), do: "JSON API"
-  defp t(:zh, "SSE Performance"), do: "SSE 性能指南"
-  defp t(:zh, "Deployment"), do: "部署指南"
-  defp t(:zh, "Comparison"), do: "框架对比"
-  defp t(:zh, "FAQ"), do: "常见问题"
+  defp t(:zh, "Architecture & AI"), do: "架构与 AI"
+  defp t(:zh, "Reference"), do: "参考资料"
+
+  defp t(:zh, "Introduction"), do: "什么是 Nex？"
+  defp t(:zh, "Quick Start"), do: "快速开始"
+  defp t(:zh, "Learning Path"), do: "学习路径"
+
+  defp t(:zh, "01. First Page"), do: "01. 第一个页面"
+  defp t(:zh, "02. Actions"), do: "02. 添加交互"
+  defp t(:zh, "03. Forms"), do: "03. 表单处理"
+  defp t(:zh, "04. State"), do: "04. 状态管理"
+  defp t(:zh, "05. Routing"), do: "05. 路由系统"
+  defp t(:zh, "06. Deployment"), do: "06. 部署上线"
+
+  defp t(:zh, "Rendering Lifecycle"), do: "渲染生命周期"
+  defp t(:zh, "Action Routing"), do: "Action 路由机制"
+  defp t(:zh, "State Management"), do: "状态管理深入"
+  defp t(:zh, "Env Configuration"), do: "环境配置"
+  defp t(:zh, "Interaction Protocol"), do: "声明式交互协议"
+
+  defp t(:zh, "Alpine.js"), do: "Alpine.js 集成"
+  defp t(:zh, "Datastar"), do: "Datastar 集成"
+  defp t(:zh, "SSE Real-time"), do: "SSE 实时推送"
+
+  defp t(:zh, "JSON API"), do: "构建 JSON API"
+  defp t(:zh, "Components"), do: "组件化开发"
+
+  defp t(:zh, "Architecture"), do: "架构概览"
+  defp t(:zh, "Vibe Coding"), do: "Vibe Coding 指南"
+  defp t(:zh, "FAQ"), do: "常见问题 (FAQ)"
 
   defp t(_, key), do: key
 end

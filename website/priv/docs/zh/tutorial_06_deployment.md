@@ -1,14 +1,6 @@
 # 部署上线
 
-Nex 应用是标准的 Elixir 应用，可以非常容易地打包并在各种平台上运行。
-
-## 🛠️ 本地打包测试
-
-你可以通过 Elixir 的 `mix release` 将应用打包成一个包含所有依赖（甚至包括 Erlang 运行时）的独立运行包：
-
-```bash
-MIX_ENV=prod mix release
-```
+Nex 应用是标准的 Elixir 应用，推荐通过容器化方式在各种平台上运行。
 
 ## 🐳 Docker 部署 (推荐)
 
