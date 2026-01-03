@@ -1,6 +1,6 @@
-# Building JSON APIs (API 2.0)
+# Building JSON APIs
 
-Nex is not only great at generating HTML but also an ideal choice for building high-performance JSON APIs. The Nex API 2.0 specification enforces a set of standards to ensure API response consistency, robustness, and a great developer experience.
+Nex is not only great at generating HTML but also an ideal choice for building high-performance JSON APIs. The Nex API specification enforces a set of standards to ensure API response consistency, robustness, and a great developer experience.
 
 ## 1. API Routing and Structure
 
@@ -9,9 +9,9 @@ API files are stored in the `src/api/` directory. URL paths are automatically pr
 *   `src/api/users.ex` -> `/api/users`
 *   `src/api/products/[id].ex` -> `/api/products/123`
 
-## 2. API 2.0 Enforced Specifications
+## 2. API Enforced Specifications
 
-In Nex API 2.0, to unify response formats, we have established the following enforced rules:
+In Nex, to unify response formats, we have established the following enforced rules:
 
 1.  **Must Return `Nex.Response` Struct**: Action functions can no longer return raw Maps or Lists.
 2.  **Use Helper Functions**: You must use helper functions like `Nex.json/2`, `Nex.text/2`, `Nex.redirect/2` to build responses.

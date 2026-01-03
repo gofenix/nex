@@ -29,7 +29,7 @@ Below is the documentation index for the Nex framework. You can refer to the rel
 *   [SSE Real-Time Push](ext_sse_guide.md) - Zero-conversion Server-Sent Events.
 
 ## 5️⃣ ADVANCED GUIDES
-*   [Building JSON APIs](adv_api_guide.md) - Following API 2.0 enforced specifications.
+*   [Building JSON APIs](adv_api_guide.md) - Consistent response formats and request handling.
 *   [Component-Based Development](adv_component_guide.md) - Usage of UI components and slots.
 
 ## 6️⃣ ARCHITECTURE

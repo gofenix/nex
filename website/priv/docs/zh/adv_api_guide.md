@@ -1,6 +1,6 @@
-# 构建 JSON API (API 2.0)
+# 构建 JSON API
 
-Nex 不仅擅长生成 HTML，也是构建高性能 JSON API 的理想选择。Nex API 2.0 规范强制执行了一套标准，以确保 API 的响应一致性、健壮性和良好的开发者体验。
+Nex 不仅擅长生成 HTML，也是构建高性能 JSON API 的理想选择。Nex 强制执行了一套标准，以确保 API 的响应一致性、健壮性和良好的开发者体验。
 
 ## 1. API 路由与结构
 
@@ -9,9 +9,9 @@ API 文件存放在 `src/api/` 目录下。URL 路径会自动加上 `/api` 前�
 *   `src/api/users.ex` -> `/api/users`
 *   `src/api/products/[id].ex` -> `/api/products/123`
 
-## 2. API 2.0 强制规范
+## 2. API 规范
 
-在 Nex API 2.0 中，为了统一响应格式，我们制定了以下强制规则：
+在 Nex 中，为了统一响应格式，我们制定了以下强制规则：
 
 1.  **必须返回 `Nex.Response` 结构体**：Action 函数不能再返回原始的 Map 或 List。
 2.  **使用辅助函数**：必须使用 `Nex.json/2`, `Nex.text/2`, `Nex.redirect/2` 等辅助函数来构建响应。

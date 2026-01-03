@@ -41,7 +41,7 @@ Nex does not use traditional route table files; instead, it adopts a **dynamic s
 *   **Concurrency**: Thanks to the BEAM concurrency model, each user's state is independent.
 *   **Simplified Logic**: Developers don't need to manage session synchronization; just `get` and `put`.
 
-### Why Enforce API 2.0 Specifications?
+### Why Enforce JSON API Specifications?
 *   **Type Safety**: Ensures all interfaces return consistent JSON structures.
 *   **DX (Developer Experience)**: Provides precise fix guidance upon errors, instead of having developers dig through source code.
 

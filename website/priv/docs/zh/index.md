@@ -29,7 +29,7 @@
 *   [SSE 实时推送](ext_sse_guide.md) - 零转换的服务器发送事件。
 
 ## 5️⃣ ADVANCED GUIDES (进阶指南)
-*   [构建 JSON API](adv_api_guide.md) - 遵循 API 2.0 强制规范。
+*   [构建 JSON API](adv_api_guide.md) - 统一的响应格式与参数处理规范。
 *   [组件化开发](adv_component_guide.md) - UI 组件与插槽的使用。
 
 ## 6️⃣ ARCHITECTURE (架构原理)
