@@ -12,11 +12,11 @@ defmodule DatastarDemo.Pages.Requests do
       <p class="text-gray-600 mb-6">Send signals to backend and handle responses</p>
 
       <div class="mb-8 p-6 border-2 border-orange-200 rounded-lg">
-        <h3 class="text-xl font-semibold text-gray-800 mb-4">Example 1: @get Request</h3>
-        <p class="text-sm text-gray-600 mb-4">Fetch data from backend with @get</p>
+        <h3 class="text-xl font-semibold text-gray-800 mb-4">Example 1: @post Request</h3>
+        <p class="text-sm text-gray-600 mb-4">Fetch data from backend with @post</p>
 
         <button
-          data-on:click="@get('/requests/fetch_message')"
+          data-on:click="@post('/requests/fetch_message')"
           class="px-4 py-2 bg-blue-500 text-white rounded">
           Fetch Message
         </button>
@@ -30,7 +30,7 @@ defmodule DatastarDemo.Pages.Requests do
         <div data-signals="{inputValue: ''}" class="space-y-4">
           <input
             type="text"
-            data-bind:inputValue
+            data-on:input="$inputValue = event.target.value"
             placeholder="Enter text"
             class="w-full px-4 py-2 border rounded"/>
           <button
@@ -67,12 +67,12 @@ defmodule DatastarDemo.Pages.Requests do
 
         <div class="space-y-4">
           <button
-            data-on:click="@get('/requests/append_item', {merge: 'append'})"
+            data-on:click="@post('/requests/append_item')"
             class="px-4 py-2 bg-blue-500 text-white rounded">
             Append Item
           </button>
-          <div id="items" class="p-4 bg-gray-50 rounded">
-            <div class="text-sm">Items will be appended here</div>
+          <div id="items" class="p-4 bg-gray-50 rounded space-y-2" data-merge="append">
+            <div class="text-sm text-gray-500">Items will be appended here</div>
           </div>
         </div>
       </div>
@@ -82,7 +82,7 @@ defmodule DatastarDemo.Pages.Requests do
         <p class="text-sm text-gray-600 mb-4">Handle backend errors gracefully</p>
 
         <button
-          data-on:click="@get('/requests/might_fail')"
+          data-on:click="@post('/requests/might_fail')"
           class="px-4 py-2 bg-red-500 text-white rounded">
           Try Request
         </button>
@@ -135,7 +135,9 @@ defmodule DatastarDemo.Pages.Requests do
   def append_item(_params) do
     assigns = %{}
     ~H"""
-    <div class="text-sm">Item appended at #{DateTime.utc_now() |> DateTime.to_string()}</div>
+    <div id="items" data-merge="append">
+      <div class="text-sm text-blue-600">Item appended at <%= DateTime.utc_now() |> DateTime.to_string() %></div>
+    </div>
     """
   end
 
