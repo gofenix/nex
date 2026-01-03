@@ -2,116 +2,66 @@ defmodule DatastarDemo.Pages.Index do
   use Nex
 
   def mount(_params) do
-    %{
-      title: "Counter - Datastar Demo",
-      count: Nex.Store.get(:count, 0)
-    }
+    %{title: "Lesson 1: Getting Started"}
   end
 
   def render(assigns) do
     ~H"""
-    <div class="bg-white rounded-lg shadow p-8 max-w-md mx-auto">
-      <h2 class="text-3xl font-bold text-gray-800 mb-6">Counter Demo</h2>
+    <div class="bg-white rounded-lg shadow p-8 max-w-3xl mx-auto">
+      <h2 class="text-3xl font-bold text-gray-800 mb-4">Lesson 1: Getting Started</h2>
 
-      <div class="mb-6">
-        <h3 class="text-lg font-semibold text-gray-700 mb-2">特性 1: 后端驱动更新</h3>
-        <p class="text-sm text-gray-600 mb-4">使用 Datastar 的 @post() 发送请求，后端返回 HTML 片段</p>
+      <div class="mb-8 p-6 border-2 border-gray-200 rounded-lg">
+        <h3 class="text-xl font-semibold text-gray-800 mb-4">Example 1: data-on attribute</h3>
+        <p class="text-sm text-gray-600 mb-4">Official example from Datastar guide</p>
 
-        <div class="text-center">
-          <div id="counter-display" class="text-6xl font-bold text-blue-600 mb-6">
-            {@count}
-          </div>
+        <button
+          data-on:click="alert('I am sorry Dave. I am afraid I cannot do that.')"
+          class="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+          Open the pod bay doors, HAL.
+        </button>
 
-          <div class="flex gap-2 justify-center">
-            <button
-              data-on:click="@post('/decrement')"
-              class="px-6 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition">
-              -
-            </button>
-
-            <button
-              data-on:click="@post('/reset')"
-              class="px-6 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition">
-              Reset
-            </button>
-
-            <button
-              data-on:click="@post('/increment')"
-              class="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition">
-              +
-            </button>
-          </div>
+        <div class="mt-4 p-3 bg-gray-50 rounded text-sm">
+          <p class="font-semibold mb-2">Key point:</p>
+          <p>data-on can listen to any event and execute Datastar expressions</p>
         </div>
       </div>
 
-      <div class="border-t pt-6">
-        <h3 class="text-lg font-semibold text-gray-700 mb-2">特性 2: 前端信号（响应性）</h3>
-        <p class="text-sm text-gray-600 mb-4">无需后端请求，纯前端响应式更新</p>
+      <div class="mb-8 p-6 border-2 border-gray-200 rounded-lg">
+        <h3 class="text-xl font-semibold text-gray-800 mb-4">Example 2: Patching Elements</h3>
+        <p class="text-sm text-gray-600 mb-4">Backend-driven DOM updates via morphing</p>
 
-        <div data-signals="{localCount: 0}" class="text-center">
-          <div class="text-4xl font-bold text-purple-600 mb-4">
-            <span data-text="$localCount"></span>
-          </div>
+        <button
+          data-on:click="@post('/open_doors')"
+          class="px-6 py-3 bg-purple-500 text-white rounded-lg hover:bg-purple-600 mb-4">
+          Open the pod bay doors, HAL.
+        </button>
 
-          <div class="flex gap-2 justify-center">
-            <button
-              data-on:click="$localCount--"
-              class="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 transition">
-              - (前端)
-            </button>
+        <div id="hal" class="p-4 bg-gray-50 rounded-lg text-center">Waiting for command...</div>
 
-            <button
-              data-on:click="$localCount = 0"
-              class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition">
-              Reset (前端)
-            </button>
+        <div class="mt-4 p-3 bg-gray-50 rounded text-sm">
+          <p class="font-semibold mb-2">How it works</p>
+          <p>Button with data-on:click sends @get request to backend endpoint. Backend returns HTML fragment with matching id. Datastar morphs the DOM by id.</p>
+        </div>
 
-            <button
-              data-on:click="$localCount++"
-              class="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 transition">
-              + (前端)
-            </button>
-          </div>
+        <div class="mt-3 p-3 bg-blue-50 rounded text-sm">
+          <p class="font-semibold mb-2">Key concepts</p>
+          <ul class="ml-4 space-y-1">
+            <li>1. Datastar sends @get request to backend</li>
+            <li>2. Backend returns HTML with content-type text/html</li>
+            <li>3. Datastar matches elements by id (morphing)</li>
+            <li>4. Only changed parts of DOM are updated</li>
+          </ul>
         </div>
       </div>
-
-      <div class="mt-6 p-4 bg-blue-50 rounded">
-        <p class="text-sm text-gray-700">
-          <strong>对比：</strong><br>
-          上面的计数器每次点击都会发送请求到后端<br>
-          下面的计数器完全在前端运行，无需后端
-        </p>
-      </div>
     </div>
     """
   end
 
-  def increment(_params) do
-    count = Nex.Store.update(:count, 0, &(&1 + 1))
-    assigns = %{count: count}
+  def open_doors(_params) do
+    assigns = %{}
     ~H"""
-    <div id="counter-display" class="text-6xl font-bold text-blue-600 mb-6">
-      {@count}
-    </div>
-    """
-  end
-
-  def decrement(_params) do
-    count = Nex.Store.update(:count, 0, &(&1 - 1))
-    assigns = %{count: count}
-    ~H"""
-    <div id="counter-display" class="text-6xl font-bold text-blue-600 mb-6">
-      {@count}
-    </div>
-    """
-  end
-
-  def reset(_params) do
-    Nex.Store.put(:count, 0)
-    assigns = %{count: 0}
-    ~H"""
-    <div id="counter-display" class="text-6xl font-bold text-blue-600 mb-6">
-      {@count}
+    <div id="hal" class="p-4 bg-red-50 border border-red-200 rounded-lg text-center">
+      <p class="text-red-800 font-bold">I am sorry, Dave. I am afraid I cannot do that.</p>
     </div>
     """
   end
