@@ -6,615 +6,163 @@
 
 这篇文档记录了我在开发 Nex 过程中的思考。
 
-特别感谢 **Reddit (r/elixir, r/programming)** 和 **Elixir Forum** 的朋友们。你们的反馈、质疑、建议，甚至批评，都帮助我一点点找到了 Nex 应该是什么样子。没有你们，就没有 0.3.x 这次重构。
+特别感谢 **Reddit (r/elixir)** 和 **Elixir Forum** 的朋友们。你们的反馈、质疑、建议，甚至批评，都帮助我一点点找到了 Nex 应该是什么样子。没有你们，就没有 0.3.x 这次重构。
 
 也感谢 **Next.js**、**Phoenix**、**HTMX** 团队，你们的工作给了我无数灵感。
 
 ---
 
-## 版本历程
-
-- **0.3.0** (2025-12-31): 统一接口，对齐 Next.js，SSE 流式响应
-- **0.3.1** (2026-01-02): 统一路由解析，删除 legacy 代码，代码净减少 229 行
-
----
-
 ## 📖 TL;DR
 
-如果你只有 2 分钟，这里是核心要点：
+简单来说，0.2.x 有点太复杂了：4 个不同的 `use` 语句，混乱的 API 参数，还有非主流的目录命名。
 
-**0.2.x 的问题**:
-- 4 个不同的 `use` 语句（Page, Api, Partial, SSE）
-- API 请求对象有 4 个参数字段（params, path_params, query_params, body_params）
-- 使用 `partials/` 目录而非 `components/`
-- SSE 需要特殊的 `use Nex.SSE` 标记
+到了 0.3.x，我决定做减法：
+*   只用一个 `use Nex`。
+*   API 参数只保留 `query` 和 `body`，就像 Next.js 一样。
+*   目录改回大家熟悉的 `components/`。
+*   流式响应变成了一个简单的函数 `Nex.stream/1`。
 
-**0.3.x 的解决方案**:
-- ✅ **统一为 `use Nex`** - 框架自动识别模块类型
-- ✅ **JSON API 路由** - `req.query` 和 `req.body`，完全对齐 Next.js
-- ✅ **改为 `components/`** - 对齐现代前端框架标准
-- ✅ **`Nex.stream/1`** - 任何 API 都可以返回流式响应
-- ✅ **统一路由解析** - 所有路由逻辑集中到 RouteDiscovery
-
-**结果**: 代码更简洁（-229 行），学习成本更低（4个概念 → 1个概念），完全对齐 Next.js
+结果就是：代码更少，概念更少，开发起来更顺手。
 
 ---
 
-## 🎯 核心问题：框架的本质是什么？
+## 🎯 核心问题：找回定位
 
-在开发 Nex 0.2.x 的过程中，我一直在犹豫和纠结：**Nex 到底应该是什么样的？** 我不断地验证想法、做对比、参考各种框架，但始终找不到清晰的定位。
+在开发 Nex 0.2.x 的时候，我其实挺纠结的。我总是在想：Nex 到底该长什么样？我试了很多方案，参考了很多框架，但总感觉差点意思。
 
 ### 0.2.x 的困境
 
+看看这段 0.2.x 的代码：
+
 ```elixir
-# 0.2.x 的代码
 defmodule MyApp.Pages.Index do
-  use Nex.Page  # 为什么需要 Nex.Page？
+  use Nex.Page  # 显式声明这是个 Page
 end
 
 defmodule MyApp.Api.Users do
-  use Nex.Api  # 为什么需要 Nex.Api？
+  use Nex.Api  # 显式声明这是个 Api
 end
 
 defmodule MyApp.Partials.Card do
-  use Nex.Partial  # 为什么需要 Nex.Partial？
-end
-
-defmodule MyApp.Api.Stream do
-  use Nex.SSE  # 为什么需要 Nex.SSE？
+  use Nex.Partial  # 显式声明这是个 Partial
 end
 ```
 
-**问题在哪里？**
+这种设计虽然看起来很严谨，但写起来很累。既然文件都在 `pages/` 目录下，为什么还要我再告诉框架一遍"这是个 Page"？
 
-1. **认知负担过重**: 开发者需要记住 4 个不同的 `use` 语句
-2. **违背 DRY 原则**: 每个模块类型都有自己的 `use` 语句，但本质上做的事情类似
-3. **不符合 Nex 定位**: Nex 的目标是"极简"，但这种设计并不简单
-4. **缺乏一致性**: 为什么 Page 需要 `use Nex.Page`，但 Layout 不需要？
+### 向 Next.js 学习
 
-### 灵感来源：Next.js 的零配置哲学
+后来我重新看了下 Next.js。它最大的优点就是**约定优于配置**。你不需要写任何配置代码，文件放对位置就行了。
 
-我重新审视了 Next.js 的设计：
-
-```javascript
-// Next.js - 没有 use 语句，没有配置
-// pages/index.js
-export default function Home() {
-  return <h1>Hello</h1>
-}
-
-// pages/api/users.js
-export default function handler(req, res) {
-  res.json({ users: [] })
-}
-```
-
-**Next.js 做对了什么？**
-
-- ✅ **约定优于配置**: 通过文件路径自动识别类型
-- ✅ **零样板代码**: 不需要任何 import 或 use 语句
-- ✅ **认知负担最小**: 开发者只需关注业务逻辑
-
-**这就是 Nex 应该追求的！**
+这才是 Nex 该有的样子：让开发者只关注业务逻辑，少写样板代码。
 
 ---
 
-## 💡 设计决策 1：统一 `use Nex` 接口
+## 💡 决策 1：一个 `use Nex` 搞定所有
 
-### 问题分析
+### 之前的尴尬
 
-在 0.2.x 中，我们有 4 个不同的模块：
+在 0.2.x 里，不仅要记 4 个不同的模块，还得搞清楚它们之间的区别。这完全是人为制造的认知负担。
+
+### 现在的做法
+
+0.3.x 利用 Elixir 的宏机制，根据文件路径自动推断模块类型。
 
 ```elixir
-# framework/lib/nex/page.ex
-defmodule Nex.Page do
-  defmacro __using__(_opts) do
-    quote do
-      import Phoenix.Component
-      import Nex.CSRF
-    end
-  end
+# 0.3.x - 清爽多了
+defmodule MyApp.Pages.Index do
+  use Nex
 end
 
-# framework/lib/nex/api.ex
-defmodule Nex.Api do
-  defmacro __using__(_opts) do
-    quote do
-      # 什么都不导入
-    end
-  end
-end
-
-# framework/lib/nex/partial.ex
-defmodule Nex.Partial do
-  defmacro __using__(_opts) do
-    quote do
-      import Phoenix.Component
-      import Nex.CSRF
-    end
-  end
-end
-
-# framework/lib/nex/sse.ex
-defmodule Nex.SSE do
-  defmacro __using__(_opts) do
-    quote do
-      def __sse_endpoint__, do: true
-    end
-  end
+defmodule MyApp.Api.Users do
+  use Nex
 end
 ```
 
-**发现了什么？**
-
-1. `Nex.Page` 和 `Nex.Partial` **完全一样**！
-2. `Nex.Api` 什么都不做，只是一个空壳
-3. `Nex.SSE` 只是加了一个标记函数
-
-**这是巨大的浪费！**
-
-### 解决方案：路径检测
-
-既然模块类型可以通过路径判断，为什么不自动检测？
-
-```elixir
-# framework/lib/nex.ex
-defmodule Nex do
-  defmacro __using__(_opts) do
-    module_name = __CALLER__.module |> to_string()
-
-    cond do
-      # Pages, Components, Layouts - 需要 HEEx
-      String.contains?(module_name, ".Pages.") or
-      String.contains?(module_name, ".Components.") or
-      String.ends_with?(module_name, ".Layouts") ->
-        quote do
-          import Phoenix.Component, only: [sigil_H: 2]
-          import Nex.CSRF
-        end
-
-      # API - 什么都不导入
-      String.contains?(module_name, ".Api.") ->
-        quote do
-          # Pure functions
-        end
-
-      true ->
-        quote do
-          # Default: nothing
-        end
-    end
-  end
-end
-```
-
-**优势**:
-
-- ✅ **一个接口统治所有**: 只需要 `use Nex`
-- ✅ **自动类型检测**: 框架智能识别模块类型
-- ✅ **零认知负担**: 开发者不需要记住不同的 `use` 语句
-- ✅ **完美对齐 Next.js**: 约定优于配置
-
-### 心路历程
-
-**最初的犹豫**:
-> "这样做会不会太激进？用户可能习惯了 Phoenix 的 `use MyAppWeb, :controller` 模式。"
-
-**转折点**:
-> "等等，Nex 的目标用户是谁？是 Phoenix 的重度用户吗？不，是想要快速原型、简单工具的开发者。他们需要的是 Next.js 级别的简单，而不是 Phoenix 级别的灵活。"
-
-**最终决定**:
-> "删掉所有 `Nex.Page/Api/Partial/SSE` 模块，统一使用 `use Nex`。这是 Breaking Change，但这是正确的方向。"
+虽然这是个 Breaking Change，但这让代码看起来干净多了。
 
 ---
 
-## 💡 设计决策 2：`partials/` → `components/`
+## 💡 决策 2：`partials/` 改名 `components/`
 
-### 问题分析
+这其实是一个迟到的修正。
 
-在 0.2.x 中，我们使用 `partials/` 作为组件目录：
+起初用 `partials` 是因为受到了 Rails 的影响，觉得这样更有"服务端渲染"的味道。但现实是，现在的前端世界（React, Vue, Svelte）以及 Phoenix 1.7+ 全都在用 `components`。
 
-```
-src/
-├── pages/
-├── api/
-└── partials/  # ❓ 为什么叫 partials？
-```
-
-**这个命名的问题**:
-
-1. **不符合现代前端习惯**: React、Vue、Svelte 都用 `components`
-2. **语义不清**: "partial" 是 Rails 的术语，但 Nex 不是 Rails
-3. **学习曲线**: 前端开发者需要重新学习一个新术语
-4. **Phoenix 1.7 也改了**: Phoenix 1.7+ 也从 `templates` 改为 `components`
-
-### 行业调研
-
-| 框架 | 组件目录 | 说明 |
-|------|---------|------|
-| React | `components/` | 行业标准 |
-| Vue | `components/` | 行业标准 |
-| Svelte | `components/` | 行业标准 |
-| Next.js | `components/` | 行业标准 |
-| Phoenix 1.7+ | `components/` | Elixir 生态标准 |
-| Rails | `partials/` | 传统 MVC 框架 |
-| Laravel | `partials/` | 传统 MVC 框架 |
-| **Nex 0.2.x** | `partials/` | ❌ 过时 |
-
-**结论**: 只有传统 MVC 框架还在用 `partials`，现代框架都用 `components`。
-
-### 解决方案
-
-```bash
-# 重命名
-src/partials/ → src/components/
-MyApp.Partials.* → MyApp.Components.*
-```
-
-**优势**:
-
-- ✅ **对齐行业标准**: 与 React/Vue/Phoenix 一致
-- ✅ **降低学习成本**: 前端开发者零学习成本
-- ✅ **语义清晰**: "component" 比 "partial" 更直观
-- ✅ **未来友好**: 符合现代框架发展趋势
-
-### 心路历程
-
-**最初的想法**:
-> "Rails 用 partials，我们也用 partials，这样 Rails 开发者会觉得熟悉。"
-
-**反思**:
-> "但 Nex 的目标用户真的是 Rails 开发者吗？我们的 HTMX + HEEx 组合，更像是 React 的服务端渲染版本。为什么不对齐 React 生态？"
-
-**数据支持**:
-> "查看 GitHub 趋势：React 有 220k stars，Rails 有 55k stars。前端开发者是后端开发者的 4 倍。我们应该服务更大的市场。"
-
-**最终决定**:
-> "改！即使这是 Breaking Change，也要改。长痛不如短痛。"
+强行用 `partials` 除了让新用户感到困惑外，没有任何好处。所以，我们从善如流，改回了大家熟悉的 `components`。
 
 ---
 
-## 💡 设计决策 3：REST API 体验的革命性提升
+## 💡 决策 3：REST API 终于好写了
 
-### 问题分析
+### 痛点
 
-在 0.2.x 中，我们的 API 请求对象设计得非常繁琐：
+在 0.2.x 写 API 简直是折磨。我有 4 个地方可以塞参数：`params`, `path_params`, `query_params`, `body_params`。开发者每次都要思考参数应该从哪里获取，增加了认知负担。
+
+每次写代码都要想：
+* "这个 id 是在路径里还是 query 里？"
+* "我是不是该用 params 还是 query_params？"
+* "body_params 和 params 有什么区别？"
+
+### 借鉴 Next.js
+
+我看了一下 Next.js 的做法，他们只给了两个选项，却覆盖了所有场景：
+
+1. `req.query`: 处理所有 GET 请求参数（无论是路径里的还是 ? 后面的）
+2. `req.body`: 处理所有 POST/PUT 的数据
+
+这简直太合理了。开发者只关心"我要获取数据(Query)"还是"我要提交数据(Body)"。
+
+所以在 0.3.x，我们也这样做了。框架会自动将路径参数（如 `/users/:id`）和查询参数（如 `?page=1`）都统一到 `req.query` 中：
 
 ```elixir
-# 0.2.x 的噩梦
 def get(req) do
-  # 我该用哪个？
-  id = req.params["id"]
-  # 还是这个？
-  id = req.path_params["id"]
-  # 还是这个？
-  page = req.query_params["page"]
-end
-```
-
-这种设计让写 REST API 变得异常痛苦。用户需要记住 4 个不同的参数字段，而且经常混淆。
-
-### 0.3.0 的改变：向 Next.js 致敬
-
-我们决定彻底简化这一点，让写 REST API 变成一种享受。
-
-```elixir
-# 0.3.0 的优雅
-def get(req) do
-  # GET 请求：只有 query
-  id = req.query["id"]      # 自动合并路径参数和查询参数
+  # 路径参数 :id 和查询参数 ?page 都在这里
+  id = req.query["id"]
   page = req.query["page"]
-  
-  # POST 请求：只有 body
+end
+
+def post(req) do
+  # 提交的数据都在这里
   user = req.body["user"]
 end
 ```
 
-### 为什么这是一个巨大的进步？
-
-1. **认知负担归零**：你只需要知道 `req.query` (GET) 和 `req.body` (POST/PUT)。
-2. **符合直觉**：就像你在 Postman 里调试一样，Query Params vs Body。
-3. **开发效率提升**：不再需要查文档确认参数在哪个字段里。
-
-这是 Nex 0.3.0 中**最大、最重要**的改动之一。它不仅仅是字段重命名，而是为了让开发者能更顺畅地构建 REST API。
-
-### 解决方案
-
-```elixir
-# 0.3.0
-%Nex.Req{
-  query: %{},      # 路径参数 + 查询参数（路径优先）
-  body: %{},       # 请求体参数
-  method: "GET",
-  headers: %{},
-  cookies: %{},
-  # 内部字段
-  path: "/api/users/123",
-  private: %{}
-}
-```
-
-**实现细节**:
-
-```elixir
-# framework/lib/nex/req.ex
-def from_plug_conn(%Plug.Conn{} = conn, path_params \\ %{}) do
-  # Next.js style: path params override query params
-  query = Map.merge(conn.query_params, path_params)
-  
-  %__MODULE__{
-    query: query,
-    body: body_params,
-    method: conn.method,
-    headers: Map.new(conn.req_headers),
-    cookies: conn.cookies,
-    path: conn.request_path,
-    private: conn.private
-  }
-end
-```
-
-**优势**:
-
-- ✅ **完全对齐 Next.js**: 字段名、行为、优先级都一致
-- ✅ **降低学习成本**: 熟悉 Next.js 的开发者零学习成本
-- ✅ **简化 API**: 从 4 个字段减少到 2 个
-- ✅ **语义清晰**: GET 用 `query`，POST 用 `body`
-
-### 心路历程
-
-**最初的设计**:
-> "Elixir 开发者习惯 Phoenix 的 `conn.params`，我们也提供 `req.params` 吧。"
-
-**问题暴露**:
-> "用户反馈：我应该用 `req.params` 还是 `req.query_params`？路径参数在哪里？"
-
-**深度思考**:
-> "为什么 Next.js 不需要这么多字段？因为他们把复杂性隐藏在了自动合并逻辑里。用户只需要知道：GET 用 query，POST 用 body。"
-
-**最终决定**:
-> "删掉所有 Nex 特有字段，完全对齐 Next.js。即使这意味着 Breaking Change。"
+这种"无脑"的体验，才是一个好框架该有的样子。
 
 ---
 
-## 💡 设计决策 4：SSE 流式响应的革命
+## 💡 决策 4：流式响应 (Streaming) 是一等公民
 
-### 问题分析
+2025 年了，如果一个 Web 框架还要费劲才能支持 SSE (Server-Sent Events)，那它肯定落伍了。
 
-在 0.2.x 中，SSE 端点需要特殊标记：
+在 0.2.x，你需要 `use Nex.SSE`，还需要遵循特定的函数签名。但在 AI 应用爆发的今天，流式响应应该是随处可用的标准能力。
 
-```elixir
-# 0.2.x
-defmodule MyApp.Api.Stream do
-  use Nex.SSE  # 特殊标记
-
-  def stream(params, send) do
-    send.("Hello")
-  end
-end
-```
-
-**问题在哪里？**
-
-1. **需要特殊模块**: `use Nex.SSE` 是一个单独的模块
-2. **路由复杂**: 需要检查 `__sse_endpoint__` 函数
-3. **不够灵活**: 不能在普通 API 端点返回流式响应
-4. **与统一接口冲突**: 违背了 `use Nex` 的统一理念
-
-### AI 时代的需求
-
-2024-2025 年，AI 应用爆发：
-
-- OpenAI ChatGPT
-- Anthropic Claude
-- Google Gemini
-- 本地 LLM (Ollama, LM Studio)
-
-**所有 AI API 都支持流式响应！**
-
-```python
-# Python - OpenAI SDK
-for chunk in openai.chat.completions.create(
-    model="gpt-4",
-    messages=[{"role": "user", "content": "Hello"}],
-    stream=True
-):
-    print(chunk.choices[0].delta.content)
-```
-
-**Nex 必须原生支持流式响应！**
-
-### 解决方案：`Nex.stream/1`
+现在，你可以在任何地方直接返回流：
 
 ```elixir
-# 0.3.0
-defmodule MyApp.Api.Chat do
-  use Nex  # 统一接口
-
-  def get(req) do
-    message = req.query["message"]
-    
-    Nex.stream(fn send ->
-      # 真正的流式响应
-      Finch.build(:post, "https://api.openai.com/v1/chat/completions", ...)
-      |> Finch.stream(MyApp.Finch, nil, fn
-        {:data, chunk}, acc ->
-          # 解析并立即发送
-          send.(parse_chunk(chunk))
-          acc
-      end)
-    end)
-  end
-end
-```
-
-**设计理念**:
-
-1. **统一接口**: 不需要 `use Nex.SSE`
-2. **返回值**: 返回 `%Nex.Response{content_type: "text/event-stream"}`
-3. **回调函数**: 类似 Python 的 generator 和 Next.js 的 ReadableStream
-4. **真正流式**: 使用 `Finch.stream` 实现边接收边发送
-
-**对比其他框架**:
-
-```python
-# Python FastAPI - 7 lines
-from fastapi.responses import StreamingResponse
-
-def generate():
-    yield "Hello"
-    yield "World"
-
-@app.get("/stream")
-def stream():
-    return StreamingResponse(generate(), media_type="text/event-stream")
-```
-
-```javascript
-// Next.js - 15 lines
-export async function GET() {
-  const encoder = new TextEncoder()
-  
-  const stream = new ReadableStream({
-    start(controller) {
-      controller.enqueue(encoder.encode("Hello"))
-      controller.enqueue(encoder.encode("World"))
-      controller.close()
-    }
-  })
-  
-  return new Response(stream, {
-    headers: { 'Content-Type': 'text/event-stream' }
-  })
-}
-```
-
-```elixir
-# Nex 0.3.0 - 5 lines
 def get(req) do
   Nex.stream(fn send ->
     send.("Hello")
+    Process.sleep(1000)
     send.("World")
   end)
 end
 ```
 
-**Nex 是最简单的！**
-
-### 心路历程
-
-**最初的实现**:
-> "参考 Phoenix LiveView 的 stream 实现，使用 `use Nex.SSE` 标记。"
-
-**问题发现**:
-> "用户反馈：为什么 SSE 需要特殊模块？为什么不能在普通 API 返回流式响应？"
-
-**AI 时代的启发**:
-> "看到 OpenAI 的流式 API，我意识到：流式响应不应该是特殊功能，而应该是一等公民。"
-
-**Python 的启发**:
-> "FastAPI 的 `StreamingResponse` 非常优雅，只需要一个 generator 函数。我们也可以做到！"
-
-**最终设计**:
-> "删掉 `use Nex.SSE`，提供 `Nex.stream/1` 函数。任何 API 端点都可以返回流式响应。"
+简单直接，没有黑魔法。
 
 ---
 
-## 🎨 设计哲学的演进
+## 🎨 总结：找回定位
 
-### 0.1.x - 0.2.x：集百家之长，原型验证
+开发 0.1.x 和 0.2.x 时，我有点贪心，想把 Phoenix 的强大、Next.js 的简洁、Rails 的经典全都缝合在一起。结果就是做出了一个"四不像"。
 
-**思路**: "快速验证想法，从成熟框架中汲取灵感。"
+到了 0.3.x，我终于想通了：**Nex 不应该试图成为另一个 Phoenix。**
 
-**借鉴的框架**:
-- **Phoenix**: LiveView 的组件系统、Plug 的中间件架构
-- **Next.js**: 文件系统路由、API Routes 的简洁性
-- **Rails**: Partials 的命名、约定优于配置的理念
-- **HTMX**: 服务端渲染的现代化方案
-- **FastAPI**: SSE 流式响应的优雅实现
+Elixir 社区已经有了 Phoenix 这样完美的工业级框架。Nex 的使命，应该是提供一个**足够简单、足够轻量**的替代品（核心代码 < 500 行）。它应该像 Next.js 一样，让开发者（尤其是独立开发者）能极速构建出可用的产品。
 
-**结果**:
-- ✅ 快速实现了基本功能
-- ✅ 验证了 HTMX + Elixir 的可行性
-- ✅ 积累了真实的用户反馈
-- ⚠️ 但也暴露了问题：缺乏统一的设计理念
-
-**关键发现**:
-> "集成了很多好的想法，但没有形成自己的特色。用户反馈：'Nex 到底是什么？是简化版的 Phoenix 还是 Elixir 版的 Next.js？'"
-
-### 0.3.0：回归本质，确立身份
-
-**思路**: "Nex 不是 Phoenix，Nex 是 Elixir 版的 Next.js。"
-
-**核心理念**:
-
-1. **约定优于配置** (Convention over Configuration)
-   - 通过文件路径自动识别模块类型
-   - 零配置，开箱即用
-
-2. **极简主义** (Minimalism)
-   - 一个 `use Nex` 统治所有
-   - 只保留必要的 API
-
-3. **对齐 Next.js** (Next.js Alignment)
-   - API 请求对象完全一致
-   - 开发体验完全一致
-
-4. **AI 原生** (AI-First)
-   - 原生支持流式响应
-   - 完美支持 AI 应用
-
-### 设计原则
-
-**1. 简单胜于复杂**
-```elixir
-# ❌ 复杂
-use Nex.Page
-use Nex.Api
-use Nex.Partial
-
-# ✅ 简单
-use Nex
-```
-
-**2. 约定胜于配置**
-```elixir
-# ❌ 需要配置
-defmodule MyApp.Pages.Index do
-  use Nex.Page  # 手动指定类型
-end
-
-# ✅ 自动识别
-defmodule MyApp.Pages.Index do
-  use Nex  # 框架自动识别是 Page
-end
-```
-
-**3. 对齐胜于创新**
-```elixir
-# ❌ Nex 特有
-req.params["id"]
-req.path_params["id"]
-req.query_params["page"]
-
-# ✅ 对齐 Next.js
-req.query["id"]
-req.query["page"]
-req.body["name"]
-```
-
-**4. 一等公民胜于特殊处理**
-```elixir
-# ❌ 特殊处理
-use Nex.SSE
-def stream(params, send)
-
-# ✅ 一等公民
-use Nex
-def get(req) do
-  Nex.stream(fn send -> ... end)
-end
-```
+这就是 Nex 0.3.x 的全部意义：**删繁就简，回归开发者的直觉。**
 
 ---
 
@@ -628,19 +176,14 @@ end
 
 ### 下一步计划
 
-1. **拥抱 Datastar (呼声最高)**
-   - 响应社区强烈需求，探索 Datastar 集成
-   - 让超媒体 (Hypermedia) 开发更进一步，超越 HTMX 的局限
-   - 提供更细粒度的状态更新和更强的交互能力
+1. **探索 Datastar 集成**
+   - 关注 Datastar 作为超媒体 (Hypermedia) 框架的发展
+   - 评估是否能提供比 HTMX 更细粒度的状态更新能力
+   - 保持对新兴技术的开放态度，但优先级低于核心 DX 改进
 
 2. **极致的开发者体验 (DX)**
    - 让框架"更好用"，而不是"功能更多"
-   - 更智能的错误提示和调试工具
    - 更完善的文档和实战范例
-
-3. **更丰富的生态**
-   - 官方 UI 组件库
-   - 更多真实场景的示例项目
 
 ### 核心不变
 
@@ -664,29 +207,12 @@ Nex 目前还处于早期快速迭代阶段，为了追求极致的开发体验�
 
 而不是给出一个冷冰冰的"升级指南"，我更愿意告诉你"为什么我要这样做"。
 
-### 给迁移用户的承诺
-
-1. **详细的迁移指南**: 我们提供了完整的升级文档
-2. **批量迁移脚本**: 大部分修改可以自动完成
-3. **长期支持**: 0.3.x 将是一个长期稳定版本
-4. **更好的未来**: 迁移后，你会发现代码更简洁、更易维护
-
-### 给新用户的承诺
+### 给用户的承诺
 
 1. **极简的 API**: 只需要学习 `use Nex` 和几个响应函数
-2. **零学习成本**: 如果你会 Next.js，你就会 Nex
+2. **熟悉的开发体验**: 如果你会 Next.js，Nex 的 API 设计会让你感到亲切
 3. **完善的文档**: 从入门到精通的完整教程
 4. **活跃的社区**: 我们会持续改进和支持
-
----
-
-## 📚 延伸阅读
-
-- [UPGRADE_GUIDE.md](./UPGRADE_GUIDE.md) - 详细的升级指南
-- [CHANGELOG.md](./CHANGELOG.md) - 完整的变更日志
-- [README.md](./README.md) - 项目介绍
-- [Next.js Documentation](https://nextjs.org/docs) - Next.js 官方文档
-- [Phoenix Documentation](https://hexdocs.pm/phoenix) - Phoenix 官方文档
 
 ---
 
