@@ -114,7 +114,7 @@ defmodule DatastarDemo.Pages.Chat do
         <div
           id={"ai-content-#{@msg_id}"}
           class="px-4 py-3 rounded-lg bg-green-100 min-h-[44px]"
-          data-on:load="@get('{@sse_url}')">
+          data-init="@get('{@sse_url}')">
           <span class="inline-flex gap-1">
             <span class="animate-bounce w-2 h-2 bg-gray-400 rounded-full"></span>
             <span class="animate-bounce w-2 h-2 bg-gray-400 rounded-full" style="animation-delay: 0.1s"></span>

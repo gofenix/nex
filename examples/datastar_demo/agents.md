@@ -223,6 +223,8 @@ Nex.stream(fn send -> send.("data") end)      # Server-Sent Events
 
 ## Project Configuration
 
+The framework handles all HTTP server setup automatically. Example projects only need minimal configuration.
+
 ### mix.exs
 
 ```elixir
@@ -242,13 +244,14 @@ defmodule MyApp.MixProject do
 
   def application do
     [
+      extra_applications: [:logger],
       mod: {MyApp.Application, []}
     ]
   end
 
   defp deps do
     [
-      {:nex, path: "../../framework"}
+      {:nex_core, path: "../../framework"}
     ]
   end
 end
@@ -261,28 +264,14 @@ defmodule MyApp.Application do
   use Application
 
   def start(_type, _args) do
-    children = [
-      {Bandit, plug: Nex.Handler, scheme: :http, port: 4000}
-    ]
+    children = []
     opts = [strategy: :one_for_one, name: MyApp.Supervisor]
     Supervisor.start_link(children, opts)
   end
 end
 ```
 
-## Dependency Management
-
-Only one dependency is needed - the framework will transitively include all required dependencies (Bandit, Jason, etc.):
-
-```elixir
-defp deps do
-  [
-    {:nex, path: "../../framework"}
-  ]
-end
-```
-
-**DO NOT add**: bandit, jason, or any other HTTP/library dependencies. The framework handles everything.
+**Note**: The framework automatically starts Bandit (HTTP server) and all required services.
 
 ## Documentation
 
@@ -313,13 +302,12 @@ Then open http://localhost:4000
 - Use `Nex.Store` for page-scoped state
 - Include HTMX attributes for interactivity
 - Keep examples focused on demonstrating one feature
-- Start Bandit with `{Bandit, plug: Nex.Handler, ...}` in Application
+- Use simple Application supervisor (framework handles Bandit automatically)
 
 ### DO NOT:
 - Create custom router modules - use `Nex.Router` as-is
 - Import Phoenix components manually - `use Nex` handles it
 - Create separate store modules - use `Nex.Store` directly
-- Add `extra_applications` in application/0
-- Manually start Bandit or other services in Application
-- Add bandit, jason, or other dependencies (framework handles them)
+- Start Bandit manually in Application - framework handles it
+- Add bandit, jason, or other dependencies - framework transitively provides them
 - Modify framework code (report issues instead)
