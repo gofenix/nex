@@ -6,6 +6,7 @@
 *   [什么是 Nex？](intro.md) - 框架定位与核心特性。
 *   [快速开始](getting_started.md) - 5 分钟跑起你的第一个应用。
 *   [学习路径](learning_path.md) - 不同背景开发者的上手建议。
+*   [Vibe Coding 指南](vibe_coding_guide.md) - 如何让 AI 更好地为你编写 Nex 代码。
 
 ## 2️⃣ TUTORIALS (分步教程)
 *   [01. 创建第一个页面](tutorial_01_first_page.md) - mount 与 render 的基础用法。
@@ -29,13 +30,10 @@
 
 ## 5️⃣ ADVANCED GUIDES (进阶指南)
 *   [构建 JSON API](adv_api_guide.md) - 遵循 API 2.0 强制规范。
-*   [组件化开发](adv_component_guide.md) - Partial 组件与插槽的使用。
+*   [组件化开发](adv_component_guide.md) - UI 组件与插槽的使用。
 
 ## 6️⃣ ARCHITECTURE (架构原理)
 *   [架构概览](arch_overview.md) - 请求处理流程与设计决策。
 
-## 7️⃣ VIBE CODING (AI 辅助)
-*   [Vibe Coding 指南](vibe_coding_guide.md) - 如何让 AI 更好地为你编写 Nex 代码。
-
-## 8️⃣ REFERENCE (参考资料)
+## 7️⃣ REFERENCE (参考资料)
 *   [常见问题 (FAQ)](reference_faq.md) - 快速排查常见开发疑难。
