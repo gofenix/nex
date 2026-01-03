@@ -57,7 +57,7 @@ defmodule DatastarDemo.Pages.Signals do
           <button data-on:click="$isActive = !$isActive" class="px-4 py-2 bg-purple-500 text-white rounded">
             Toggle Active
           </button>
-          <div data-class:active="$isActive" class="p-4 rounded transition-colors" style="background-color: #f0f0f0">
+          <div data-class="{'bg-green-200 border-2 border-green-500': $isActive, 'bg-gray-100': !$isActive}" class="p-4 rounded transition-colors">
             This box changes color when active
           </div>
         </div>
@@ -67,11 +67,14 @@ defmodule DatastarDemo.Pages.Signals do
         <h3 class="text-xl font-semibold text-gray-800 mb-4">Example 5: data-attr</h3>
         <p class="text-sm text-gray-600 mb-4">Bind HTML attributes to signals</p>
 
-        <div data-signals="{disabled: false}" class="space-y-4">
-          <button data-on:click="$disabled = !$disabled" class="px-4 py-2 bg-orange-500 text-white rounded">
+        <div data-signals="{isDisabled: false}" class="space-y-4">
+          <button data-on:click="$isDisabled = !$isDisabled" class="px-4 py-2 bg-orange-500 text-white rounded cursor-pointer hover:bg-orange-600">
             Toggle Button State
           </button>
-          <button data-attr:disabled="$disabled" class="px-4 py-2 bg-gray-400 text-white rounded">
+          <div class="p-3 bg-gray-50 rounded text-sm">
+            <p data-text="$isDisabled ? 'Button is DISABLED (cannot click)' : 'Button is ENABLED (can click)'"></p>
+          </div>
+          <button data-attr="{disabled: $isDisabled}" data-class="{'opacity-50 cursor-not-allowed': $isDisabled, 'opacity-100 cursor-pointer hover:bg-blue-600': !$isDisabled}" class="px-4 py-2 bg-blue-500 text-white rounded transition-all">
             Click me (may be disabled)
           </button>
         </div>
@@ -83,10 +86,13 @@ defmodule DatastarDemo.Pages.Signals do
 
         <div data-signals="{firstName: 'John', lastName: 'Doe'}" class="space-y-4">
           <div class="space-y-2">
-            <input type="text" data-bind:firstName placeholder="First name" class="w-full px-4 py-2 border rounded"/>
-            <input type="text" data-bind:lastName placeholder="Last name" class="w-full px-4 py-2 border rounded"/>
+            <input type="text" data-on:input="$firstName = event.target.value" placeholder="First name" class="w-full px-4 py-2 border rounded"/>
+            <input type="text" data-on:input="$lastName = event.target.value" placeholder="Last name" class="w-full px-4 py-2 border rounded"/>
           </div>
-          <div data-computed:fullName="$firstName + ' ' + $lastName" class="text-lg font-semibold" data-text="$fullName"></div>
+          <div class="p-3 bg-blue-50 rounded">
+            <p class="text-sm text-gray-600 mb-2">Full name (computed):</p>
+            <p class="text-lg font-semibold" data-text="$firstName + ' ' + $lastName"></p>
+          </div>
         </div>
       </div>
 
