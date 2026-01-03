@@ -16,7 +16,7 @@ defmodule DatastarDemo.Pages.Requests do
         <p class="text-sm text-gray-600 mb-4">Fetch data from backend with @post</p>
 
         <button
-          data-on:click="@post('/requests/fetch_message')"
+          data-on:click="@post('/fetch_message')"
           class="px-4 py-2 bg-blue-500 text-white rounded">
           Fetch Message
         </button>
@@ -34,7 +34,7 @@ defmodule DatastarDemo.Pages.Requests do
             placeholder="Enter text"
             class="w-full px-4 py-2 border rounded"/>
           <button
-            data-on:click="@post('/requests/process', {text: $inputValue})"
+            data-on:click="@post('/process', {text: $inputValue})"
             class="px-4 py-2 bg-green-500 text-white rounded">
             Process
           </button>
@@ -53,7 +53,7 @@ defmodule DatastarDemo.Pages.Requests do
             <button data-on:click="$count++" class="px-3 py-2 bg-green-500 text-white rounded">+</button>
           </div>
           <button
-            data-on:click="@post('/requests/save_count', {count: $count})"
+            data-on:click="@post('/save_count', {count: $count})"
             class="px-4 py-2 bg-purple-500 text-white rounded">
             Save Count
           </button>
@@ -67,7 +67,7 @@ defmodule DatastarDemo.Pages.Requests do
 
         <div class="space-y-4">
           <button
-            data-on:click="@post('/requests/append_item')"
+            data-on:click="@post('/append_item')"
             class="px-4 py-2 bg-blue-500 text-white rounded">
             Append Item
           </button>
@@ -82,7 +82,7 @@ defmodule DatastarDemo.Pages.Requests do
         <p class="text-sm text-gray-600 mb-4">Handle backend errors gracefully</p>
 
         <button
-          data-on:click="@post('/requests/might_fail')"
+          data-on:click="@post('/might_fail')"
           class="px-4 py-2 bg-red-500 text-white rounded">
           Try Request
         </button>

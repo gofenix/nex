@@ -255,7 +255,10 @@ defmodule Nex.Handler do
             # Requests call action functions
             # e.g., POST /create_todo → Index.create_todo/2
             # e.g., DELETE /delete_todo → Index.delete_todo/2
-            case Nex.RouteDiscovery.resolve(:action, path) do
+            # Get current page context from Referer header
+            referer_path = get_referer_path(conn)
+
+            case Nex.RouteDiscovery.resolve(:action, path, referer_path) do
               {:ok, module, action, params} ->
                 handle_page_action(conn, module, action, Map.merge(conn.params, params))
 
@@ -484,9 +487,37 @@ defmodule Nex.Handler do
 
   # Get page_id from request (header or fallback to param for backward compatibility)
   defp get_page_id_from_request(conn) do
+    # Try to get page_id from header (set by HTMX/client-side JS)
     case get_req_header(conn, "x-nex-page-id") do
-      [page_id | _] when is_binary(page_id) and page_id != "" -> page_id
-      _ -> conn.params["_page_id"] || "unknown"
+      [page_id | _] -> page_id
+      [] -> generate_page_id()
+    end
+  end
+
+  defp generate_page_id do
+    :crypto.strong_rand_bytes(16) |> Base.encode16(case: :lower)
+  end
+
+  # Extract path from Referer header
+  defp get_referer_path(conn) do
+    case get_req_header(conn, "referer") do
+      [referer | _] ->
+        # Parse the referer URL and extract the path
+        # e.g., "http://localhost:4000/requests" -> ["requests"]
+        uri = URI.parse(referer)
+        case uri.path do
+          nil -> []
+          "/" -> []
+          path ->
+            path
+            |> String.trim_leading("/")
+            |> String.split("/")
+            |> Enum.reject(&(&1 == ""))
+        end
+
+      [] ->
+        # No referer, default to empty path (will use Index)
+        []
     end
   end
 
