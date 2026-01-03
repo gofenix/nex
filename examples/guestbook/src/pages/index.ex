@@ -84,6 +84,19 @@ defmodule Guestbook.Pages.Index do
     :empty
   end
 
+  # Multi-path Action example: DELETE /messages/[id]/delete
+  # This demonstrates path-based routing where the URL path contains the resource ID
+  # and the action name. This is useful for RESTful APIs and resource operations.
+  def delete(%{"id" => id}) do
+    id = String.to_integer(id)
+
+    Nex.Store.update(:messages, [], fn messages ->
+      Enum.reject(messages, &(&1.id == id))
+    end)
+
+    :empty
+  end
+
   defp format_time do
     {{year, month, day}, {hour, minute, _}} = :erlang.localtime()
     "#{year}-#{pad(month)}-#{pad(day)} #{pad(hour)}:#{pad(minute)}"
