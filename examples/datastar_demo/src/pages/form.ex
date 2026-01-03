@@ -130,12 +130,11 @@ defmodule DatastarDemo.Pages.Form do
     email = signals["email"]
 
     assigns = %{
-      submitted: true,
-      result: "注册成功！欢迎 #{email}"
+      email: email
     }
 
     ~H"""
-    <div id="form-result" data-show="$submitted" class="p-4 bg-green-50 border border-green-200 rounded-lg">
+    <div id="form-result" class="p-4 bg-green-50 border border-green-200 rounded-lg">
       <p class="text-green-800">注册成功！欢迎 {@email}</p>
     </div>
     """

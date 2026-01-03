@@ -24,6 +24,7 @@ defmodule DatastarDemo.Layouts do
               <a href="/form" class="text-blue-600 hover:text-blue-800">Form Validation</a>
               <a href="/chat" class="text-blue-600 hover:text-blue-800">SSE Chat</a>
               <a href="/todos" class="text-blue-600 hover:text-blue-800">Todos</a>
+              <a href="/advanced" class="text-blue-600 hover:text-blue-800">Advanced</a>
             </div>
           </nav>
 

@@ -8,7 +8,9 @@ Datastar 是一个超媒体优先的前端框架，结合了：
 - **HTMX 的后端驱动** - 服务器端渲染和更新
 - **Alpine.js 的前端响应性** - 客户端状态管理和响应式 UI
 
-本 demo 展示了 Datastar 的 5 大核心特性。
+**版本**: Datastar 1.0.0-RC.7（最新稳定版）
+
+本 demo 展示了 Datastar 的 11 大核心特性。
 
 ## 功能演示
 
@@ -27,12 +29,21 @@ Datastar 是一个超媒体优先的前端框架，结合了：
 - **流式响应**：使用 Server-Sent Events 实现 AI 流式输出
 - **加载状态**：使用信号控制 UI 状态
 - **实时更新**：逐字显示响应内容
+- **data-init**：页面加载时自动建立 SSE 连接
 
 ### 4. Todo 列表 (`/todos`)
 - **前端过滤**：使用信号实现客户端过滤（全部/进行中/已完成）
 - **动态样式**：使用 `data-class` 条件应用 CSS 类
 - **CRUD 操作**：添加、切换、删除任务
 - **综合应用**：前端验证 + 后端交互
+
+### 5. 高级特性 (`/advanced`)
+- **data-init**：页面加载时执行（CQRS 模式）
+- **data-on-intersect**：懒加载和无限滚动
+- **data-effect**：响应式副作用
+- **data-ref**：DOM 元素引用
+- **data-indicator**：自动加载指示器
+- **data-style**：动态内联样式
 
 ## 快速开始
 
@@ -167,6 +178,27 @@ end
 - **Tailwind CSS** - 样式框架
 - **Bandit** - HTTP 服务器
 
+## Datastar Tao 哲学
+
+本 demo 遵循 [Datastar Tao](https://data-star.dev/guide/the_tao_of_datastar) 的最佳实践：
+
+### ✅ 核心原则
+
+1. **后端为真理源** - 状态应该在后端管理，前端只是展示
+2. **少用 signals** - 仅用于用户交互和发送数据到后端
+3. **使用 morphing** - 发送大块 DOM，让 Datastar 智能更新
+4. **优先 SSE** - 使用 `text/event-stream` 进行后端推送
+5. **压缩流** - 使用 Brotli 压缩 SSE 响应（生产环境）
+6. **保持 DRY** - 使用模板语言复用代码
+7. **使用锚点导航** - 用 `<a>` 标签，不要自己管理路由
+8. **CQRS 模式** - 长连接读取 + 短请求写入
+
+## 技术栈
+
+- **Nex** - Elixir 极简 Web 框架
+- **Datastar 1.0.0-RC.7** - 超媒体优先前端框架
+- **Tailwind CSS** - 样式框架
+
 ## 关键发现
 
 ### ✅ 优势
@@ -175,21 +207,13 @@ end
 2. **无需 Alpine.js**：Datastar 内置前端响应性
 3. **原生 SSE**：完美支持流式响应
 4. **简洁的后端**：仍然返回 HTML，无需学习新 API
+5. **智能 morphing**：只更新变化的部分，保持状态
 
 ### ⚠️ 需要注意
 
-1. **请求格式**：Datastar 请求带有特殊 header
+1. **请求格式**：Datastar 请求带有 `datastar-request: true` header
 2. **响应格式**：需要返回 SSE 格式（`event: datastar-patch-elements`）
-3. **信号传递**：Datastar 会在请求中发送所有信号
-
-## 下一步
-
-基于这个 demo 的实际运行效果，我们将：
-
-1. 评估 Datastar 的实际表现
-2. 确定框架集成的最佳方式
-3. 优化 DX（开发者体验）
-4. 编写最终的集成规范
+3. **信号传递**：Datastar 会在请求中发送所有信号（GET 的 query 参数，POST 的 body）
 
 ## 许可证
 
