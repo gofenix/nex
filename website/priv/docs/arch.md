@@ -1,93 +1,100 @@
-# Nex 架构分析文档
+# Nex Architecture Analysis Document
 
-## 1. 概述
+## 1. Overview
 
-Nex 是一个基于 Elixir 的极简 Web 框架，专为 HTMX 驱动的应用设计。其核心理念是利用 Elixir 的高并发能力和 HTMX 的前端交互能力，提供一种无需复杂 JavaScript 构建流程的现代 Web 开发体验。
+Nex is a minimalist Web framework built on Elixir, designed specifically for HTMX-driven applications. Its core philosophy is to leverage Elixir's high-concurrency capabilities and HTMX's frontend interactivity to provide a modern Web development experience without complex JavaScript build processes.
 
-Nex 框架主要由两部分组成：
-1.  **Framework Core (`framework/`)**: 运行时核心，包含路由、请求处理、状态管理、组件模型等。
-2.  **Installer (`installer/`)**: 项目生成器，用于快速搭建 Nex 项目。
+The Nex framework consists of two main components:
 
-## 2. 核心架构 (Framework Core)
+1. **Framework Core (`framework/`)**: Runtime core containing routing, request handling, state management, component models, and more.
+2. **Installer (`installer/`)**: Project generator for quickly scaffolding Nex projects.
 
-Nex 的核心架构围绕着 Plug、HTMX 和 Elixir 的 OTP 模型构建。
+## 2. Core Architecture (Framework Core)
 
-### 2.1 请求处理生命周期 (Request Lifecycle)
+Nex's core architecture is built around Plug, HTMX, and Elixir's OTP model.
 
-Nex 使用 `Plug.Router` 作为入口，但将大部分路由逻辑委托给 `Nex.Handler` 进行动态分发。
+### 2.1 Request Lifecycle
+
+Nex uses `Plug.Router` as its entry point, but delegates most routing logic to `Nex.Handler` for dynamic dispatch.
 
 ```mermaid
 graph TD
     Client[Client (Browser/HTMX)] -->|HTTP Request| Router[Nex.Router]
     Router -->|Plug Pipeline| Parsers[Plug.Parsers]
     Parsers -->|Dispatch| Handler[Nex.Handler]
-    
+
     Handler -->|Analysis| RouteType{Route Type}
-    
+
     RouteType -->|/nex/live-reload-ws| WS[WebSockAdapter]
-    RouteType -->|/api/*| API[API Handler]
-    RouteType -->|/sse/*| SSE[SSE Handler]
-    RouteType -->|/*| Page[Page Handler]
-    
+    RouteType -->|/api/*| API[API Handler - SSE via text/event-stream]
+    RouteType -->|POST /action| Action[Action Handler]
+    RouteType -->|GET /*| Page[Page Handler]
+
     Page -->|Route Discovery| Discovery[Nex.RouteDiscovery]
     Discovery -->|Find Module| PageModule[User Page Module]
-    
+
     PageModule -->|mount/1| Assigns[Assigns]
     Assigns -->|render/1| HEEx[HEEx Template]
     HEEx -->|Layout Injection| Layout[Layout Module]
     Layout -->|HTML Response| Client
 ```
 
-### 2.2 文件系统路由 (Route Discovery)
+### 2.2 Route Discovery
 
-Nex 采用文件系统路由（File-system Routing），通过 `Nex.RouteDiscovery` 模块在运行时或编译时扫描 `src/` 目录。
+Nex adopts file-system routing, scanning the `src/` directory at runtime via the `Nex.RouteDiscovery` module.
 
-*   **Pages (`src/pages/`)**: 映射到 Web 页面路由。
-*   **API (`src/api/`)**: 映射到 JSON API 路由。
+- **Pages (`src/pages/`)**: Mapped to Web page routes (GET requests).
+- **API (`src/api/`)**: Mapped to JSON API routes (all HTTP methods).
+- **Actions**: POST/PUT/PATCH/DELETE requests are resolved to page action functions based on the `Referer` header.
 
-支持的路由模式：
-*   **静态路由**: `src/pages/users.ex` -> `/users`
-*   **动态路由**: `src/pages/users/[id].ex` -> `/users/123`
-*   **Catch-all 路由**: `src/pages/docs/[...path].ex` -> `/docs/getting-started/installation`
+Supported routing patterns:
 
-路由发现机制会将路径段解析为模块名，例如 `/users/123` 会尝试匹配 `MyApp.Pages.Users.Id` 模块，并将 `123` 作为参数传递。
+- **Static Routes**: `src/pages/users.ex` -> `/users`
+- **Dynamic Routes**: `src/pages/users/[id].ex` -> `/users/123`
+- **Catch-all Routes**: `src/pages/docs/[...path].ex` -> `/docs/getting-started/installation`
 
-### 2.3 组件模型 (Component Model)
+The route discovery mechanism parses path segments into module names. For example, `/users/123` will attempt to match the `MyApp.Pages.Users.Id` module and pass `123` as a parameter.
 
-Nex 提供了两种主要的 UI 组件类型：
+#### Route Caching
 
-1.  **Nex (`use Nex`)** - 统一模块类型，可用于 Page、Api、SSE:
-    *   **有状态**: 通过 `Nex.Store` 维持页面级状态。
-    *   **路由映射**: 直接对应 URL 路由。
-    *   **生命周期**: `mount/1` (初始化数据), `render/1` (渲染 UI), Action Functions (处理 POST 请求)。
-    *   **HTMX 集成**: 自动处理 CSRF Token 和 Page ID。
+Routes are cached in an ETS table (`:nex_route_cache`) for performance. When files change during development, the cache is automatically cleared and rebuilt on the next request.
 
-2.  **Nex (`use Nex`) - Partial 组件**:
-    *   **无状态**: 纯函数组件。
-    *   **无路由**: 仅供 Page 调用。
-    *   **复用性**: 用于构建可复用的 UI 元素（如按钮、列表项）。
+### 2.3 Component Model
 
-### 2.4 状态管理 (Nex.Store)
+Nex provides two primary types of UI components:
 
-Nex 引入了 **Page-scoped State** 的概念，旨在模拟类似于 React/Vue 组件的状态体验，但运行在服务器端。
+1. **Nex (`use Nex`)** - Unified module type, usable for Page, API, and SSE:
+   - **Stateful**: Maintains page-level state via `Nex.Store`.
+   - **Route Mapped**: Directly corresponds to URL routes.
+   - **Lifecycle**: `mount/1` (initialize data), `render/1` (render UI), Action Functions (handle POST requests).
+   - **HTMX Integration**: Automatically handles CSRF tokens and Page IDs.
 
-*   **Page ID**: 每个页面渲染时生成唯一的 `_page_id`。
-*   **Storage**: 使用 `ETS` 表存储状态，键为 `{page_id, key}`。
-*   **生命周期**: 状态随页面刷新而重置（Ephemeral）。
-*   **TTL**: 默认 1 小时过期，由 `Nex.Store` GenServer 定期清理。
+2. **Nex (`use Nex`) - Partial Components**:
+   - **Stateless**: Pure functional components.
+   - **No Route**: Only called by Pages.
+   - **Reusability**: Used to build reusable UI elements (buttons, list items, etc.).
 
-### 2.5 监督树 (Supervision Tree)
+### 2.4 State Management (Nex.Store)
 
-Nex 框架自身维护一个监督树，确保核心服务的稳定性。
+Nex introduces the concept of **Page-scoped State**, aiming to provide a component-like state experience similar to React/Vue, but running on the server.
+
+- **Page ID**: A unique `_page_id` generated for each page render.
+- **Storage**: Uses ETS tables to store state, with keys as `{page_id, key}`.
+- **Lifecycle**: State resets on page refresh (Ephemeral).
+- **TTL**: Default 1-hour expiration, with `Nex.Store` GenServer periodically cleaning up.
+
+### 2.5 Supervision Tree
+
+Nex maintains its own supervision tree to ensure the stability of core services.
 
 ```mermaid
 graph TD
     AppSup[User App Supervisor] --> NexSup[Nex.Supervisor]
-    
+
     NexSup --> PubSub[Phoenix.PubSub]
     NexSup --> Store[Nex.Store (GenServer + ETS)]
     NexSup --> Reloader[Nex.Reloader (Dev Only)]
-    
+
     subgraph "Framework Internal"
         PubSub -->|Broadcast| ReloadWS[Live Reload WebSocket]
         Store -->|State Mgmt| Pages[Page Processes]
@@ -95,34 +102,36 @@ graph TD
     end
 ```
 
-*   **Phoenix.PubSub**: 用于开发环境下的热重载通知。
-*   **Nex.Store**: 管理页面状态的存储和清理。
-*   **Nex.Reloader**: 监听文件变化并触发重编译和浏览器刷新。
+- **Phoenix.PubSub**: Used for hot-reload notifications in development.
+- **Nex.Store**: Manages page state storage and cleanup.
+- **Nex.Reloader**: Watches for file changes and triggers recompilation and browser refresh.
 
 ### 2.6 Server-Sent Events (SSE)
 
-Nex 通过 `Nex.SSE` 模块提供对 SSE 的原生支持。
-*   **定义**: 通过 `use Nex` 定义流式端点。
-*   **实现**: `Nex.Handler` 识别 SSE 端点，设置正确的 Headers (`text/event-stream`)，并建立长连接。
-*   **回调**: 支持 `stream/2` 回调模式，允许实时推送数据。
+Nex provides native support for SSE through the API layer.
 
-## 3. 安装器架构 (Installer)
+- **Implementation**: SSE is not a separate route type. Instead, return a `%Nex.Response{}` with `content_type: "text/event-stream"` from any API handler.
+- **Streaming**: Use `Nex.stream/1` to create a streaming response that maintains a long-lived connection.
+- **Headers**: `Nex.Handler` automatically sets `content-type: text/event-stream`, `cache-control: no-cache`, and `connection: keep-alive`.
 
-`installer` 目录包含 `mix nex.new` 任务的实现。
+## 3. Installer Architecture
 
-*   **模板生成**: 通过内嵌的字符串模版（Heredocs）生成项目脚手架。
-*   **依赖管理**: 自动运行 `mix deps.get` 安装依赖。
-*   **目录结构**:
-    *   `src/pages`: 页面代码
-    *   `src/api`: API 代码
-    *   `src/components`: 组件代码
-    *   `src/layouts.ex`: 布局定义
-    *   `mix.exs`: 项目配置
-    *   `Dockerfile`: 容器化部署支持
+The `installer` directory contains the implementation of the `mix nex.new` task.
 
-## 4. 总结
+- **Template Generation**: Generates project scaffolding via embedded string templates (Heredocs).
+- **Dependency Management**: Automatically runs `mix deps.get` to install dependencies.
+- **Directory Structure**:
+  - `src/pages`: Page code
+  - `src/api`: API code
+  - `src/components`: Component code
+  - `src/layouts.ex`: Layout definition
+  - `mix.exs`: Project configuration
+  - `Dockerfile`: Container deployment support
 
-Nex 的架构设计极其精简，通过以下方式降低复杂度：
-1.  **去中心化路由**: 无需维护 `router.ex` 文件，利用文件系统结构。
-2.  **统一处理流**: `Nex.Handler` 统一处理所有类型的请求，简化了中间件链。
-3.  **服务器端状态**: `Nex.Store` 使得在服务端维护 UI 状态变得简单，配合 HTMX 可实现复杂的交互而无需客户端状态管理。
+## 4. Summary
+
+Nex's architecture is extremely minimalist, reducing complexity through:
+
+1. **Decentralized Routing**: No need to maintain `router.ex` files, utilizing file system structure instead.
+2. **Unified Processing Flow**: `Nex.Handler` handles all types of requests uniformly, simplifying the middleware chain.
+3. **Server-side State**: `Nex.Store` makes maintaining UI state on the server simple, enabling complex interactions with HTMX without client-side state management.
