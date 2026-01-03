@@ -19,12 +19,12 @@ defmodule DatastarDemo.Layouts do
         <div class="container mx-auto px-4 py-8">
           <nav class="mb-8 bg-white rounded-lg shadow p-4">
             <h1 class="text-2xl font-bold text-gray-800 mb-4">Datastar Demo</h1>
-            <div class="flex gap-4">
-              <a href="/" class="text-blue-600 hover:text-blue-800">Counter</a>
-              <a href="/form" class="text-blue-600 hover:text-blue-800">Form Validation</a>
-              <a href="/chat" class="text-blue-600 hover:text-blue-800">SSE Chat</a>
-              <a href="/todos" class="text-blue-600 hover:text-blue-800">Todos</a>
-              <a href="/advanced" class="text-blue-600 hover:text-blue-800">Advanced</a>
+            <div class="flex gap-3 flex-wrap">
+              <a href="/" class="px-3 py-1 bg-blue-100 text-blue-800 rounded hover:bg-blue-200">第 1 课：Getting Started</a>
+              <a href="/signals" class="px-3 py-1 bg-green-100 text-green-800 rounded hover:bg-green-200">第 2 课：Reactive Signals</a>
+              <a href="/expressions" class="px-3 py-1 bg-purple-100 text-purple-800 rounded hover:bg-purple-200">第 3 课：Expressions</a>
+              <a href="/requests" class="px-3 py-1 bg-orange-100 text-orange-800 rounded hover:bg-orange-200">第 4 课：Backend Requests</a>
+              <a href="/tao" class="px-3 py-1 bg-red-100 text-red-800 rounded hover:bg-red-200">第 5 课：The Tao</a>
             </div>
           </nav>
 
