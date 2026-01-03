@@ -6,6 +6,7 @@ Below is the documentation index for the Nex framework. You can refer to the rel
 *   [What is Nex?](intro.md) - Framework positioning and core features.
 *   [Quick Start](getting_started.md) - Run your first app in 5 minutes.
 *   [Learning Path](learning_path.md) - Onboarding suggestions for different backgrounds.
+*   [Vibe Coding Guide](vibe_coding_guide.md) - How to let AI write Nex code better for you.
 
 ## 2️⃣ TUTORIALS
 *   [01. Create First Page](tutorial_01_first_page.md) - Basic usage of mount and render.
@@ -29,13 +30,10 @@ Below is the documentation index for the Nex framework. You can refer to the rel
 
 ## 5️⃣ ADVANCED GUIDES
 *   [Building JSON APIs](adv_api_guide.md) - Following API 2.0 enforced specifications.
-*   [Component-Based Development](adv_component_guide.md) - Usage of Partial components and slots.
+*   [Component-Based Development](adv_component_guide.md) - Usage of UI components and slots.
 
 ## 6️⃣ ARCHITECTURE
 *   [Architecture Overview](arch_overview.md) - Request processing flow and design decisions.
 
-## 7️⃣ VIBE CODING (AI-Assisted)
-*   [Vibe Coding Guide](vibe_coding_guide.md) - How to let AI write Nex code better for you.
-
-## 8️⃣ REFERENCE
+## 7️⃣ REFERENCE
 *   [Frequently Asked Questions (FAQ)](reference_faq.md) - Troubleshoot common development issues.

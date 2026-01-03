@@ -2,9 +2,9 @@
 
 Nex supports a powerful component-based development model, helping you build maintainable and reusable UI interfaces.
 
-## 1. Partial Components
+## 1. UI Components
 
-Partial components are the most basic unit of reuse in Nex. They are typically stored in the `src/components/` directory, but you can define them in any module.
+UI Components are the most basic unit of reuse in Nex. They are typically stored in the `src/components/` directory, but you can define them in any module.
 
 ### Defining a Component
 A component is just a normal function that receives `assigns` and returns a `~H` template.

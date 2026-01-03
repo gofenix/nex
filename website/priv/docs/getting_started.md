@@ -76,7 +76,7 @@ Nex's directory structure follows "convention over configuration," aiming to eli
 *   `src/`: **Core business logic**
     *   `pages/`: Page modules (GET requests, automatically mapped to URLs).
     *   `api/`: JSON API modules.
-    *   `components/`: Reusable partial components.
+    *   `components/`: Reusable UI components.
     *   `layouts.ex`: Global HTML template (must contain a `<body>` tag).
 *   `lib/`: General business logic (e.g., database models, external integrations).
 *   `.env`: Environment configuration file (automatically loaded).

@@ -1,45 +1,86 @@
 # Alpine.js Integration
 
-While Nex advocates for "Server-Driven" and "Minimalist Interaction," Alpine.js is Nex's perfect partner when handling pure client-side logic (like animations, transitions, complex modal states).
+While Nex advocates for "Server-Driven" and "Minimalist Interaction," Alpine.js is Nex's perfect partner when handling pure client-side logic (like animations, transitions, and complex modal states).
 
 ## 1. Why Use Alpine.js?
 
 Nex handles **server communication**, while Alpine.js handles **local UI logic**.
 
 *   **Lightweight**: No Virtual DOM, operates directly on existing HTML.
-*   **Declarative**: Write logic directly in HTML via `x-data`, `x-show`, `x-on` attributes.
+*   **Declarative**: Write logic directly in HTML via `x-data`, `x-show`, and `x-on` attributes.
 *   **Zero Build**: Included directly via CDN, aligning with Nex's development philosophy.
 
 ## 2. Integration Method
 
-Include it in the `<head>` tag of your `src/layouts.ex`:
+Include it in the `<head>` tag of your `src/layouts.ex` (using `defer` is recommended):
 
 ```html
-<script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 ```
 
-## 3. Common Usage Examples
+## 3. Core Application Patterns
 
-### Modal Control
-Manage display state using Alpine.js without sending requests to the server.
+### A. Global State and Persistence
+You can define global state on the `<body>` tag and use `localStorage` for persistence (e.g., theme switching).
+
+```elixir
+# src/layouts.ex
+<body
+  x-data="{ theme: localStorage.getItem('theme') || 'light' }"
+  x-init="$watch('theme', val => localStorage.setItem('theme', val))"
+  x-bind:data-theme="theme"
+>
+  <button @click="theme = theme === 'light' ? 'dark' : 'light'">Toggle Theme</button>
+  {raw(@inner_content)}
+</body>
+```
+
+### B. Local UI State (Tabs & Modals)
+Use Alpine to handle UI toggles that don't require server involvement, ensuring instant responsiveness.
 
 ```elixir
 ~H"""
-<div x-data="{ open: false }">
-  <button @click="open = true" class="...">Open Modal</button>
+<div x-data="{ currentTab: 'users', modalOpen: false }">
+  <!-- Tab Switching -->
+  <div class="tabs">
+    <a :class="{ 'active': currentTab === 'users' }" @click="currentTab = 'users'">User List</a>
+    <a :class="{ 'active': currentTab === 'settings' }" @click="currentTab = 'settings'">Settings</a>
+  </div>
 
-  <div x-show="open" @click.away="open = false" class="fixed inset-0 bg-black/50">
-    <div class="bg-white p-8 rounded">
-      <h3>This is a Modal</h3>
-      <button @click="open = false">Close</button>
+  <div x-show="currentTab === 'users'">
+    <button @click="modalOpen = true; $nextTick(() => $refs.nameInput.focus())">Add User</button>
+  </div>
+
+  <!-- Modal -->
+  <div x-show="modalOpen" class="modal">
+    <div @click.away="modalOpen = false">
+      <input x-ref="nameInput" placeholder="Enter name...">
+      <button @click="modalOpen = false">Close</button>
     </div>
   </div>
 </div>
 """
 ```
 
-### Cooperation with Nex Action
-You can have Alpine.js listen to HTMX lifecycle events. For example, clear an input box after a Nex Action returns successfully:
+### C. Global Notifications (Toasts)
+Leverage Alpine's event system for cross-component notifications.
+
+```elixir
+# Toast container in Layout
+<div x-data="{ show: false, message: '' }"
+     x-on:show-toast.window="show = true; message = $event.detail; setTimeout(() => show = false, 3000)"
+     x-show="show">
+  <span x-text="message"></span>
+</div>
+
+# Triggering a notification
+<button @click="$dispatch('show-toast', 'Action successful!')">Click Me</button>
+```
+
+## 4. Working with Nex Actions
+
+### Resetting State After Request
+You can listen to HTMX lifecycle events to reset Alpine state.
 
 ```elixir
 ~H"""
@@ -52,9 +93,18 @@ You can have Alpine.js listen to HTMX lifecycle events. For example, clear an in
 """
 ```
 
-## 4. Best Practices
+### Partial Refresh & State Persistence
+When a Nex Action returns an HTML fragment and updates the DOM, if the parent element has `x-data`, Alpine automatically re-initializes newly inserted elements.
 
-*   **Responsibility Division**:
-    *   **Nex**: Handles form submission, database updates, page redirects, and global state storage.
-    *   **Alpine**: Handles dropdown menus, tab switching, real-time search filtering (frontend only), and complex CSS animations.
-*   **Locality of Behavior (LoB)**: Nex's `hx-*` attributes and Alpine's `x-*` attributes coexist in the same tag—this is exactly the mode Vibe Coding loves: seeing all interaction logic in one place.
+## 6. Complete Example Project
+
+To dive deeper into integrating Alpine.js with Nex, please refer to our official showcase project:
+
+**[GitHub: Alpine Showcase](https://github.com/gofenix/nex/tree/main/examples/alpine_showcase)**
+
+### Features included in this example:
+*   **Theme Switching**: Managed via Alpine in `layouts.ex` with `localStorage` persistence.
+*   **Client-side Tabs**: Rapid view switching without server involvement.
+*   **Responsive Modals**: Includes auto-focusing (`$refs`) and click-outside-to-close interactions.
+*   **Global Toast System**: Cross-component notifications using Alpine's event system.
+*   **Complex Form Interaction**: Combines Nex Action's asynchronous submission with instant frontend state resetting.

@@ -13,13 +13,13 @@ defmodule NexWebsite.Pages.Docs.Path do
 
     # Handle root /docs -> redirect to introduction or first doc
     if slug == "" do
-      load_doc(lang, "getting_started")
+      load_doc(lang, "intro")
       |> case do
         {:ok, content, title} ->
           %{
             title: "#{title} - Nex Documentation",
             doc_content: content,
-            current_slug: "getting_started",
+            current_slug: "intro",
             current_lang: lang,
             sidebar: get_sidebar(lang)
           }
@@ -159,7 +159,8 @@ defmodule NexWebsite.Pages.Docs.Path do
         items: [
           %{title: t(lang, "Introduction"), slug: "intro"},
           %{title: t(lang, "Quick Start"), slug: "getting_started"},
-          %{title: t(lang, "Learning Path"), slug: "learning_path"}
+          %{title: t(lang, "Learning Path"), slug: "learning_path"},
+          %{title: t(lang, "Vibe Coding"), slug: "vibe_coding_guide"}
         ]
       },
       %{
@@ -177,18 +178,18 @@ defmodule NexWebsite.Pages.Docs.Path do
         title: t(lang, "Core Concepts"),
         items: [
           %{title: t(lang, "Rendering Lifecycle"), slug: "core_render_guide"},
-          %{title: t(lang, "Action Routing"), slug: "core_action_guide"},
-          %{title: t(lang, "State Management"), slug: "core_state_guide"},
-          %{title: t(lang, "Env Configuration"), slug: "core_env_guide"},
-          %{title: t(lang, "Interaction Protocol"), slug: "core_htmx_guide"}
+          %{title: t(lang, "Action Routing Mechanism"), slug: "core_action_guide"},
+          %{title: t(lang, "State Management Depth"), slug: "core_state_guide"},
+          %{title: t(lang, "Environment Config (Env)"), slug: "core_env_guide"},
+          %{title: t(lang, "Declarative Interaction Protocol"), slug: "core_htmx_guide"}
         ]
       },
       %{
         title: t(lang, "Interactivity"),
         items: [
-          %{title: t(lang, "Alpine.js"), slug: "ext_alpine_guide"},
-          %{title: t(lang, "Datastar"), slug: "ext_datastar_guide"},
-          %{title: t(lang, "SSE Real-time"), slug: "ext_sse_guide"}
+          %{title: t(lang, "Alpine.js Integration"), slug: "ext_alpine_guide"},
+          %{title: t(lang, "Datastar Integration"), slug: "ext_datastar_guide"},
+          %{title: t(lang, "SSE Real-Time Push"), slug: "ext_sse_guide"}
         ]
       },
       %{
@@ -199,10 +200,9 @@ defmodule NexWebsite.Pages.Docs.Path do
         ]
       },
       %{
-        title: t(lang, "Architecture & AI"),
+        title: t(lang, "Architecture"),
         items: [
-          %{title: t(lang, "Architecture"), slug: "arch_overview"},
-          %{title: t(lang, "Vibe Coding"), slug: "vibe_coding_guide"}
+          %{title: t(lang, "Architecture"), slug: "arch_overview"}
         ]
       },
       %{
@@ -219,7 +219,7 @@ defmodule NexWebsite.Pages.Docs.Path do
   defp t(:zh, "Core Concepts"), do: "核心概念"
   defp t(:zh, "Interactivity"), do: "扩展增强"
   defp t(:zh, "Advanced"), do: "进阶指南"
-  defp t(:zh, "Architecture & AI"), do: "架构与 AI"
+  defp t(:zh, "Architecture"), do: "架构原理"
   defp t(:zh, "Reference"), do: "参考资料"
 
   defp t(:zh, "Introduction"), do: "什么是 Nex？"
@@ -234,14 +234,14 @@ defmodule NexWebsite.Pages.Docs.Path do
   defp t(:zh, "06. Deployment"), do: "06. 部署上线"
 
   defp t(:zh, "Rendering Lifecycle"), do: "渲染生命周期"
-  defp t(:zh, "Action Routing"), do: "Action 路由机制"
-  defp t(:zh, "State Management"), do: "状态管理深入"
-  defp t(:zh, "Env Configuration"), do: "环境配置"
-  defp t(:zh, "Interaction Protocol"), do: "声明式交互协议"
+  defp t(:zh, "Action Routing Mechanism"), do: "Action 路由机制"
+  defp t(:zh, "State Management Depth"), do: "状态管理深入"
+  defp t(:zh, "Environment Config (Env)"), do: "环境配置 (Env)"
+  defp t(:zh, "Declarative Interaction Protocol"), do: "声明式交互协议"
 
-  defp t(:zh, "Alpine.js"), do: "Alpine.js 集成"
-  defp t(:zh, "Datastar"), do: "Datastar 集成"
-  defp t(:zh, "SSE Real-time"), do: "SSE 实时推送"
+  defp t(:zh, "Alpine.js Integration"), do: "Alpine.js 集成"
+  defp t(:zh, "Datastar Integration"), do: "Datastar 集成"
+  defp t(:zh, "SSE Real-Time Push"), do: "SSE 实时推送"
 
   defp t(:zh, "JSON API"), do: "构建 JSON API"
   defp t(:zh, "Components"), do: "组件化开发"
