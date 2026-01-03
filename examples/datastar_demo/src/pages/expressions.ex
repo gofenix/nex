@@ -88,9 +88,9 @@ defmodule DatastarDemo.Pages.Expressions do
         <p class="text-sm text-gray-600 mb-4">Use template literals for complex strings</p>
 
         <div data-signals="{firstName: 'John', lastName: 'Doe', year: 2024}" class="space-y-4">
-          <input type="text" data-bind:firstName placeholder="First name" class="w-full px-4 py-2 border rounded mb-2"/>
-          <input type="text" data-bind:lastName placeholder="Last name" class="w-full px-4 py-2 border rounded"/>
-          <div class="text-lg font-semibold" data-text="`${$firstName} ${$lastName} - ${$year}`"></div>
+          <input type="text" data-on:input="$firstName = event.target.value" placeholder="First name" class="w-full px-4 py-2 border rounded mb-2"/>
+          <input type="text" data-on:input="$lastName = event.target.value" placeholder="Last name" class="w-full px-4 py-2 border rounded"/>
+          <div class="text-lg font-semibold" data-text="$firstName + ' ' + $lastName + ' - ' + $year"></div>
         </div>
       </div>
 
