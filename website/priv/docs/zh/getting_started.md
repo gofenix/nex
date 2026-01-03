@@ -44,7 +44,7 @@ mix deps.get
         ~H"""
         <div class="p-8 text-center">
           <h1 class="text-4xl font-bold text-indigo-600">{@message}</h1>
-          <p class="mt-4 text-gray-600">欢迎来到 HTMX 驱动的极简 Web 世界。</p>
+          <p class="mt-4 text-gray-600">欢迎来到极简的服务端驱动 Web 世界。</p>
           <button hx-post="/say_hi"
                   hx-target="#response"
                   class="mt-6 px-4 py-2 bg-indigo-500 text-white rounded">
@@ -56,7 +56,7 @@ mix deps.get
       end
 
       def say_hi(_params) do
-        "你好！这是一个由 Action 返回的 HTML 片段。"
+        "你好！这是一个通过声明式交互返回的 HTML 片段。"
       end
     end
     ```
@@ -67,11 +67,11 @@ mix deps.get
     ```
 
 3.  **访问页面**：
-    打开浏览器访问 `http://localhost:4000`。尝试点击按钮，感受无需刷新页面的交互。
+    打开浏览器访问 `http://localhost:4000`。尝试点击按钮，感受无需手动编写 JS 的交互体验。
 
 ## 📁 项目结构
 
-Nex 的目录结构遵循“约定优于配置”：
+Nex 的目录结构遵循“约定优于配置”，旨在消除一切不必要的工程复杂性：
 
 *   `src/`：**业务核心代码**
     *   `pages/`：存放页面模块（GET 请求，自动映射 URL）。

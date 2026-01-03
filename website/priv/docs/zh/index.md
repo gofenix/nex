@@ -20,7 +20,7 @@
 *   [Action 路由机制](core_action_guide.md) - Nex 路由解析的核心创新。
 *   [状态管理深入](core_state_guide.md) - 易失性状态的设计哲学。
 *   [环境配置 (Env)](core_env_guide.md) - 智能根目录探测与变量加载。
-*   [HTMX 集成协议](core_htmx_guide.md) - CSRF 保护与 Page ID 传递细节。
+*   [声明式交互协议](core_htmx_guide.md) - CSRF 保护与 Page ID 传递细节。
 
 ## 4️⃣ ENHANCED INTERACTIVITY (扩展增强)
 *   [Alpine.js 集成](ext_alpine_guide.md) - 处理客户端局部 UI 逻辑。
