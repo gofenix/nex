@@ -71,7 +71,7 @@ defmodule Nex.Handler do
     req = Nex.Req.from_plug_conn(conn, params)
 
     try do
-      # API 2.0: Always pass `req` struct
+      # JSON API: Always pass `req` struct
       # We intentionally do not check for arity 0 or 1 with Map to force upgrade
       if function_exported?(module, method, 1) do
         result = apply(module, method, [req])
@@ -184,7 +184,7 @@ defmodule Nex.Handler do
   end
 
   defp send_api_response(conn, other) do
-    # API 2.0 Enforce Nex.Response
+    # JSON API: Enforce Nex.Response
     # We do NOT implicitly convert Maps/Lists to JSON anymore to ensure strict DX.
     error_msg = """
     [Nex] API Response Error!

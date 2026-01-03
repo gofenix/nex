@@ -84,11 +84,14 @@ defmodule Mix.Tasks.Nex.New do
       {"src/layouts.ex", layouts(assigns)},
       {"src/pages/index.ex", index(assigns)},
       {"src/api/hello.ex", api_hello(assigns)},
-      {"src/components/card.ex", partial_card(assigns)},
+      {"src/components/card.ex", component_card(assigns)},
       {".gitignore", gitignore()},
       {".dockerignore", dockerignore()},
       {"Dockerfile", dockerfile()},
       {".env.example", env_example()},
+      {"AGENTS.md", agents_md(assigns)},
+      {"CLAUDE.md", claude_md(assigns)},
+      {".cursorrules", cursorrules(assigns)},
       {"README.md", readme(assigns)}
     ]
 
@@ -126,7 +129,7 @@ defmodule Mix.Tasks.Nex.New do
 
       defp deps do
         [
-          {:nex_core, "~> 0.3.1"}
+          {:nex_core, "~> 0.3.2"}
         ]
       end
     end
@@ -214,8 +217,9 @@ defmodule Mix.Tasks.Nex.New do
             <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio"></script>
             <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.23/dist/full.min.css" rel="stylesheet" type="text/css" />
             <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+            {meta_tag()}
           </head>
-          <body class="min-h-screen bg-base-200" hx-boost="true">
+          <body class="min-h-screen bg-base-200" hx-boost="true" hx-headers={hx_headers()}>
             <nav class="navbar bg-base-100 shadow-sm">
               <div class="max-w-4xl mx-auto w-full px-4">
                 <a href="/" class="btn btn-ghost text-xl">#{a.module_name}</a>
@@ -240,53 +244,89 @@ defmodule Mix.Tasks.Nex.New do
       def mount(_params) do
         %{
           title: "Welcome to #{a.module_name}",
-          message: "Your Nex app is running!"
+          count: Nex.Store.get(:count, 0)
         }
       end
 
       def render(assigns) do
         ~H\"\"\"
-        <div class="space-y-8">
-          <div class="text-center py-8">
-            <h1 class="text-4xl font-bold mb-4">{@message}</h1>
-            <p class="text-base-content/70 mb-8">
-              Edit <code class="bg-base-300 px-2 py-1 rounded">src/pages/index.ex</code> to get started.
+        <div class="space-y-8 max-w-2xl mx-auto">
+          <div class="text-center py-12 bg-base-100 rounded-3xl shadow-sm border border-base-300">
+            <h1 class="text-5xl font-black mb-4 tracking-tight text-primary">Nex + HTMX</h1>
+            <p class="text-lg text-base-content/60 mb-8">
+              The simplest way to build modern web apps with Elixir.
             </p>
-          </div>
 
-          <div class="grid md:grid-cols-2 gap-6">
-            <#{a.module_name}.Components.Card.card title="📁 Project Structure" description="Nex follows a simple, intuitive structure" />
+            <div class="flex flex-col items-center gap-4">
+              <div id="counter-display" class="stat place-items-center bg-base-200 rounded-xl w-48 py-4 border border-base-300">
+                <div class="stat-title text-base-content/50 uppercase tracking-widest text-xs font-bold">Current Count</div>
+                <div class="stat-value text-4xl font-mono tracking-tighter">{@count}</div>
+              </div>
 
-            <div class="card bg-base-100 shadow-xl">
-              <div class="card-body">
-                <h2 class="card-title">🚀 Try the API</h2>
+              <div class="flex gap-2">
                 <button
-                  class="btn btn-primary w-full"
-                  hx-get="/api/hello?name=Developer"
-                  hx-target="#api-response"
-                  hx-swap="innerHTML"
+                  class="btn btn-primary btn-lg shadow-lg"
+                  hx-post="/increment"
+                  hx-target="#counter-display"
+                  hx-indicator="#loading-spinner"
                 >
-                  Test GET /api/hello
+                  Increment
                 </button>
-                <div id="api-response" class="p-4 bg-base-200 rounded min-h-[60px]">
-                  <span class="text-base-content/50">Click to test the API</span>
-                </div>
+
+                <button
+                  class="btn btn-ghost btn-lg"
+                  hx-post="/reset"
+                  hx-target="#counter-display"
+                >
+                  Reset
+                </button>
+              </div>
+
+              <div id="loading-spinner" class="htmx-indicator">
+                <span class="loading loading-spinner loading-sm text-primary"></span>
               </div>
             </div>
           </div>
 
-          <div class="card bg-base-100 shadow-xl">
-            <div class="card-body">
-              <h2 class="card-title">📚 Next Steps</h2>
-              <ul class="space-y-2">
-                <li>✅ Create pages in <code>src/pages/</code></li>
-                <li>✅ Add API endpoints in <code>src/api/</code> (Next.js style)</li>
-                <li>✅ Build components in <code>src/components/</code></li>
-                <li>✅ Check the <a href="https://github.com/gofenix/nex" class="link link-primary">docs</a></li>
-              </ul>
-            </div>
+          <div class="grid md:grid-cols-2 gap-6">
+            <#{a.module_name}.Components.Card.card title="📁 Folder Routing" icon="⚡️">
+              No router files. Just create a file in <code>src/pages/</code>.
+            </#{a.module_name}.Components.Card.card>
+
+            <#{a.module_name}.Components.Card.card title="🧩 UI Components" icon="📦">
+              Composable components with slots. See <code>src/components/</code>.
+            </#{a.module_name}.Components.Card.card>
+          </div>
+
+          <div class="alert alert-info shadow-sm border-none bg-blue-50 text-blue-800">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <span>Check <code>AGENTS.md</code> to see how to pair Nex with AI agents.</span>
           </div>
         </div>
+        \"\"\"
+      end
+
+      # --- Actions (Intent-Driven) ---
+
+      def increment(_params) do
+        # 1. Update Truth
+        new_count = Nex.Store.update(:count, 0, &(&1 + 1))
+
+        # 2. Render surgical update
+        assigns = %{count: new_count}
+        ~H\"\"\"
+        <div class="stat-title text-base-content/50 uppercase tracking-widest text-xs font-bold">Current Count</div>
+        <div class="stat-value text-4xl font-mono tracking-tighter text-primary animate-bounce-short">{@count}</div>
+        \"\"\"
+      end
+
+      def reset(_params) do
+        Nex.Store.put(:count, 0)
+
+        assigns = %{count: 0}
+        ~H\"\"\"
+        <div class="stat-title text-base-content/50 uppercase tracking-widest text-xs font-bold">Current Count</div>
+        <div class="stat-value text-4xl font-mono tracking-tighter">{@count}</div>
         \"\"\"
       end
     end
@@ -339,25 +379,31 @@ defmodule Mix.Tasks.Nex.New do
     """
   end
 
-  defp partial_card(a) do
+  defp component_card(a) do
     """
     defmodule #{a.module_name}.Components.Card do
       @moduledoc \"\"\"
-      Reusable card component.
+      Reusable card component with slots.
 
-      ## Usage in Pages
+      ## Usage
 
-          # Use directly in HEEx template (no alias needed)
-          <#{a.module_name}.Components.Card.card title="Welcome" description="Get started" />
+          <#{a.module_name}.Components.Card.card title="Card Title" icon="⚡️">
+            Main content here
+          </#{a.module_name}.Components.Card.card>
       \"\"\"
       use Nex
 
       def card(assigns) do
         ~H\"\"\"
-        <div class="card bg-base-100 shadow-xl">
-          <div class="card-body">
-            <h2 class="card-title">{@title}</h2>
-            <p class="text-base-content/70">{@description}</p>
+        <div class="card bg-base-100 shadow-sm border border-base-300 hover:border-primary/30 transition-all group">
+          <div class="card-body p-6">
+            <div class="flex items-center gap-3 mb-2">
+              <span class="text-2xl group-hover:scale-110 transition-transform">{@icon}</span>
+              <h2 class="card-title text-base font-bold tracking-tight">{@title}</h2>
+            </div>
+            <div class="text-base-content/60 text-sm leading-relaxed">
+              {render_slot(@inner_block)}
+            </div>
           </div>
         </div>
         \"\"\"
@@ -423,6 +469,120 @@ defmodule Mix.Tasks.Nex.New do
     # Add your environment variables here
     # DATABASE_URL=postgres://user:pass@localhost/myapp_dev
     # API_KEY=your_api_key_here
+    """
+  end
+
+  defp agents_md(_a) do
+    """
+    # Nex Framework: Architect's Manifesto (V5.2 - Master)
+
+    You are a Master Nex Architect. Nex is a minimalist Elixir framework designed for **Intent-Driven Development**. Your mission: deliver code that is clean, performant, and "Nex-idiomatic".
+
+    ## 1. Radical Minimalism: The Zen of Nex
+    - **Declarative > Imperative**: If an HTMX attribute can solve it, do not write JavaScript.
+    - **Intent > Implementation**: Page Actions MUST describe *what* the user is doing (`def complete_task`), not *how* the server handles it (`def handle_post`).
+    - **Atomic Actions**: One Action = One pure business intent. Avoid monolithic handlers.
+
+    ## 2. Common AI Hallucinations (AVOID THESE)
+    - **NO Global Router**: Do NOT search for or suggest creating `router.ex`. The folder structure IS the router.
+    - **NO LiveView Hooks**: Nex does NOT use `Phoenix.LiveView` hooks or `on_mount`. Use HTMX events or Alpine.js.
+    - **NO Template Jumping**: Logic and UI stay in the SAME `.ex` file. Do NOT create separate `.html.heex` files.
+    - **NO Vanilla Fetch**: Use `hx-get/post` for server communication. Only use JS for pure local UI state.
+
+    ## 3. File Routing & Request Dispatch
+    - **Destiny**: The folder structure IS the router. No global `router.ex`.
+    - **Pages (`src/pages/`)**: GET renders the page. POST/PUT/DELETE call public functions in the same module.
+    - **APIs (`src/api/`)**: Handlers MUST be named after HTTP methods: `def get(req)`, `def post(req)`, `def put(req)`, `def delete(req)`.
+    - **Dynamic Routes**: Use `[id].ex` for resources. `req.query["id"]` captures the path parameter.
+
+    ## 4. Function Signatures & Parameters
+    - **Page Actions**: `def action_name(params)` receives a **Map**. Params are merged from path, query, and body.
+    - **API Handlers**: `def get(req)` receives a **`Nex.Req` struct**.
+    - **Nex.Req**: Access data via `req.query` (path params take precedence) and `req.body`.
+    - **File Uploads**: Ensure `hx-encoding="multipart/form-data"` is on the form. Access files via `params["name"]` (Pages) or `req.body["name"]` (APIs). The file will be a `%Plug.Upload{}` struct.
+
+    ## 5. Responses & Navigation
+    - **Page Actions**: Return `~H\"...\"` (Partial), `:empty` (No-op), `{:redirect, \"/path\"}`, or `{:refresh, nil}`.
+    - **API Handlers**: MUST return `%Nex.Response{}` via `Nex.json/2`, `Nex.text/2`, `Nex.html/2`, `Nex.redirect/2`, or `Nex.status/2`.
+
+    ## 6. Real-Time & Streaming (SSE)
+    - **Helper**: Use `Nex.stream(fn send -> ... end)`.
+    - **Chunking**: `send.(data)` accepts String, Map (auto-JSON), or `%{event: \"name\", data: ...}`.
+    - **UX**: Always render an initial placeholder or "typing indicator" before starting the stream.
+
+    ## 7. Surgical UX (HTMX)
+    - **Precision**: Use granular `hx-target` (e.g., `#msg-count`). Return ONLY the minimal HTML snippet required.
+    - **Feedback**: Always use `hx-indicator` for network actions.
+    - **Smoothness**: Use `hx-swap=\"morph\"` if Alpine.js or Datastar is present for focus-preserving updates.
+
+    ## 8. State Management (Nex.Store)
+    - **Lifecycle**: `Nex.Store` is server-side session state tied to the `page_id`. Clears on full page refresh.
+    - **API Integration**: API calls from the frontend automatically share the Store state of the parent page.
+    - **The Flow**: 1. Receive Intent -> 2. Mutate Store/DB -> 3. **THEN** render UI with updated data.
+    - **Example**:
+      ```elixir
+      def toggle(%{"id" => id}) do
+        new_val = Nex.Store.update(:active_id, nil, fn _ -> id end)
+        render(%{active_id: new_val})
+      end
+      ```
+
+    ## 9. Layout Contract
+    - **Variable Requirement**: `src/layouts.ex` must render `@inner_content` via `{raw(@inner_content)}`.
+    - **Navigation**: Use `hx-boost=\"true\"` on the `<body>` tag for SPA-like speed.
+    - **CSRF Global**: Layout should include `{meta_tag()}` in `<head>` and `hx-headers={hx_headers()}` on `<body>` for HTMX requests.
+
+    ## 10. Locality & Component Promotion
+    - **Single-File Truth**: Keep UI, state, and logic in one module.
+    - **Private Components**: Extract blocks into `defp widget(assigns)` at the bottom of the file if `render/1` > 50 lines.
+    - **Promotion**: Move to `src/components/` ONLY if reused across **3 or more** pages.
+    - **Component Idioms**: Use `{render_slot(@inner_block)}` for default content and `{@slot_name}` for named slots.
+
+    ## 11. Elixir Aesthetics
+    - **Pattern Match**: Destructure params/structs in function heads.
+    - **Pipelines**: Express logic as a clear series of transformations using `|>`.
+    - **No Nesting**: Use guard clauses to keep code \"flat\".
+
+    ## 12. Visual Harmony (DaisyUI)
+    - **Component First**: Prioritize DaisyUI classes (`.card`, `.btn-primary`, `.stat`).
+    - **Clean HTML**: Avoid 20+ raw Tailwind classes. Use a component class if it exists.
+
+    ## 13. Security
+    - **CSRF**: Every `hx-post/put/patch/delete` form MUST include `{csrf_input_tag()}` inside the `<form>`.
+
+    *Architect's Mantra: surgical precision, semantic intent, local focus, and absolute minimalism.*
+    """
+  end
+
+  defp claude_md(a) do
+    """
+    # CLAUDE.md for #{a.module_name}
+
+    This project uses the Nex framework. Refer to `AGENTS.md` for core architectural principles.
+
+    ## Key Patterns
+    - **Actions**: Public functions in a Page module called by HTMX.
+    - **State**: `Nex.Store` for per-session page state.
+    - **UI**: Tailwind CSS + DaisyUI.
+
+    Always prioritize code locality and declarative interaction.
+    """
+  end
+
+  defp cursorrules(_a) do
+    """
+    # Cursor Rules for Nex
+
+    Refer to `AGENTS.md` for the full set of principles.
+
+    1. **Locality**: UI and logic belong in the same Page module.
+    2. **Routing**: File system based. No `router.ex`.
+    - **Navigation**: Use `hx-boost=\"true\"` on the `<body>` tag for SPA-like speed.
+    - **CSRF Global**: Layout should include `{meta_tag()}` in `<head>` and `hx-headers={hx_headers()}` on `<body>` for HTMX requests.
+    3. **Actions**: Use `hx-post="/func_name"` to call module functions.
+    4. **API**: Use `Nex.json/2` in `src/api/`.
+
+    Always follow the Locality of Behavior (LoB) principle.
     """
   end
 

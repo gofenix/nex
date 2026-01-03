@@ -7,7 +7,7 @@ defmodule Nex.CSRF do
   In your layout or form, include the CSRF token:
 
       <form method="post" action="/submit">
-        {Nex.CSRF.input_tag()}
+        {Nex.CSRF.csrf_input_tag()}
         <!-- form fields -->
       </form>
 
@@ -46,7 +46,7 @@ defmodule Nex.CSRF do
   @doc """
   Returns an HTML hidden input tag with the CSRF token.
   """
-  def input_tag do
+  def csrf_input_tag do
     token = get_token()
     {:safe, ~s(<input type="hidden" name="#{@token_key}" value="#{token}" />)}
   end

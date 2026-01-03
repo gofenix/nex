@@ -14,32 +14,39 @@ Nex enforces the coupling of logic and UI. Within a single `.ex` file, you can s
 ### Zero-Config Routing (File System Routing)
 **Value to AI**: Paths are routes. AI doesn't need to guess how `routes.ex` is configured. As long as it writes code in `src/pages/users/[id].ex`, it is certain that the corresponding URL is `/users/123`. This certainty significantly reduces the probability of AI generating "hallucinated" routing code.
 
-### Declarative Interaction (HTMX/Datastar)
-**Value to AI**: Generating HTML attributes is much more robust for AI than generating complex JavaScript asynchronous flows (Promises/Async). AI's accuracy in writing declarative code is close to 100%.
+### Function Signature Standards (CRITICAL)
+**Value to AI**: AI often confuses parameter signatures between Page Actions and API Handlers.
+*   **Page Action** (in `src/pages/`): Receives a flat **Map** (merged path, query, and body params).
+    *   *Example*: `def add_item(%{"id" => id})`
+*   **API Handler** (in `src/api/`): Receives a **`Nex.Req` struct** (mimicking Next.js, accessible via `req.query` or `req.body`).
+    *   *Example*: `def get(%{query: %{"id" => id}})`
+Defining this distinction prevents the AI from generating uncompilable code.
+
+### State Management & One-Way Flow of Truth
+AI should follow: **Receive Intent -> Mutate Store/DB -> Render latest state**.
+*   **Nex.Store**: Server-side session state that clears on page refresh.
+*   **Truth Flow**: Strictly avoid rendering UI directly based on request parameters; always use `Nex.Store.update` to update state before rendering the page.
+
+### Real-time Streams & SSE Experience
+When using `{:stream, fun}` for streaming responses (e.g., AI chat), the AI should always render an initial placeholder or "typing" state first to ensure immediate feedback.
+ Nex comes with HTMX by default. If you include Alpine.js or Datastar in `layouts.ex`, the AI will also leverage their features automatically.
 
 ---
 
-## 2. Developer Tool Best Practices
+## 2. AI Tool Best Practices (Unified Rule System)
 
-To let AI tools like **Cursor**, **Windsurf**, and **Claude Code** guide Nex development more precisely, we recommend configuring rule files in your project root.
+Nex advocates for "Architecture as Rules." When you create a new project with `mix nex.new`, the framework automatically generates a set of core rule files to ensure that AI assistants follow Nex's design philosophy from the very first line of code.
 
-### A. Cursor Configuration (.cursorrules)
-Create a `.cursorrules` file in your project root and paste the following:
+### A. Core Rule Files
+A new project includes the following key files:
+*   **`AGENTS.md`**: Defines the core principles of the framework (Locality of Behavior, File System Routing, Declarative Interaction, State Management). It serves as the "Supreme Constitution" for all AI tools (such as Cursor, Windsurf, Claude Code).
+*   **`.cursorrules`**: Rules optimized specifically for **Cursor**, ensuring the AI maintains locality while generating code. It automatically references `AGENTS.md`.
+*   **`CLAUDE.md`**: Provides a project overview and pattern guidance for the Claude series of tools.
 
-```markdown
-You are an expert Nex framework developer. Follow these rules:
-1. Locality: Keep UI and logic in the same file (src/pages or src/api).
-2. Routing: Files in src/pages/ are GET routes. [id].ex is dynamic. [...path].ex is catch-all.
-3. Actions: Handle POST/PUT/DELETE by defining functions in the same module. Use hx-post="/func_name" for single-path.
-4. State: Use Nex.Store.get/put/update(key, default, fun) for page-level state.
-5. API 2.0: API modules must return Nex.Response (use Nex.json/2).
-6. Layout: Layouts must have <body> tag. Use {raw(@inner_content)} to render page.
-```
-
-### B. Windsurf / Codex Prompts
-At the start of a conversation, you can send this "Framework Persona":
-
-> "This is a Nex project. It uses file system routing (src/pages for GET, src/api for JSON). Interactions use declarative Actions—functions defined within the page module and called via HTMX's hx-post. State management uses Nex.Store based on Page ID. Always maintain code locality."
+### B. How to Use These Rules?
+1.  **Unified Source of Truth**: Regardless of which AI tool you use, guide it to first read the `AGENTS.md` file in the root directory.
+2.  **Cursor**: Cursor will automatically read `.cursorrules` when you open the project folder; no extra configuration is needed.
+3.  **Other Tools**: You can directly paste the content of `AGENTS.md` to any AI assistant (such as Windsurf, GPT-4o, Claude 3.5 Sonnet) as its System Prompt.
 
 ---
 
@@ -58,8 +65,9 @@ At the start of a conversation, you can send this "Framework Persona":
 When AI behaves as if it's writing traditional Phoenix or React, correct it promptly:
 
 *   **Correction 1**: "Nex doesn't need a Router file; create files directly under `src/pages`."
-*   **Correction 2**: "Don't introduce extra JavaScript libraries; prefer solving interactions with HTMX or Alpine.js attributes."
-*   **Correction 3**: "Don't store state in memory variables; use `Nex.Store` to ensure persistence across interactions."
+*   **Correction 2**: "Do not introduce extra JavaScript libraries; prefer using the built-in HTMX. You may only use Alpine.js or Datastar if I have manually included them in the Layout."
+*   **Correction 6**: "This is an API module; use the `def get(req)` signature and return `Nex.json/2`. For Page Actions, use the `def action_name(params)` signature."
+*   **Correction 7**: "In forms, please use `{csrf_input_tag()}` instead of the old `input_tag()`."
 
 ## 5. Conclusion
 

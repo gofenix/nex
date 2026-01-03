@@ -14,32 +14,38 @@ Nex 强制将逻辑与 UI 耦合。在一个 `.ex` 文件中，你可以看清�
 ### 文件系统路由 (Zero-Config Routing)
 **对 AI 的价值**：路径即路由。AI 不需要猜测 `routes.ex` 是如何配置的。只要它在 `src/pages/users/[id].ex` 写下代码，它就确信对应的 URL 是 `/users/123`。这种确定性极大地降低了 AI 生成幻觉代码的概率。
 
-### 声明式交互 (HTMX/Datastar)
-**对 AI 的价值**：生成 HTML 属性（Attribute）比生成复杂的 JavaScript 异步流程（Promise/Async）要稳健得多。AI 编写声明式代码的正确率接近 100%。
+### 函数签名规范 (重要)
+**对 AI 的价值**：AI 经常混淆页面 Action 和 API 处理函数的参数签名。
+*   **页面 Action** (在 `src/pages/` 中)：接收一个平铺的 **Map**（合并了路径、查询和 Body 参数）。
+    *   *示例*：`def add_item(%{"id" => id})`
+*   **API 处理函数** (在 `src/api/` 中)：接收一个 **`Nex.Req` 结构体**（模拟 Next.js，需通过 `req.query` 或 `req.body` 访问）。
+    *   *示例*：`def get(%{query: %{"id" => id}})`
+明确这一区别能防止 AI 生成无法编译的代码。
+
+### 状态管理与单向真理流
+AI 应遵循：**接收意图 -> 修改 Store/DB -> 渲染最新状态**。
+*   **Nex.Store**：是服务端会话状态，随页面刷新清除。
+*   **真理流**：严禁直接根据请求参数渲染 UI，必须始终通过 `Nex.Store.update` 更新状态后，再渲染页面。
+
+### 实时流与 SSE 体验
+当使用 `{:stream, fun}` 进行流式响应（如 AI 聊天）时，AI 应始终先渲染一个初始占位符或“正在输入”状态，以确保即时反馈。
 
 ---
 
-## 2. 开发者工具最佳实践
+## 2. 开发者工具最佳实践 (AI 工具链配置)
 
-为了让 **Cursor**、**Windsurf**、**Claude Code** 等 AI 工具更精准地指导 Nex 开发，建议在项目根目录配置规则文件。
+Nex 提倡“架构即规则”。当你使用 `mix nex.new` 创建新项目时，框架会自动生成一系列核心规则文件，确保 AI 助手从第一行代码开始就符合 Nex 的设计哲学。
 
-### A. Cursor 配置 (.cursorrules)
-在项目根目录创建 `.cursorrules`，贴入以下内容：
+### A. 核心规则文件
+新项目中包含以下关键文件：
+*   **`AGENTS.md`**：定义了框架的核心原则（行为局部性、文件系统路由、声明式交互、状态管理）。它是所有 AI 工具（如 Cursor, Windsurf, Claude Code）的“最高宪法”。
+*   **`.cursorrules`**：专门为 **Cursor** 优化的规则，确保 AI 在生成代码时保持局部性。它会自动引用 `AGENTS.md`。
+*   **`CLAUDE.md`**：提供给 Claude 系列工具的项目概览和模式指引。
 
-```markdown
-You are an expert Nex framework developer. Follow these rules:
-1. Locality: Keep UI and logic in the same file (src/pages or src/api).
-2. Routing: Files in src/pages/ are GET routes. [id].ex is dynamic. [...path].ex is catch-all.
-3. Actions: Handle POST/PUT/DELETE by defining functions in the same module. Use hx-post="/func_name" for single-path.
-4. State: Use Nex.Store.get/put/update(key, default, fun) for page-level state.
-5. API 2.0: API modules must return Nex.Response (use Nex.json/2).
-6. Layout: Layouts must have <body> tag. Use {raw(@inner_content)} to render page.
-```
-
-### B. Windsurf / Codex 提示词
-在对话开始时，可以先发送以下“框架画像”：
-
-> "这是一个 Nex 项目。它使用文件系统路由（src/pages 为 GET，src/api 为 JSON）。交互采用声明式 Action，即在页面模块内定义函数并由 HTMX 的 hx-post 调用。状态管理使用基于 Page ID 的 Nex.Store。请始终保持代码的局部性。"
+### B. 如何使用这些规则？
+1.  **统一真理源**：无论你使用哪种 AI 工具，请引导它首先阅读根目录下的 `AGENTS.md`。
+2.  **Cursor**：Cursor 会自动读取 `.cursorrules`，你无需进行额外配置。
+3.  **其他工具**：你可以直接将 `AGENTS.md` 的内容贴给任何 AI 助手（如 Windsurf, GPT-4o, Claude 3.5 Sonnet），作为它的系统提示词（System Prompt）。
 
 ---
 
@@ -58,8 +64,10 @@ You are an expert Nex framework developer. Follow these rules:
 当 AI 表现得像在写传统的 Phoenix 或 React 时，请及时纠正：
 
 *   **纠偏 1**：“Nex 不需要 Router 文件，请直接在 `src/pages` 下创建文件。”
-*   **纠偏 2**：“不要引入额外的 JavaScript 库，优先使用 HTMX 或 Alpine.js 属性解决。”
-*   **纠偏 3**：“状态不要存在内存变量里，请使用 `Nex.Store` 确保跨交互持久化。”
+*   **纠偏 2**：“不要引入额外的 JavaScript 库，优先使用内置的 HTMX。如果我手动在 Layout 中引入了 Alpine.js 或 Datastar，你才可以使用它们。”
+*   **纠偏 4**：“Action 的命名应该反映业务意图，例如 `submit_order` 而不是 `handle_post`。”
+*   **纠偏 6**：“这是一个 API 模块，请使用 `def get(req)` 签名并返回 `Nex.json/2`。对于页面 Action，请使用 `def action_name(params)` 签名。”
+*   **纠偏 7**：“在表单中请使用 `{csrf_input_tag()}` 而不是旧的 `input_tag()`。”
 
 ## 5. 结语
 

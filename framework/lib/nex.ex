@@ -100,17 +100,17 @@ defmodule Nex do
       String.contains?(module_name, ".Components.") or
       String.ends_with?(module_name, ".Layouts") ->
         quote do
-          import Phoenix.Component, only: [sigil_H: 2]
+          import Phoenix.Component, only: [sigil_H: 2, render_slot: 1, render_slot: 2]
           import Phoenix.HTML, only: [raw: 1]
-          import Nex.CSRF, only: [input_tag: 0, hx_headers: 0, meta_tag: 0, get_token: 0]
+          import Nex.CSRF, only: [csrf_input_tag: 0, hx_headers: 0, meta_tag: 0, get_token: 0]
         end
 
       # Default: treat as page module
       true ->
         quote do
-          import Phoenix.Component, only: [sigil_H: 2]
+          import Phoenix.Component, only: [sigil_H: 2, render_slot: 1, render_slot: 2]
           import Phoenix.HTML, only: [raw: 1]
-          import Nex.CSRF, only: [input_tag: 0, hx_headers: 0, meta_tag: 0, get_token: 0]
+          import Nex.CSRF, only: [csrf_input_tag: 0, hx_headers: 0, meta_tag: 0, get_token: 0]
         end
     end
   end

@@ -5,7 +5,20 @@ All notable changes to the Nex framework will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.3.1] - 2026-01-02
+## [0.3.2] - Unreleased
+
+### Added
+- **AI Agent Handbook (AGENTS.md)**: Automatically generated for new projects to guide AI assistants (Cursor, Claude, etc.) in writing idiomatic Nex code.
+- **Improved Vibe Coding Support**: Optimized framework architecture and documentation for intent-driven development.
+
+### Changed
+- **Renamed `Nex.CSRF.input_tag/0` to `Nex.CSRF.csrf_input_tag/0`**: Better clarity and consistency with AI guidance.
+  - **Migration**: Replace `{csrf_input_tag()}` with `{csrf_input_tag()}` (wait, actually just update the name in your templates).
+- **Refined API Terminology**: Removed misleading "API 2.0" references in favor of "JSON API Standards".
+
+### Improved
+- **REST API Guidance**: Clearer mapping between file-system routes and HTTP method handlers.
+- **SSE Streaming UX**: Standardized placeholder rendering and chunk encoding for AI responses.
 
 ### Added
 - **Unified `use Nex` Interface**: One statement for all module types
