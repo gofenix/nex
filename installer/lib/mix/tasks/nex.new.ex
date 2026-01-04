@@ -560,7 +560,7 @@ defmodule Mix.Tasks.Nex.New do
     - **Promotion**: Move to `src/components/` ONLY if reused across 3 or more pages.
 
     *Architect's Mantra: surgical precision, semantic intent, local focus, and absolute minimalism.*
-    \"\"\"
+    """
   end
 
   defp readme(a) do
