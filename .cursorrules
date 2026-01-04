@@ -376,3 +376,7 @@ Check out real examples:
 - [HTMX Documentation](https://htmx.org)
 - [HEEx Templates](https://hexdocs.pm/phoenix_live_view/Phoenix.Component.html)
 - [Elixir Guides](https://elixir-lang.org/getting-started/introduction.html)
+
+## Commit Conventions
+
+When making changes, follow the **Conventional Commits** specification as detailed in `CLAUDE.md`. Avoid using backticks (```) around the commit message.
