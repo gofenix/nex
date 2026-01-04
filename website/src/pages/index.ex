@@ -47,11 +47,11 @@ defmodule NexWebsite.Pages.Index do
       <div class="grid md:grid-cols-3 gap-8">
         <div class="card bg-white p-8 border border-gray-100 shadow-sm group">
           <div class="w-14 h-14 bg-purple-100 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-claude-purple" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-claude-purple" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 21l-1 1h8l-1-1-.75-4M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
           </div>
-          <h3 class="text-2xl font-bold mb-4">File-based Routing</h3>
+          <h3 class="text-2xl font-bold mb-4">AI-Native Design</h3>
           <p class="text-claude-muted leading-relaxed">
-            Routes are discovered from your <code class="bg-gray-100 px-2 py-0.5 rounded text-sm">src/pages/</code> directory automatically. No manual router configuration needed.
+            Built for <b>Vibe Coding</b>. Locality of Behavior (LoB) allows AI agents to build full features by reading just one file.
           </p>
         </div>
 
@@ -59,19 +59,19 @@ defmodule NexWebsite.Pages.Index do
           <div class="w-14 h-14 bg-purple-100 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-claude-purple" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
           </div>
-          <h3 class="text-2xl font-bold mb-4">HTMX Powered</h3>
+          <h3 class="text-2xl font-bold mb-4">Declarative Interaction</h3>
           <p class="text-claude-muted leading-relaxed">
-            Build reactive UIs with simple Elixir functions. Nex handles the HTMX integration, letting you focus on your application logic.
+            HTMX-first philosophy. Build reactive UIs with zero-JavaScript complexity using simple Elixir functions.
           </p>
         </div>
 
         <div class="card bg-white p-8 border border-gray-100 shadow-sm group">
           <div class="w-14 h-14 bg-purple-100 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-claude-purple" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" /></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-claude-purple" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
           </div>
-          <h3 class="text-2xl font-bold mb-4">Integrated State</h3>
+          <h3 class="text-2xl font-bold mb-4">Unified Interface</h3>
           <p class="text-claude-muted leading-relaxed">
-            Manage page and session state with <code class="bg-gray-100 px-2 py-0.5 rounded text-sm">Nex.Store</code>. Seamless data flow from server to UI.
+            One <code class="bg-gray-100 px-2 py-0.5 rounded text-sm">use Nex</code> for everything. Automatic module detection simplifies development and reduces boilerplate.
           </p>
         </div>
       </div>

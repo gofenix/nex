@@ -20,25 +20,20 @@ defmodule NexWebsite.Pages.Features do
       </div>
 
       <div class="space-y-24">
-        <!-- Docker Ready - NEW in v0.2.x -->
+        <!-- Docker Ready - NEW in v0.3.x -->
         <section class="bg-purple-50 p-10 rounded-3xl border-2 border-purple-100">
           <div class="flex items-center gap-3 mb-6">
-            <div class="badge badge-lg bg-purple-500 text-white border-none">NEW in v0.2.x</div>
-            <h2 class="text-3xl font-bold">🐳 Docker Ready</h2>
+            <div class="badge badge-lg bg-purple-500 text-white border-none">v0.3.x Released</div>
+            <h2 class="text-3xl font-bold">🤖 AI-Native & Vibe Coding</h2>
           </div>
           <p class="text-lg text-claude-muted mb-6 leading-relaxed">
-            Every project includes a production-ready Dockerfile. Deploy to Railway, Fly.io, Render, or any platform that supports containers. No configuration needed.
+            Nex is built for the AI era. With <b>Locality of Behavior (LoB)</b> and zero-config routing, AI agents can build full features by reading a single file. No more context loss between routers, controllers, and templates.
           </p>
           <div class="bg-white p-6 rounded-xl border border-gray-200">
-            <pre class="text-sm"><code class="language-bash">
-            docker build -t my_app .
-            docker run -p 4000:4000 my_app
+            <pre class="text-sm"><code class="language-text">
+            # One file, one feature.
+            # AI reads src/pages/my_feature.ex and understands everything.
             </code></pre>
-          </div>
-          <div class="mt-6 flex gap-4">
-            <span class="px-4 py-2 bg-white rounded-full text-sm font-semibold text-claude-muted border border-gray-200">Alpine Linux</span>
-            <span class="px-4 py-2 bg-white rounded-full text-sm font-semibold text-claude-muted border border-gray-200">~150MB Image</span>
-            <span class="px-4 py-2 bg-white rounded-full text-sm font-semibold text-claude-muted border border-gray-200">Single Command</span>
           </div>
         </section>
 
@@ -53,9 +48,9 @@ defmodule NexWebsite.Pages.Features do
         </section>
 
         <section>
-          <h2 class="text-3xl font-bold mb-6">⚡ HTMX First-Class</h2>
+          <h2 class="text-3xl font-bold mb-6">⚡ Unified Interface</h2>
           <p class="text-lg text-claude-muted mb-8 leading-relaxed">
-            Every page is an HTMX endpoint by default. POST requests automatically map to public functions in your module. Build reactive UIs without writing JavaScript.
+            Every module in Nex uses the same <code class="bg-gray-100 px-2 py-1 rounded text-sm">use Nex</code> statement. Whether it's a Page, API, or UI Component, the framework automatically imports what you need based on the file path.
           </p>
           <div class="rounded-xl overflow-hidden shadow-lg">
             <%= raw @htmx_action_code %>
@@ -63,9 +58,9 @@ defmodule NexWebsite.Pages.Features do
         </section>
 
         <section>
-          <h2 class="text-3xl font-bold mb-6">📡 JSON APIs</h2>
+          <h2 class="text-3xl font-bold mb-6">📡 JSON APIs (Next.js Style)</h2>
           <p class="text-lg text-claude-muted mb-8 leading-relaxed">
-            Build REST APIs with <code class="bg-gray-100 px-2 py-1 rounded text-sm">Nex.Api</code>. Support for dynamic routes with parameters. Perfect for mobile apps, SPAs, or third-party integrations.
+            Build REST APIs that follow modern standards. Nex API routes use a <code class="bg-gray-100 px-2 py-1 rounded text-sm">req</code> object aligned with Next.js API Routes, providing <code class="bg-gray-100 px-1 rounded text-sm">req.query</code> and <code class="bg-gray-100 px-1 rounded text-sm">req.body</code> for clean parameter handling.
           </p>
           <div class="bg-purple-50 p-6 rounded-xl border border-purple-200">
             <div class="flex items-start gap-3">

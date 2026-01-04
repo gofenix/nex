@@ -84,7 +84,7 @@ Actions can return various types of values, and Nex handles the HTTP response ac
 | **`:empty`** | Returns empty content, no DOM update | 200 OK |
 | **`{:redirect, url}`** | Triggers client-side redirect via HTMX | 200 OK + HX-Redirect |
 | **`{:refresh}`** | Triggers full-page refresh | 200 OK + HX-Refresh |
-| **`{:stream, fn}`** | Starts SSE stream response | 200 OK + SSE |
+| **`Nex.stream(fn)`** | Starts SSE stream response | 200 OK + SSE |
 
 ## Exercise: Advanced Counter
 

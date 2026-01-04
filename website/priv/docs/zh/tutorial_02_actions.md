@@ -84,7 +84,7 @@ Action 可以返回多种类型的值，Nex 会根据返回值自动处理 HTTP 
 | **`:empty`** | 返回空内容，不更新任何 DOM | 200 OK |
 | **`{:redirect, url}`** | 让 HTMX 进行客户端跳转 | 200 OK + HX-Redirect |
 | **`{:refresh}`** | 让整个页面重新加载 | 200 OK + HX-Refresh |
-| **`{:stream, fn}`** | 开启 SSE 流式响应 | 200 OK + SSE |
+| **`Nex.stream(fn)`** | 开启 SSE 流式响应 | 200 OK + SSE |
 
 ## 练习：计数器进阶
 

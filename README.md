@@ -36,30 +36,25 @@ Visit `http://localhost:4000` to see your app running.
 
 ## Core Features
 
-### Routing & Pages
-- **📁 File-based Routing** - Drop a file in `src/pages/`, get a route automatically
-- **🔀 Dynamic Routes** - Support for `[id]`, `[slug]`, `[...path]` patterns, and mixed routes
-- **🎯 Convention over Configuration** - No route configuration needed, just create files
+### 🤖 AI-Native & Vibe Coding
+- **Locality of Behavior (LoB)** - UI and logic in one file, perfect for AI agents.
+- **Unified Interface** - Single `use Nex` for Pages, APIs, and Components.
+- **Zero-Config Routing** - Paths are routes, reducing AI hallucinations.
 
-### Development Experience
-- **🔥 Hot Reload** - Instant file change detection via WebSocket, no manual refresh needed
-- **⚡ Zero Config** - Works out of the box, sensible defaults for everything
-- **🎨 CDN-first** - Use Tailwind/DaisyUI via CDN, no build step required
+### 📁 Routing & Pages
+- **File-based Routing** - Drop a file in `src/pages/`, get a route automatically.
+- **🔀 Dynamic Routes** - Support for `[id]`, `[slug]`, `[...path]` patterns.
+- **🎯 Convention over Configuration** - No route configuration needed.
 
-### Frontend Integration
-- **⚡ HTMX-first** - Built-in HTMX integration, server-side rendering without JavaScript
-- **🛡️ CSRF Protection** - Automatic token generation and validation on all POST/PUT/PATCH/DELETE requests
-- **📝 HTML Templates** - Phoenix HEEx templates for type-safe markup
+### ⚡ Frontend Integration
+- **HTMX-first** - Built-in HTMX integration, SSR without JavaScript complexity.
+- **🛡️ Built-in Security** - Automatic CSRF validation on all state-changing requests.
+- **📝 HTML Templates** - Type-safe HEEx templates.
 
-### Real-time & APIs
-- **🔄 Server-Sent Events** - Real-time streaming with SSE support for live updates
-- **📡 JSON APIs** - Easy JSON endpoint creation with `Nex.Api`
-- **🔗 Dynamic API Routes** - Support for dynamic API routes with parameters
-
-### Deployment
-- **🐳 Docker Ready** - Production-ready Dockerfile generated with every project
-- **📦 Single Binary** - Compile to a single executable for easy deployment
-- **🚀 Multi-platform** - Deploy to Railway, Fly.io, Render, or any VPS
+### 🔄 Real-time & APIs
+- **🌊 SSE Streaming** - Native `Nex.stream/1` API for AI responses and live updates.
+- **📡 JSON APIs** - Clean API routes with Next.js-aligned `req` object.
+- **Integrated State** - Page-scoped state management with `Nex.Store`.
 
 ## Project Structure
 
@@ -158,33 +153,34 @@ end
 defmodule MyApp.Api.Chat.Stream do
   use Nex
 
-  @impl true
-  def stream(%{"message" => msg}, send_fn) do
-    # Stream response character by character
-    msg
-    |> String.graphemes()
-    |> Enum.each(fn char ->
-      send_fn.(%{event: "message", data: char})
-      Process.sleep(50)
+  def get(%{query: %{"message" => msg}}) do
+    Nex.stream(fn send ->
+      # Stream response character by character
+      msg
+      |> String.graphemes()
+      |> Enum.each(fn char ->
+        send.(%{event: "message", data: char})
+        Process.sleep(50)
+      end)
     end)
-    :ok
   end
 end
 ```
 
-### JSON API Endpoint
+### JSON API Endpoint (Next.js Style)
 
 ```elixir
 defmodule MyApp.Api.Todos.Index do
   use Nex
 
-  def get do
-    %{data: fetch_todos()}
+  def get(_req) do
+    Nex.json(%{data: fetch_todos()})
   end
 
-  def post(%{"title" => title}) do
+  def post(req) do
+    title = req.body["title"]
     todo = create_todo(title)
-    {201, %{data: todo}}
+    Nex.json(%{data: todo}, status: 201)
   end
 end
 ```
