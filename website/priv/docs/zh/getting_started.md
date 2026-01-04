@@ -4,7 +4,14 @@
 
 ## 🛠️ 安装 Nex
 
-目前 Nex 建议通过源码安装命令行工具：
+建议通过 Hex 安装 Nex 命令行工具：
+
+```bash
+mix archive.install hex nex_new
+```
+
+### 源码安装（高级用户）
+如果你想体验最新的功能，可以从源码安装：
 
 1.  **克隆 Nex 仓库**：
     ```bash

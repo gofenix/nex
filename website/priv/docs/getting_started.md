@@ -4,7 +4,14 @@ Get a Nex application up and running in just 5 minutes.
 
 ## 🛠️ Install Nex
 
-Currently, Nex recommends installing the CLI tool from source:
+It is recommended to install the Nex CLI tool via Hex:
+
+```bash
+mix archive.install hex nex_new
+```
+
+### Install from Source (Advanced Users)
+If you want to experience the latest features, you can install from source:
 
 1.  **Clone the Nex repository**:
     ```bash
