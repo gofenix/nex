@@ -18,8 +18,8 @@ Nex enforces the coupling of logic and UI. Within a single `.ex` file, you can s
 **Value to AI**: AI often confuses parameter signatures between Page Actions and API Handlers.
 *   **Page Action** (in `src/pages/`): Receives a flat **Map** (merged path, query, and body params).
     *   *Example*: `def add_item(%{"id" => id})`
-*   **API Handler** (in `src/api/`): Receives a **`Nex.Req` struct** (mimicking Next.js, accessible via `req.query` or `req.body`).
-    *   *Example*: `def get(%{query: %{"id" => id}})`
+*   **API Handler** (in `src/api/`): Receives a **`Nex.Req` struct** (accessible via `req.query` or `req.body`).
+    *   *Example*: `def get(req)`
 Defining this distinction prevents the AI from generating uncompilable code.
 
 ### State Management & One-Way Flow of Truth
@@ -28,8 +28,7 @@ AI should follow: **Receive Intent -> Mutate Store/DB -> Render latest state**.
 *   **Truth Flow**: Strictly avoid rendering UI directly based on request parameters; always use `Nex.Store.update` to update state before rendering the page.
 
 ### Real-time Streams & SSE Experience
-When using `{:stream, fun}` for streaming responses (e.g., AI chat), the AI should always render an initial placeholder or "typing" state first to ensure immediate feedback.
- Nex comes with HTMX by default. If you include Alpine.js or Datastar in `layouts.ex`, the AI will also leverage their features automatically.
+When using **`Nex.stream/1`** for streaming responses (e.g., AI chat), the AI should always render an initial placeholder or "typing" state first to ensure immediate feedback.
 
 ---
 
@@ -39,14 +38,13 @@ Nex advocates for "Architecture as Rules." When you create a new project with `m
 
 ### A. Core Rule Files
 A new project includes the following key files:
-*   **`AGENTS.md`**: Defines the core principles of the framework (Locality of Behavior, File System Routing, Declarative Interaction, State Management). It serves as the "Supreme Constitution" for all AI tools (such as Cursor, Windsurf, Claude Code).
-*   **`.cursorrules`**: Rules optimized specifically for **Cursor**, ensuring the AI maintains locality while generating code. It automatically references `AGENTS.md`.
-*   **`CLAUDE.md`**: Provides a project overview and pattern guidance for the Claude series of tools.
+*   **`AGENTS.md`**: **The Supreme Constitution**. Defines the core principles of the framework (LoB, File System Routing, Declarative Interaction, State Management). It is the base reference for all AI tools (Cursor, Windsurf, Claude Code).
+*   **`CLAUDE.md`**: A minimalist entry point for tools like Claude Code, ensuring they prioritize consulting `AGENTS.md`.
 
 ### B. How to Use These Rules?
-1.  **Unified Source of Truth**: Regardless of which AI tool you use, guide it to first read the `AGENTS.md` file in the root directory.
-2.  **Cursor**: Cursor will automatically read `.cursorrules` when you open the project folder; no extra configuration is needed.
-3.  **Other Tools**: You can directly paste the content of `AGENTS.md` to any AI assistant (such as Windsurf, GPT-4o, Claude 3.5 Sonnet) as its System Prompt.
+1.  **Unified Source of Truth**: Regardless of which AI tool you use, guide it to first read the **`AGENTS.md`** file in the root directory.
+2.  **Cursor Users**: We recommend placing specific project instructions in the `.cursor/rules/` directory and directing them to reference `AGENTS.md`.
+3.  **Other Tools**: You can directly paste the content of `AGENTS.md` to any AI assistant (Windsurf, GPT-4o, Claude 3.5 Sonnet) as its System Prompt.
 
 ---
 
@@ -65,9 +63,9 @@ A new project includes the following key files:
 When AI behaves as if it's writing traditional Phoenix or React, correct it promptly:
 
 *   **Correction 1**: "Nex doesn't need a Router file; create files directly under `src/pages`."
-*   **Correction 2**: "Do not introduce extra JavaScript libraries; prefer using the built-in HTMX. You may only use Alpine.js or Datastar if I have manually included them in the Layout."
-*   **Correction 6**: "This is an API module; use the `def get(req)` signature and return `Nex.json/2`. For Page Actions, use the `def action_name(params)` signature."
-*   **Correction 7**: "In forms, please use `{csrf_input_tag()}` instead of the old `input_tag()`."
+*   **Correction 2**: "Do not introduce extra JavaScript libraries; prefer using the built-in HTMX."
+*   **Correction 3**: "This is an API module; use the `def get(req)` signature. For Page Actions, use the `def action_name(params)` signature."
+*   **Correction 4**: "In forms, please use `{csrf_input_tag()}`."
 
 ## 5. Conclusion
 

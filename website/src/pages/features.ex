@@ -98,7 +98,7 @@ defmodule NexWebsite.Pages.Features do
         <section>
           <h2 class="text-3xl font-bold mb-6">🔄 Server-Sent Events (SSE)</h2>
           <p class="text-lg text-claude-muted mb-8 leading-relaxed">
-            Real-time streaming is a first-class citizen. Use <code class="bg-gray-100 px-2 py-1 rounded text-sm">Nex.SSE</code> behavior for live dashboards, chat apps, AI streaming, or progress bars.
+            Real-time streaming is a first-class citizen. Use <code class="bg-gray-100 px-2 py-1 rounded text-sm">Nex.stream/1</code> for live dashboards, chat apps, AI streaming, or progress bars.
           </p>
           <div class="rounded-xl overflow-hidden shadow-lg">
             <%= raw @sse_stream_code %>

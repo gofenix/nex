@@ -18,14 +18,14 @@ defmodule NexWebsite.Pages.Index do
 
       <div class="hero-content text-center flex-col max-w-4xl relative z-10 animate-fade-in-up">
         <div class="badge badge-outline border-claude-purple text-claude-purple px-5 py-3 mb-8 font-semibold text-sm shadow-sm">
-          ✨ v0.2.x Released - Docker Ready
+          ✨ v0.3.x Released - AI-Native & Docker Ready
         </div>
         <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight mb-8 leading-[1.1]">
           Modern Web Apps,<br/>
-          <span class="gradient-text">Minimum Complexity.</span>
+          <span class="gradient-text">AI-Driven Speed.</span>
         </h1>
         <p class="text-xl md:text-2xl text-claude-muted mb-12 max-w-2xl mx-auto leading-relaxed font-medium">
-          Ship real products fast. Built for indie hackers and startups.
+          The minimalist Elixir framework built for <b>Vibe Coding</b>. Ship real products fast with AI as your co-pilot.
         </p>
         <div class="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
           <a href="/docs/getting_started" class="btn btn-claude-purple btn-lg px-10 rounded-full shadow-xl shadow-purple-200">

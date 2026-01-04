@@ -47,12 +47,12 @@ In an Action, you can return different directives to control HTMX behavior:
 | **`:empty`** | - | No DOM change |
 | **`{:redirect, url}`** | `HX-Redirect` | Client-side forced redirect to new URL |
 | **`{:refresh}`** | `HX-Refresh` | Client-side forced refresh of current page |
-| **`{:stream, fun}`** | `Content-Type: text/event-stream` | Starts SSE listening |
+| **`Nex.stream/1`** | `Content-Type: text/event-stream` | Starts SSE listening |
 
 ## 6. Manual Helper Functions
 
 While Nex automates as much as possible, you can use the following helper functions in custom JS or complex scenarios:
 
-*   `input_tag()`: Generates a CSRF hidden field.
+*   `csrf_input_tag()`: Generates a CSRF hidden field.
 *   `hx_headers()`: Generates a JSON string containing CSRF and Page ID for use with the `hx-headers` attribute.
 *   `meta_tag()`: Generates CSRF meta tags in the `<head>`.

@@ -3,8 +3,10 @@
 defmodule MyApp.Api.Stream do
   use Nex
 
-  def stream(_params, send_fn) do
-    send_fn.(%{event: "update", data: "Hello!"})
+  def get(_req) do
+    Nex.stream(fn send ->
+      send.(%{event: "update", data: "Hello from AI!"})
+    end)
   end
 end
 ```

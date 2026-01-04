@@ -1,56 +1,58 @@
-# SSE Real-Time Push (Server-Sent Events)
+# Server-Sent Events (SSE)
 
-Nex includes native support for Server-Sent Events (SSE), allowing the server to push real-time updates to the browser. This is extremely useful for building chat applications, notification systems, or real-time monitoring dashboards.
+Nex provides native support for Server-Sent Events (SSE), allowing the server to push real-time updates to the browser. This is extremely useful for building chat applications, notification systems, or AI streaming responses.
 
 ## 1. Core Concepts
 
-SSE is a unidirectional push protocol. Compared to WebSockets, it's more lightweight, firewall-friendly, and used with almost zero conversion in Nex.
+SSE is a unidirectional push protocol. Compared to WebSockets, it is more lightweight, firewall-friendly, and can be used with zero configuration in Nex.
 
-*   **Action Mode**: Via the `hx-ext="sse"` plugin or by returning `{:stream, fun}` directly in an Action.
-*   **Zero-Conversion Push**: You can push strings, Maps, Lists, or even HEEx fragments, and Nex automatically handles serialization.
+*   **`Nex.stream/1`**: The unified interface for streaming responses.
+*   **Zero-transform Push**: You can push strings, Maps, or Lists. Nex automatically handles serialization and follows the SSE protocol format.
 
-## 2. Using SSE in an Action
+## 2. Using SSE in Actions
 
-The easiest way is to return a stream in an Action function.
+Call `Nex.stream/1` within a Page Action or an API handler to start a stream.
 
-### Example: Real-Time Chatbot
+### Example: AI Chat Stream (Mock)
 
 ```elixir
 def chat(%{"message" => msg}) do
-  {:stream, fn send_fn ->
-    # Push typing indicator
-    send_fn.("Bot is thinking...")
+  Nex.stream(fn send ->
+    # Push a "thinking" indicator
+    send.("AI is thinking...")
     
-    # Simulate processing delay
-    Process.sleep(1000)
-    
-    # Push final reply
-    send_fn.(~H"<div class='p-2 bg-blue-100 rounded'>This is a reply to #{msg}</div>")
-  end}
+    # Simulate streaming generation
+    "This is a streaming response to: #{msg}."
+    |> String.graphemes()
+    |> Enum.each(fn char ->
+      send.(char)
+      Process.sleep(50)
+    end)
+  end)
 end
 ```
 
-## 3. SSE Module Protocol
+## 3. SSE Protocol Details
 
-Nex supports automatic conversion of Maps or Maps with an `event` key to the standard SSE protocol:
+The `send` function supports multiple data formats:
 
-```elixir
-send_fn.(%{event: "update", data: "New message content"})
-```
+*   **Plain Text**: `send.("hello")` -> `data: hello\n\n`
+*   **JSON Object**: `send.(%{id: 1, status: "ok"})` -> `data: {"id":1,"status":"ok"}\n\n`
+*   **Custom Events**: `send.(%{event: "my_event", data: "payload"})` -> `event: my_event\ndata: payload\n\n`
 
-HTMX on the browser side will automatically handle the update based on the event name:
+HTMX on the client side can easily integrate with SSE:
 ```html
-<div hx-ext="sse" sse-connect="/api/chat_stream" sse-swap="update">
-  Content will update here...
+<div hx-ext="sse" sse-connect="/api/chat_stream" sse-swap="message">
+  Content will be appended here in real-time...
 </div>
 ```
 
-## 4. Advantages and Limitations
+## 4. Pros and Cons
 
-*   **Advantages**:
-    *   **Extremely Simple**: No need to manage connection pools (Nex handles it automatically).
-    *   **Auto-Reconnect**: Browsers automatically reconnect dropped SSE connections.
-    *   **HEEx Support**: Directly push rendered HTML fragments.
-*   **Limitations**:
-    *   **Unidirectional**: Only supports server-to-client.
-    *   **Connection Limit**: HTTP/1.1 has browser limits on concurrent SSE connections to the same domain (HTTP/2 recommended).
+*   **Pros**:
+    *   **Extremely Simple**: Intuitive `send` callback pattern, automatic connection lifecycle management.
+    *   **AI Friendly**: Perfect for streaming outputs from APIs like OpenAI or Anthropic.
+    *   **Auto Reconnect**: Built-in browser support, no need for manual reconnection logic.
+*   **Cons**:
+    *   **Unidirectional**: Server-to-client only. For bidirectional needs, combine with regular HTMX requests.
+    *   **Connection Limits**: HTTP/1.1 has concurrent connection limits. It is highly recommended to use HTTP/2 in production.

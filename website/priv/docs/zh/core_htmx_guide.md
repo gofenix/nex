@@ -47,12 +47,12 @@ Nex 处理器能够识别请求的意图，并返回最适合的错误响应：
 | **`:empty`** | - | 无任何 DOM 变化 |
 | **`{:redirect, url}`** | `HX-Redirect` | 客户端强制跳转到新 URL |
 | **`{:refresh}`** | `HX-Refresh` | 客户端强制刷新当前页面 |
-| **`{:stream, fun}`** | `Content-Type: text/event-stream` | 开启 SSE 监听 |
+| **`Nex.stream/1`** | `Content-Type: text/event-stream` | 开启 SSE 监听 |
 
 ## 5. 手动辅助函数
 
 虽然 Nex 尽可能自动化，但在自定义 JS 或复杂场景下，你可以使用以下辅助函数：
 
-*   `input_tag()`：生成 CSRF 隐藏域。
+*   `csrf_input_tag()`：生成 CSRF 隐藏域。
 *   `hx_headers()`：生成包含 CSRF 和 Page ID 的 JSON 字符串，供 `hx-headers` 属性使用。
 *   `meta_tag()`：在 `<head>` 中生成 CSRF meta 标签。

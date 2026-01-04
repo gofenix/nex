@@ -18,8 +18,8 @@ Nex 强制将逻辑与 UI 耦合。在一个 `.ex` 文件中，你可以看清�
 **对 AI 的价值**：AI 经常混淆页面 Action 和 API 处理函数的参数签名。
 *   **页面 Action** (在 `src/pages/` 中)：接收一个平铺的 **Map**（合并了路径、查询和 Body 参数）。
     *   *示例*：`def add_item(%{"id" => id})`
-*   **API 处理函数** (在 `src/api/` 中)：接收一个 **`Nex.Req` 结构体**（模拟 Next.js，需通过 `req.query` 或 `req.body` 访问）。
-    *   *示例*：`def get(%{query: %{"id" => id}})`
+*   **API 处理函数** (在 `src/api/` 中)：接收一个 **`Nex.Req` 结构体**（需通过 `req.query` 或 `req.body` 访问）。
+    *   *示例*：`def get(req)`
 明确这一区别能防止 AI 生成无法编译的代码。
 
 ### 状态管理与单向真理流
@@ -28,23 +28,22 @@ AI 应遵循：**接收意图 -> 修改 Store/DB -> 渲染最新状态**。
 *   **真理流**：严禁直接根据请求参数渲染 UI，必须始终通过 `Nex.Store.update` 更新状态后，再渲染页面。
 
 ### 实时流与 SSE 体验
-当使用 `{:stream, fun}` 进行流式响应（如 AI 聊天）时，AI 应始终先渲染一个初始占位符或“正在输入”状态，以确保即时反馈。
+当使用 **`Nex.stream/1`** 进行流式响应（如 AI 聊天）时，AI 应始终先渲染一个初始占位符或“正在输入”状态，以确保即时反馈。
 
 ---
 
 ## 2. 开发者工具最佳实践 (AI 工具链配置)
 
-Nex 提倡“架构即规则”。当你使用 `mix nex.new` 创建新项目时，框架会自动生成一系列核心规则文件，确保 AI 助手从第一行代码开始就符合 Nex 的设计哲学。
+Nex 提倡“架构即规则”。当你使用 `mix nex.new` 创建新项目时，框架会自动生成核心规则文件，确保 AI 助手从第一行代码开始就符合 Nex 的设计哲学。
 
 ### A. 核心规则文件
 新项目中包含以下关键文件：
-*   **`AGENTS.md`**：定义了框架的核心原则（行为局部性、文件系统路由、声明式交互、状态管理）。它是所有 AI 工具（如 Cursor, Windsurf, Claude Code）的“最高宪法”。
-*   **`.cursorrules`**：专门为 **Cursor** 优化的规则，确保 AI 在生成代码时保持局部性。它会自动引用 `AGENTS.md`。
-*   **`CLAUDE.md`**：提供给 Claude 系列工具的项目概览和模式指引。
+*   **`AGENTS.md`**：**最高宪法**。定义了框架的核心原则（行为局部性、文件系统路由、声明式交互、状态管理）。它是所有 AI 工具（如 Cursor, Windsurf, Claude Code）的基础参考。
+*   **`CLAUDE.md`**：针对 Claude Code 等工具的极简引导，确保它们优先查阅 `AGENTS.md`。
 
 ### B. 如何使用这些规则？
-1.  **统一真理源**：无论你使用哪种 AI 工具，请引导它首先阅读根目录下的 `AGENTS.md`。
-2.  **Cursor**：Cursor 会自动读取 `.cursorrules`，你无需进行额外配置。
+1.  **统一真理源**：无论你使用哪种 AI 工具，请引导它首先阅读根目录下的 **`AGENTS.md`**。
+2.  **Cursor 用户**：建议在 `.cursor/rules/` 目录下放置针对项目的特定指令，并让其参考 `AGENTS.md`。
 3.  **其他工具**：你可以直接将 `AGENTS.md` 的内容贴给任何 AI 助手（如 Windsurf, GPT-4o, Claude 3.5 Sonnet），作为它的系统提示词（System Prompt）。
 
 ---
@@ -64,10 +63,9 @@ Nex 提倡“架构即规则”。当你使用 `mix nex.new` 创建新项目时�
 当 AI 表现得像在写传统的 Phoenix 或 React 时，请及时纠正：
 
 *   **纠偏 1**：“Nex 不需要 Router 文件，请直接在 `src/pages` 下创建文件。”
-*   **纠偏 2**：“不要引入额外的 JavaScript 库，优先使用内置的 HTMX。如果我手动在 Layout 中引入了 Alpine.js 或 Datastar，你才可以使用它们。”
-*   **纠偏 4**：“Action 的命名应该反映业务意图，例如 `submit_order` 而不是 `handle_post`。”
-*   **纠偏 6**：“这是一个 API 模块，请使用 `def get(req)` 签名并返回 `Nex.json/2`。对于页面 Action，请使用 `def action_name(params)` 签名。”
-*   **纠偏 7**：“在表单中请使用 `{csrf_input_tag()}` 而不是旧的 `input_tag()`。”
+*   **纠偏 2**：“不要引入额外的 JavaScript 库，优先使用内置的 HTMX。”
+*   **纠偏 3**：“这是一个 API 模块，请使用 `def get(req)` 签名。对于页面 Action，请使用 `def action_name(params)` 签名。”
+*   **纠偏 4**：“在表单中请使用 `{csrf_input_tag()}`。”
 
 ## 5. 结语
 
