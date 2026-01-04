@@ -30,7 +30,7 @@ defmodule Mix.Tasks.Nex.New do
     {opts, [name | _], _} = OptionParser.parse(args, switches: [path: :string])
 
     unless valid_name?(name) do
-      Mix.raise("Project name must start with a letter and contain only lowercase letters, numbers, and underscores")
+      Mix.raise("Project name must start with a letter and contain only lowercase letters, numbers, and underscores. Reserved names (elixir, mix, nex, etc.) are not allowed.")
     end
 
     base_path = opts[:path] || "."
@@ -47,12 +47,15 @@ defmodule Mix.Tasks.Nex.New do
 
     create_project(project_path, assigns)
 
+    # Initialize Git
+    if System.find_executable("git") do
+      Mix.shell().info("\n🌿 Initializing Git repository...\n")
+      System.cmd("git", ["init"], cd: project_path)
+    end
+
     # Install dependencies automatically
     Mix.shell().info("\n📦 Installing dependencies...\n")
-    original_dir = File.cwd!()
-    File.cd!(project_path)
-    System.cmd("mix", ["deps.get"], into: IO.stream(:stdio, :line))
-    File.cd!(original_dir)
+    Mix.shell().cmd("cd #{project_path} && mix deps.get")
 
     Mix.shell().info("""
 
@@ -67,7 +70,10 @@ defmodule Mix.Tasks.Nex.New do
     """)
   end
 
-  defp valid_name?(name), do: Regex.match?(~r/^[a-z][a-z0-9_]*$/, name)
+  defp valid_name?(name) do
+    reserved = ["elixir", "mix", "nex", "nex_core", "node", "phoenix", "proxy"]
+    Regex.match?(~r/^[a-z][a-z0-9_]*$/, name) and name not in reserved
+  end
 
   defp create_project(path, assigns) do
     # Create directories
@@ -89,9 +95,8 @@ defmodule Mix.Tasks.Nex.New do
       {".dockerignore", dockerignore()},
       {"Dockerfile", dockerfile()},
       {".env.example", env_example()},
+      {".formatter.exs", formatter_exs()},
       {"AGENTS.md", agents_md(assigns)},
-      {"CLAUDE.md", claude_md(assigns)},
-      {".cursorrules", cursorrules(assigns)},
       {"README.md", readme(assigns)}
     ]
 
@@ -217,9 +222,8 @@ defmodule Mix.Tasks.Nex.New do
             <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio"></script>
             <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.23/dist/full.min.css" rel="stylesheet" type="text/css" />
             <script src="https://unpkg.com/htmx.org@2.0.4"></script>
-            {meta_tag()}
           </head>
-          <body class="min-h-screen bg-base-200" hx-boost="true" hx-headers={hx_headers()}>
+          <body class="min-h-screen bg-base-200" hx-boost="true">
             <nav class="navbar bg-base-100 shadow-sm">
               <div class="max-w-4xl mx-auto w-full px-4">
                 <a href="/" class="btn btn-ghost text-xl">#{a.module_name}</a>
@@ -447,13 +451,13 @@ defmodule Mix.Tasks.Nex.New do
     RUN apk add --no-cache build-base git openssl ncurses-libs
 
     WORKDIR /app
-
+    
     RUN mix local.hex --force && mix local.rebar --force
-
+    
     COPY . .
-
+    
     RUN mix deps.get
-
+    
     EXPOSE 4000
 
     CMD ["mix", "nex.start"]
@@ -472,9 +476,18 @@ defmodule Mix.Tasks.Nex.New do
     """
   end
 
+  defp formatter_exs do
+    """
+    [
+      import_deps: [:nex_core],
+      inputs: ["{mix,.formatter}.exs", "{src,test}/**/*.{ex,exs}"]
+    ]
+    """
+  end
+
   defp agents_md(_a) do
     """
-    # Nex Framework: Architect's Manifesto (V5.2 - Master)
+    # Nex Framework: Architect's Manifesto (v0.3.2)
 
     You are a Master Nex Architect. Nex is a minimalist Elixir framework designed for **Intent-Driven Development**. Your mission: deliver code that is clean, performant, and "Nex-idiomatic".
 
@@ -485,105 +498,69 @@ defmodule Mix.Tasks.Nex.New do
 
     ## 2. Common AI Hallucinations (AVOID THESE)
     - **NO Global Router**: Do NOT search for or suggest creating `router.ex`. The folder structure IS the router.
-    - **NO LiveView Hooks**: Nex does NOT use `Phoenix.LiveView` hooks or `on_mount`. Use HTMX events or Alpine.js.
-    - **NO Template Jumping**: Logic and UI stay in the SAME `.ex` file. Do NOT create separate `.html.heex` files.
-    - **NO Vanilla Fetch**: Use `hx-get/post` for server communication. Only use JS for pure local UI state.
+    - **NO Config Files**: Do NOT create or modify `config/*.exs`. Nex uses `.env` for all settings.
+    - **NO Asset Pipeline**: Do NOT look for `assets/` or `priv/static`. Nex uses CDNs for Tailwind/DaisyUI/HTMX by default.
+    - **NO `mix run --no-halt`**: NEVER use this to start the project. Use `mix nex.dev` instead.
+    - **NO LiveView Hooks**: Nex does NOT use `Phoenix.LiveView` hooks. Use HTMX events or Alpine.js.
+    - **NO WebSockets**: Do NOT use Phoenix Channels for real-time. Use SSE with `Nex.stream/1`.
 
-    ## 3. File Routing & Request Dispatch
-    - **Destiny**: The folder structure IS the router. No global `router.ex`.
+    ## 3. Commands & Development
+    - **Development**: Use `mix nex.dev`.
+    - **Production**: Use `mix nex.start`.
+    - **Formatting**: Use `mix format`.
+
+    ## 4. Module Naming Convention
+    - **Structure**: `[AppModule].[Pages|Api|Components].[Name]`
+    - **Example**: `defmodule MyApp.Pages.Users` for `src/pages/users.ex`.
+
+    ## 5. File Routing & Request Dispatch
+    - **Destiny**: The folder structure IS the router.
     - **Pages (`src/pages/`)**: GET renders the page. POST/PUT/DELETE call public functions in the same module.
-    - **APIs (`src/api/`)**: Handlers MUST be named after HTTP methods: `def get(req)`, `def post(req)`, `def put(req)`, `def delete(req)`.
-    - **Dynamic Routes**: Use `[id].ex` for resources. `req.query["id"]` captures the path parameter.
+    - **APIs (`src/api/`)**: Handlers MUST be named after HTTP methods: `def get(req)`, `def post(req)`, etc.
 
-    ## 4. Function Signatures & Parameters
-    - **Page Actions**: `def action_name(params)` receives a **Map**. Params are merged from path, query, and body.
+    ## 6. Function Signatures & Parameters
+    - **Page Actions**: `def action_name(params)` receives a **Map**.
     - **API Handlers**: `def get(req)` receives a **`Nex.Req` struct**.
-    - **Nex.Req**: Access data via `req.query` (path params take precedence) and `req.body`.
-    - **File Uploads**: Ensure `hx-encoding="multipart/form-data"` is on the form. Access files via `params["name"]` (Pages) or `req.body["name"]` (APIs). The file will be a `%Plug.Upload{}` struct.
 
-    ## 5. Responses & Navigation
+    ## 7. Responses & Navigation
     - **Page Actions**: Return `~H\"...\"` (Partial), `:empty` (No-op), `{:redirect, \"/path\"}`, or `{:refresh, nil}`.
-    - **API Handlers**: MUST return `%Nex.Response{}` via `Nex.json/2`, `Nex.text/2`, `Nex.html/2`, `Nex.redirect/2`, or `Nex.status/2`.
+    - **API Handlers**: Return `%Nex.Response{}` via `Nex.json/2`, `Nex.text/2`, etc.
 
-    ## 6. Real-Time & Streaming (SSE)
+    ## 8. Surgical UX (HTMX)
+    - **Precision**: Use granular `hx-target`. Return ONLY the minimal HTML snippet required for the update.
+    - **Indicators**: Always use `hx-indicator` for network feedback.
+
+    ## 9. Real-Time & Streaming (SSE)
     - **Helper**: Use `Nex.stream(fn send -> ... end)`.
     - **Chunking**: `send.(data)` accepts String, Map (auto-JSON), or `%{event: \"name\", data: ...}`.
-    - **UX**: Always render an initial placeholder or "typing indicator" before starting the stream.
 
-    ## 7. Surgical UX (HTMX)
-    - **Precision**: Use granular `hx-target` (e.g., `#msg-count`). Return ONLY the minimal HTML snippet required.
-    - **Feedback**: Always use `hx-indicator` for network actions.
-    - **Smoothness**: Use `hx-swap=\"morph\"` if Alpine.js or Datastar is present for focus-preserving updates.
+    ## 10. Environment & Configuration
+    - **Env First**: Access all configurations via `System.get_env("VAR")`.
+    - **No Config**: Do not use `Application.get_env` for business logic.
 
-    ## 8. State Management (Nex.Store)
-    - **Lifecycle**: `Nex.Store` is server-side session state tied to the `page_id`. Clears on full page refresh.
-    - **API Integration**: API calls from the frontend automatically share the Store state of the parent page.
-    - **The Flow**: 1. Receive Intent -> 2. Mutate Store/DB -> 3. **THEN** render UI with updated data.
-    - **Example**:
+    ## 11. Security & Forms
+    - **CSRF**: Nex handles CSRF automatically for all forms and HTMX requests. Do NOT manually add CSRF tags or headers.
+    - **Example Form**:
       ```elixir
-      def toggle(%{"id" => id}) do
-        new_val = Nex.Store.update(:active_id, nil, fn _ -> id end)
-        render(%{active_id: new_val})
-      end
+      ~H\"\"\"
+      <form hx-post="/save_data">
+        <input name="title" placeholder="Enter title..." />
+        <button type="submit">Save</button>
+      </form>
+      \"\"\"
       ```
 
-    ## 9. Layout Contract
-    - **Variable Requirement**: `src/layouts.ex` must render `@inner_content` via `{raw(@inner_content)}`.
-    - **Navigation**: Use `hx-boost=\"true\"` on the `<body>` tag for SPA-like speed.
-    - **CSRF Global**: Layout should include `{meta_tag()}` in `<head>` and `hx-headers={hx_headers()}` on `<body>` for HTMX requests.
+    ## 12. State Management (Nex.Store)
+    - **Lifecycle**: `Nex.Store` is server-side session state tied to the `page_id`. 
+    - **The Flow**: 1. Receive Intent -> 2. Mutate Store/DB -> 3. THEN render UI with updated data.
 
-    ## 10. Locality & Component Promotion
+    ## 13. Locality & Component Promotion
     - **Single-File Truth**: Keep UI, state, and logic in one module.
-    - **Private Components**: Extract blocks into `defp widget(assigns)` at the bottom of the file if `render/1` > 50 lines.
-    - **Promotion**: Move to `src/components/` ONLY if reused across **3 or more** pages.
-    - **Component Idioms**: Use `{render_slot(@inner_block)}` for default content and `{@slot_name}` for named slots.
-
-    ## 11. Elixir Aesthetics
-    - **Pattern Match**: Destructure params/structs in function heads.
-    - **Pipelines**: Express logic as a clear series of transformations using `|>`.
-    - **No Nesting**: Use guard clauses to keep code \"flat\".
-
-    ## 12. Visual Harmony (DaisyUI)
-    - **Component First**: Prioritize DaisyUI classes (`.card`, `.btn-primary`, `.stat`).
-    - **Clean HTML**: Avoid 20+ raw Tailwind classes. Use a component class if it exists.
-
-    ## 13. Security
-    - **CSRF**: Every `hx-post/put/patch/delete` form MUST include `{csrf_input_tag()}` inside the `<form>`.
+    - **Private Components**: Use `defp widget(assigns)` at the bottom of the file.
+    - **Promotion**: Move to `src/components/` ONLY if reused across 3 or more pages.
 
     *Architect's Mantra: surgical precision, semantic intent, local focus, and absolute minimalism.*
-    """
-  end
-
-  defp claude_md(a) do
-    """
-    # CLAUDE.md for #{a.module_name}
-
-    This project uses the Nex framework. Refer to `AGENTS.md` for core architectural principles.
-
-    ## Key Patterns
-    - **Actions**: Public functions in a Page module called by HTMX.
-    - **State**: `Nex.Store` for per-session page state.
-    - **UI**: Tailwind CSS + DaisyUI.
-
-    Always prioritize code locality and declarative interaction.
-    """
-  end
-
-  defp cursorrules(_a) do
-    """
-    # Cursor Rules for Nex
-
-    Refer to `AGENTS.md` for the full set of principles.
-
-    1. **Locality**: UI and logic belong in the same Page module.
-    2. **Routing**: File system based. No `router.ex`.
-    - **Navigation**: Use `hx-boost=\"true\"` on the `<body>` tag for SPA-like speed.
-    - **CSRF Global**: Layout should include `{meta_tag()}` in `<head>` and `hx-headers={hx_headers()}` on `<body>` for HTMX requests.
-    3. **Actions**: Use `hx-post="/func_name"` to call module functions.
-    4. **API**: Use `Nex.json/2` in `src/api/`.
-
-    Always follow the Locality of Behavior (LoB) principle.
-    """
+    \"\"\"
   end
 
   defp readme(a) do

@@ -65,7 +65,6 @@ Nex 提倡“架构即规则”。当你使用 `mix nex.new` 创建新项目时�
 *   **纠偏 1**：“Nex 不需要 Router 文件，请直接在 `src/pages` 下创建文件。”
 *   **纠偏 2**：“不要引入额外的 JavaScript 库，优先使用内置的 HTMX。”
 *   **纠偏 3**：“这是一个 API 模块，请使用 `def get(req)` 签名。对于页面 Action，请使用 `def action_name(params)` 签名。”
-*   **纠偏 4**：“在表单中请使用 `{csrf_csrf_input_tag()}`。”
 
 ## 5. 结语
 

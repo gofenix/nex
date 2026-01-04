@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Refined API Terminology**: Removed misleading "API 2.0" references in favor of "JSON API Standards".
 
 ### Improved
+- **Automated CSRF Protection**: Framework now automatically injects hidden CSRF tokens into all state-changing `<form>` tags (POST, PUT, PATCH, DELETE) and handles HTMX headers. Manual `{csrf_input_tag()}` and `hx-headers` are no longer required.
 - **REST API Guidance**: Clearer mapping between file-system routes and HTTP method handlers.
 - **SSE Streaming UX**: Standardized placeholder rendering and chunk encoding for AI responses.
 

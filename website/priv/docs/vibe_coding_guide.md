@@ -65,7 +65,6 @@ When AI behaves as if it's writing traditional Phoenix or React, correct it prom
 *   **Correction 1**: "Nex doesn't need a Router file; create files directly under `src/pages`."
 *   **Correction 2**: "Do not introduce extra JavaScript libraries; prefer using the built-in HTMX."
 *   **Correction 3**: "This is an API module; use the `def get(req)` signature. For Page Actions, use the `def action_name(params)` signature."
-*   **Correction 4**: "In forms, please use `{csrf_csrf_input_tag()}`."
 
 ## 5. Conclusion
 

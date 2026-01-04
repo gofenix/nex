@@ -30,3 +30,7 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/):
 - **Format**: `<type>(<scope>): <subject>`
 - **Strict Rule**: **NO triple backticks (```)** in the commit message.
 - Subject: ≤ 50 chars, imperative mood.
+
+### Developer Experience (DX)
+- **Zero Boilerplate**: Nex handles CSRF automatically. Do NOT manually add CSRF input tags or headers unless specifically requested.
+- **Convention over Configuration**: File paths are routes. Modules use a unified `use Nex` interface.

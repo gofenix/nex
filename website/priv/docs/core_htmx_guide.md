@@ -19,7 +19,7 @@ Nex mandates that all non-GET requests must pass CSRF validation.
 3.  **Request Interception**: This script automatically listens for all HTMX requests (`htmx:configRequest` event) and puts the Token in the `X-CSRF-Token` request header.
 4.  **Server Validation**: Nex's handler automatically intercepts and validates this header. If validation fails, the request is rejected (403 Forbidden).
 
-> **No Manual Action Required**: You don't need to add `<input type="hidden">` in forms, nor do you need to manually set HTMX Headers.
+> **Fully Automated**: Nex automatically injects hidden CSRF tokens into all `<form method="post">` (and PUT/PATCH/DELETE) tags on the page, and adds security headers to all asynchronous HTMX requests. Developers do not need to manually write any security-related boilerplate code.
 
 ## 3. State Isolation (Page ID)
 
@@ -48,11 +48,3 @@ In an Action, you can return different directives to control HTMX behavior:
 | **`{:redirect, url}`** | `HX-Redirect` | Client-side forced redirect to new URL |
 | **`{:refresh}`** | `HX-Refresh` | Client-side forced refresh of current page |
 | **`Nex.stream/1`** | `Content-Type: text/event-stream` | Starts SSE listening |
-
-## 6. Manual Helper Functions
-
-While Nex automates as much as possible, you can use the following helper functions in custom JS or complex scenarios:
-
-*   `csrf_csrf_input_tag()`: Generates a CSRF hidden field.
-*   `hx_headers()`: Generates a JSON string containing CSRF and Page ID for use with the `hx-headers` attribute.
-*   `meta_tag()`: Generates CSRF meta tags in the `<head>`.

@@ -103,7 +103,7 @@ defmodule NexWebsite.Pages.Features do
         <section>
           <h2 class="text-3xl font-bold mb-6">🛡️ Built-in Security</h2>
           <p class="text-lg text-claude-muted mb-8 leading-relaxed">
-            Security by default. Automatic CSRF protection for all POST requests. Just use <code class="bg-gray-100 px-2 py-1 rounded text-sm">csrf_input_tag/0</code> in your forms.
+            Security by default. Automatic CSRF protection for all POST requests. No manual boilerplate required, Nex handles it all behind the scenes.
           </p>
           <div class="bg-purple-50 p-6 rounded-xl border border-purple-200">
             <div class="flex items-start gap-3">

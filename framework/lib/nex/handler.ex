@@ -321,11 +321,19 @@ defmodule Nex.Handler do
         end
 
       # Handle both HEEx output (Phoenix.HTML.Safe) and plain strings
-      final_html =
+      html_binary =
         case html do
           binary when is_binary(binary) -> binary
           _ -> Phoenix.HTML.Safe.to_iodata(html) |> IO.iodata_to_binary()
         end
+
+      # Automatically inject CSRF token into all POST/PUT/PATCH/DELETE forms
+      # This removes the need for manual {csrf_input_tag()} boilerplate
+      final_html = String.replace(
+        html_binary,
+        ~r/(<form\s+[^>]*method=["'](?:post|put|patch|delete)["'][^>]*>)/i,
+        "\\1<input type=\"hidden\" name=\"_csrf_token\" value=\"#{csrf_token}\">"
+      )
 
       conn
       |> put_resp_content_type("text/html")
