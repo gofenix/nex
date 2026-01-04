@@ -5,7 +5,14 @@ All notable changes to the Nex framework will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.3.2] - Unreleased
+## [0.3.3] - Unreleased
+
+### Added
+- **Automated CSRF Protection**: Framework now automatically injects hidden CSRF tokens into all state-changing `<form>` tags (POST, PUT, PATCH, DELETE) and handles HTMX headers. Manual `{csrf_input_tag()}` and `hx-headers` are no longer required.
+- **Refined Project Installer**: Enhanced `mix nex.new` with reserved name validation, automatic git initialization, and `.formatter.exs` generation.
+- **Enhanced AI Agent Instructions**: Deeply optimized `AGENTS.md` with anti-hallucination guidelines, startup command instructions, and surgical UX patterns.
+
+## [0.3.2] - 2026-01-04
 
 ### Added
 - **AI Agent Handbook (AGENTS.md)**: Automatically generated for new projects to guide AI assistants (Cursor, Claude, etc.) in writing idiomatic Nex code.
@@ -17,7 +24,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Refined API Terminology**: Removed misleading "API 2.0" references in favor of "JSON API Standards".
 
 ### Improved
-- **Automated CSRF Protection**: Framework now automatically injects hidden CSRF tokens into all state-changing `<form>` tags (POST, PUT, PATCH, DELETE) and handles HTMX headers. Manual `{csrf_input_tag()}` and `hx-headers` are no longer required.
 - **REST API Guidance**: Clearer mapping between file-system routes and HTTP method handlers.
 - **SSE Streaming UX**: Standardized placeholder rendering and chunk encoding for AI responses.
 
