@@ -1,12 +1,32 @@
-# Principle 1
-Every modification to the framework code must be recorded in the changelog to facilitate future framework version releases.
+# AI Agent Handbook & Principles
 
-I will give you instructions when it's time to upgrade versions. You will determine whether a version upgrade is needed based on the changelog. If an upgrade is needed, update the version number and then update the changelog.
+## 1. Core Principles
 
-# Principle 2
+### Principle 1: Changelog First
+Every modification to the framework code must be recorded in the changelog to facilitate future framework version releases. 
+Check the changelog before and after any modification.
 
-When creating example projects, such as those in website or examples, if you determine that we need to modify the framework code to support them, please let me know. I will evaluate whether to make those changes.
+### Principle 2: Framework Modification Policy
+When creating example projects (in `website/` or `examples/`), if you determine that we need to modify the framework code to support them, please let me know. I will evaluate whether to make those changes.
 
-# Principle 3
+### Principle 3: Upgrade Verification
+When upgrading the framework:
+1. Ensure the changelog is actually updated.
+2. Ensure the version number is correctly bumped.
+3. Ensure the installer code (`installer/`) is updated to reflect the change.
 
-when upgrading the framework, you should check the changelog really update, and the version number really upgrade, and the installer's code really update.
+---
+
+## 2. Project Context
+
+### Project Structure
+- `framework/`: Core package (`nex_core`)
+- `installer/`: Project generator (`nex_new`)
+- `website/`: Official documentation site
+- `examples/`: Example projects
+
+### Commit Message Convention
+Follow [Conventional Commits](https://www.conventionalcommits.org/):
+- **Format**: `<type>(<scope>): <subject>`
+- **Strict Rule**: **NO triple backticks (```)** in the commit message.
+- Subject: ≤ 50 chars, imperative mood.
