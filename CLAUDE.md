@@ -19,3 +19,15 @@ I will give you instructions when it's time to upgrade versions. You will determ
 # Principle 2
 
 When creating example projects, such as those in website or examples, if you determine that we need to modify the framework code to support them, please let me know. I will evaluate whether to make those changes.
+
+# Commit Message Convention
+
+Follow [Conventional Commits](https://www.conventionalcommits.org/):
+- **Format**: `<type>(<scope>): <subject>`
+- **Types**: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`
+- **Scopes**: `framework`, `website`, `installer`, `examples`, `core`
+- **Rules**:
+  - No triple backticks (```) in the message.
+  - Subject line should be 50 characters or less.
+  - Body lines (if any) should be 72 characters or less.
+  - Use imperative mood in the subject (e.g., "add feature" instead of "added feature").
