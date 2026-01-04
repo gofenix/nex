@@ -11,16 +11,14 @@ This is a monorepo for the **Nex** web framework with these main components:
 - `website/` - Official documentation website (built with Nex itself)
 - `examples/` - Example projects demonstrating framework features
 
-# Principle 1
-Every modification to the framework code must be recorded in the changelog to facilitate future framework version releases.
+## AI Agent Principles
 
-I will give you instructions when it's time to upgrade versions. You will determine whether a version upgrade is needed based on the changelog. If an upgrade is needed, update the version number and then update the changelog.
+**IMPORTANT**: All AI agents must strictly follow the core principles defined in **`AGENTS.md`**. These principles cover:
+- Framework modification rules
+- Version upgrade procedures
+- Changelog management
 
-# Principle 2
-
-When creating example projects, such as those in website or examples, if you determine that we need to modify the framework code to support them, please let me know. I will evaluate whether to make those changes.
-
-# Commit Message Convention
+## Commit Message Convention
 
 Follow [Conventional Commits](https://www.conventionalcommits.org/):
 - **Format**: `<type>(<scope>): <subject>`
