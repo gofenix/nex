@@ -129,7 +129,7 @@ Datastar 支持在属性中直接编写标准的 JavaScript 表达式。你可�
     *   `data-on-intersect`: 滚动进入视口触发（实现**无限滚动/懒加载**）。
     *   `data-indicator`: 全自动的请求加载状态显示。
     *   `data-ref`: 直接引用 DOM 元素实现复杂交互（如自动聚焦）。
-*   **AI 聊天机器人 (`chat.ex`)**：结合 Nex 的 `{:stream, fun}` 返回值，实现 **AI 逐字流式回复**。
+*   **AI 聊天机器人 (`chat.ex`)**：结合 Nex 的 `Nex.stream(fn}` 返回值，实现 **AI 逐字流式回复**。
 *   **实时表单验证 (`form.ex`)**：纯前端信号驱动的复杂校验逻辑，无需后端往返。
 *   **Todo MVC (`todos.ex`)**：综合展示 CRUD 操作、客户端列表过滤和动态样式切换。
 

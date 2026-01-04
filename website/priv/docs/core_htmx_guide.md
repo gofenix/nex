@@ -53,6 +53,6 @@ In an Action, you can return different directives to control HTMX behavior:
 
 While Nex automates as much as possible, you can use the following helper functions in custom JS or complex scenarios:
 
-*   `csrf_input_tag()`: Generates a CSRF hidden field.
+*   `csrf_csrf_input_tag()`: Generates a CSRF hidden field.
 *   `hx_headers()`: Generates a JSON string containing CSRF and Page ID for use with the `hx-headers` attribute.
 *   `meta_tag()`: Generates CSRF meta tags in the `<head>`.

@@ -53,4 +53,4 @@ Nex 提供了一套极其智能且简约的 Action 路由方案，旨在彻底�
 | `:empty` | 执行逻辑成功，但不返回内容（通常配合 `hx-swap="none"` 使用）。 |
 | `{:redirect, "/path"}` | 让 HTMX 进行客户端跳转（HX-Redirect）。 |
 | `{:refresh}` | 强制浏览器刷新当前页面（HX-Refresh）。 |
-| `{:stream, fn -> ... end}` | 启动 SSE 实时流。 |
+| `Nex.stream(fn -> ... end}` | 启动 SSE 实时流。 |

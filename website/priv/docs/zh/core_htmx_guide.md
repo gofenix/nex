@@ -53,6 +53,6 @@ Nex 处理器能够识别请求的意图，并返回最适合的错误响应：
 
 虽然 Nex 尽可能自动化，但在自定义 JS 或复杂场景下，你可以使用以下辅助函数：
 
-*   `csrf_input_tag()`：生成 CSRF 隐藏域。
+*   `csrf_csrf_input_tag()`：生成 CSRF 隐藏域。
 *   `hx_headers()`：生成包含 CSRF 和 Page ID 的 JSON 字符串，供 `hx-headers` 属性使用。
 *   `meta_tag()`：在 `<head>` 中生成 CSRF meta 标签。

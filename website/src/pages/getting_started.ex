@@ -34,15 +34,15 @@ cd my_app</code></pre>
 │   ├── pages/           # Page modules (auto-routed)
 │   │   ├── index.ex     # GET /
 │   │   └── [id].ex      # GET /id (dynamic route)
-│   ├── api/             # JSON API endpoints
+│   ├── api/             # JSON API endpoints (Next.js style)
 │   │   └── todos/
 │   │       └── index.ex # GET/POST /api/todos
-│   ├── components/      # Reusable components
-│   └── layouts.ex       # Layout template
+│   ├── components/      # Reusable UI components
+│   └── layouts.ex       # Global HTML layout
 ├── mix.exs
-└── Dockerfile           # Production deployment</code></pre>
+└── .env                 # Environment variables</code></pre>
         </div>
-        <p><strong>Key concept</strong> - Just drop a file in <code class="bg-gray-100 px-1 rounded">src/pages/</code> and it automatically becomes a route. No router configuration needed!</p>
+        <p><strong>Key concept</strong> - Nex is AI-Native. Just drop a file in <code class="bg-gray-100 px-1 rounded">src/pages/</code> and it automatically becomes a route. No router configuration needed!</p>
 
         <h2 class="text-claude-text">4. Run in Development Mode</h2>
         <p>Nex includes a built-in development server with hot reloading enabled by default. Changes to your code are reflected instantly.</p>

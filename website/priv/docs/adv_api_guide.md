@@ -15,7 +15,7 @@ In Nex, to unify response formats, we have established the following enforced ru
 
 1.  **Must Return `Nex.Response` Struct**: Action functions can no longer return raw Maps or Lists.
 2.  **Use Helper Functions**: You must use helper functions like `Nex.json/2`, `Nex.text/2`, `Nex.redirect/2` to build responses.
-3.  **Function Signature**: API handler functions receive a `Nex.Req` struct, which contains fields like `body`, `query`, and `params`.
+3.  **Function Signature**: API handler functions receive a `Nex.Req` struct, which is designed to be fully aligned with Next.js API Routes.
 
 ### Correct Example
 
@@ -23,10 +23,10 @@ In Nex, to unify response formats, we have established the following enforced ru
 defmodule MyApp.Api.Todos do
   use Nex
 
-  # GET /api/todos
+  # GET /api/todos/[id]
   def get(req) do
-    todos = MyApp.Repo.all_todos()
-    Nex.json(todos) # Returns a Nex.Response struct
+    id = req.query["id"] # Obtained from path parameter [id]
+    Nex.json(%{id: id, name: "Sample Todo"})
   end
 
   # POST /api/todos
@@ -44,12 +44,13 @@ end
 
 ## 3. Nex.Req Struct Analysis
 
-The `req` parameter provides unified access to request data:
+The `req` parameter provides unified access to request data, behaving highly consistent with Next.js:
 
-*   **`req.body`**: Body content of POST/PUT requests (usually a parsed Map).
-*   **`req.query`**: Query parameters in the URL (e.g., `?search=nex`).
-*   **`req.params`**: Dynamic parameters in the URL path (e.g., `[id]`).
-*   **`req.headers`**: Request header information.
+*   **`req.query`**: Contains both URL path parameters (e.g., `[id]`) and query string parameters. Path parameters take precedence on key conflicts.
+*   **`req.body`**: Body content of POST/PUT requests (usually a parsed Map). Completely independent of `query`.
+*   **`req.headers`**: Request header information (Map format).
+*   **`req.cookies`**: Cookie information.
+*   **`req.method`**: Uppercase HTTP method string (e.g., `"GET"`, `"POST"`).
 
 ## 4. Smart Error Handling Mechanism
 

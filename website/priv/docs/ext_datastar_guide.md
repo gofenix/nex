@@ -129,7 +129,7 @@ We provide a complete, step-by-step tutorial project covering all core scenarios
     *   `data-on-intersect`: Triggered when scrolling into viewport (implements **infinite scroll/lazy loading**).
     *   `data-indicator`: Fully automatic request loading state display.
     *   `data-ref`: Direct DOM element reference for complex interactions (e.g., auto-focusing).
-*   **AI Chatbot (`chat.ex`)**: Combined with Nex's `{:stream, fun}` return value to implement **AI word-by-word streaming responses**.
+*   **AI Chatbot (`chat.ex`)**: Combined with Nex's `Nex.stream(fn}` return value to implement **AI word-by-word streaming responses**.
 *   **Real-time Form Validation (`form.ex`)**: Complex validation logic driven by pure frontend signals, no backend round-trips required.
 *   **Todo MVC (`todos.ex`)**: A comprehensive showcase of CRUD operations, client-side list filtering, and dynamic style switching.
 

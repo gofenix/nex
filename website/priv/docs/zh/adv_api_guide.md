@@ -15,7 +15,7 @@ API 文件存放在 `src/api/` 目录下。URL 路径会自动加上 `/api` 前�
 
 1.  **必须返回 `Nex.Response` 结构体**：Action 函数不能再返回原始的 Map 或 List。
 2.  **使用辅助函数**：必须使用 `Nex.json/2`, `Nex.text/2`, `Nex.redirect/2` 等辅助函数来构建响应。
-3.  **函数签名**：API 处理函数接收一个 `Nex.Req` 结构体，其中包含 `body`, `query`, `params` 等字段。
+3.  **函数签名**：API 处理函数接收一个 `Nex.Req` 结构体，其设计全面对齐 Next.js API Routes。
 
 ### 正确示例
 
@@ -23,10 +23,10 @@ API 文件存放在 `src/api/` 目录下。URL 路径会自动加上 `/api` 前�
 defmodule MyApp.Api.Todos do
   use Nex
 
-  # GET /api/todos
+  # GET /api/todos/[id]
   def get(req) do
-    todos = MyApp.Repo.all_todos()
-    Nex.json(todos) # 返回 Nex.Response 结构体
+    id = req.query["id"] # 从路径参数 [id] 中获取
+    Nex.json(%{id: id, name: "Sample Todo"})
   end
 
   # POST /api/todos
@@ -44,12 +44,13 @@ end
 
 ## 3. Nex.Req 结构解析
 
-`req` 参数提供了对请求数据的统一访问：
+`req` 参数提供了对请求数据的统一访问，其行为与 Next.js 保持高度一致：
 
-*   **`req.body`**：POST/PUT 请求的 Body 内容（通常是解析后的 Map）。
-*   **`req.query`**：URL 中的查询参数（如 `?search=nex`）。
-*   **`req.params`**：URL 路径中的动态参数（如 `[id]`）。
-*   **`req.headers`**：请求头信息。
+*   **`req.query`**：包含 URL 路径参数（如 `[id]`）和查询字符串参数。当键冲突时，路径参数优先。
+*   **`req.body`**：POST/PUT 请求的 Body 内容（通常是解析后的 Map）。与 `query` 完全独立。
+*   **`req.headers`**：请求头信息（Map 格式）。
+*   **`req.cookies`**：Cookie 信息。
+*   **`req.method`**：大写的 HTTP 方法字符串（如 `"GET"`, `"POST"`）。
 
 ## 4. 智能错误处理机制
 

@@ -53,4 +53,4 @@ All Action requests routed through Nex automatically enjoy the following protect
 | `:empty` | Logic execution success, but returns no content (usually used with `hx-swap="none"`). |
 | `{:redirect, "/path"}` | Triggers client-side redirect (HX-Redirect). |
 | `{:refresh}` | Forces the browser to refresh the current page (HX-Refresh). |
-| `{:stream, fn -> ... end}` | Starts an SSE real-time stream. |
+| `Nex.stream(fn -> ... end}` | Starts an SSE real-time stream. |
