@@ -62,7 +62,7 @@ defmodule NexAI do
   Maps to `smoothStream`.
   In Elixir, this is largely identity, but provided for API compatibility.
   """
-  def smooth_stream(opts \\ []) do
+  def smooth_stream(_opts \\ []) do
     fn stream -> 
       # Logic to smooth stream would go here.
       # For now, we return the stream as is.
@@ -316,7 +316,7 @@ defmodule NexAI do
     
     generate_text(Keyword.put(opts, :output, NexAI.Output.object(schema)))
     |> case do
-      {:ok, %{object: object} = res} -> {:ok, res} # generate_text now returns object if configured
+      {:ok, %{object: _object} = res} -> {:ok, res} # generate_text now returns object if configured
       error -> error
     end
   end
@@ -352,21 +352,14 @@ defmodule NexAI do
     end
     
     # Check if we are in object streaming mode
-    is_object_stream = output_config && output_config.mode == :object
-
-    res_logic = fn send_fn, adapter_type ->
-      do_stream_text(opts[:model], messages, opts[:tools] || [], opts[:max_steps] || 1, send_fn, 0, opts, adapter_type)
+    opts = if output_config && output_config.mode == :object do
+      Keyword.put(opts, :output_mode, :object)
+    else
+      opts
     end
 
-    logic = if is_object_stream do
-      fn send_fn, adapter_type ->
-        res_logic.(fn 
-          "{\"type\":\"text-delta\"" <> rest -> send_fn.("{\"type\":\"object-delta\"" <> rest)
-          other -> send_fn.(other)
-        end, adapter_type)
-      end
-    else
-      res_logic
+    logic = fn send_fn, adapter_type ->
+      do_stream_text(opts[:model], messages, opts[:tools] || [], opts[:max_steps] || 1, send_fn, 0, opts, adapter_type)
     end
 
     %StreamTextResult{logic: logic, opts: opts, messages: messages}
@@ -535,7 +528,10 @@ defmodule NexAI do
     acc = if content = delta["content"] do
       new_full = acc.full_text <> content
       if opts[:on_token], do: opts[:on_token].(content)
-      send_via_adapter(send, :text, content, adapter_type)
+      
+      event_type = if opts[:output_mode] == :object, do: :object_delta, else: :text
+      send_via_adapter(send, event_type, content, adapter_type)
+      
       %{acc | full_text: new_full}
     else
       acc

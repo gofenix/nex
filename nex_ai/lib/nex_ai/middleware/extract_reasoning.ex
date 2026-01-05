@@ -6,7 +6,7 @@ defmodule NexAI.Middleware.ExtractReasoning do
   @behaviour NexAI.Middleware
 
   def wrap(model, opts \\ []) do
-    tag_name = opts[:tag_name] || "reasoning"
+    _tag_name = opts[:tag_name] || "reasoning"
     
     # In a real implementation, we would return a wrapped model struct that intercepts generate_text/stream_text
     # and parses the output to extract content within <reasoning> tags.

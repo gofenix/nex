@@ -20,6 +20,10 @@ defmodule NexAI.Protocol do
     Jason.encode!(%{type: "text-delta", delta: text})
   end
 
+  def encode(:object_delta, delta) when is_binary(delta) do
+    Jason.encode!(%{type: "object-delta", delta: delta})
+  end
+
   def encode(:tool_call_start, %{toolCallId: id, toolName: name}) do
     Jason.encode!(%{type: "tool-input-start", toolCallId: id, toolName: name})
   end
