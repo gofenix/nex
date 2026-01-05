@@ -1,12 +1,16 @@
 defmodule NexAI.Middleware.DefaultSettings do
   @moduledoc """
-  Middleware that applies default settings to model calls.
-  Maps to `defaultSettingsMiddleware`.
+  Middleware that injects default settings into every model call.
   """
-  @behaviour NexAI.Middleware
+  alias NexAI.LanguageModel.Protocol, as: ModelProtocol
 
-  def wrap(model, _opts \\ []) do
-    # Similarly, this would return a wrapped model that merges default opts into every call.
-    model
+  def do_generate(model, params, opts) do
+    params = update_in(params.config, &Keyword.merge(opts, &1))
+    ModelProtocol.do_generate(model, params)
+  end
+
+  def do_stream(model, params, opts) do
+    params = update_in(params.config, &Keyword.merge(opts, &1))
+    ModelProtocol.do_stream(model, params)
   end
 end

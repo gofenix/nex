@@ -7,19 +7,14 @@ defmodule NexAI.MixProject do
       version: "0.1.0",
       elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,
-      deps: deps(),
-      description: "The Standalone AI SDK for Elixir, inspired by Vercel AI SDK.",
-      package: [
-        maintainers: ["fenix"],
-        licenses: ["MIT"],
-        links: %{"GitHub" => "https://github.com/gofenix/nex"}
-      ]
+      deps: deps()
     ]
   end
 
   def application do
     [
-      extra_applications: [:logger]
+      extra_applications: [:logger, :crypto],
+      mod: {NexAI.Application, []}
     ]
   end
 

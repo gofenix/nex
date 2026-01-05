@@ -77,38 +77,77 @@ defmodule NexAI.Provider.OpenAI do
       body = if params.tools && length(params.tools) > 0, do: Map.put(body, :tools, OpenAI.format_tools(params.tools)), else: body
       body = if tc = params.tool_choice, do: Map.put(body, :tool_choice, tc), else: body
       body = if rf = params.response_format, do: Map.put(body, :response_format, rf), else: body
-      
       body = Map.merge(body, model.config)
 
       parent = self()
-      
+      receive_timeout = params.config[:receive_timeout] || 30_000
+
       Stream.resource(
         fn ->
-          Task.async(fn ->
+          # 1. Start Async Task with Pull-based Flow Control (Backpressure)
+          task = Task.Supervisor.async_nolink(NexAI.TaskSupervisor, fn ->
             Req.post(url,
               json: body,
               auth: {:bearer, model.api_key},
               into: fn {:data, data}, acc ->
-                send(parent, {:stream_data, data})
-                {:cont, acc}
+                # Send raw data to consumer
+                send(parent, {:stream_data, self(), data})
+                # BACKPRESSURE: Wait for consumer to process before fetching more from TCP
+                receive do
+                  :ack -> {:cont, acc}
+                after
+                  receive_timeout -> {:halt, acc} 
+                end
               end
             )
             send(parent, :stream_done)
           end)
+          
+          # State: {task, buffer, is_done}
+          %{task: task, buffer: "", done: false}
         end,
-        fn task ->
-          receive do
-            {:stream_data, data} ->
-              chunks = OpenAI.parse_sse(data)
-              {chunks, task}
-            :stream_done ->
-              {:halt, task}
-          after
-            30_000 -> {:halt, task}
-          end
+        fn 
+          %{done: true} = state -> {:halt, state}
+          state ->
+            receive do
+              {:stream_data, producer_pid, data} ->
+                # 2. Robust Line Buffering (Handles TCP Fragmentation)
+                {lines, new_buffer} = process_line_buffer(state.buffer <> data)
+                
+                # 3. Parse and Emit
+                chunks = OpenAI.parse_lines(lines)
+                
+                # 4. ACK back to producer (Pull Mechanism)
+                send(producer_pid, :ack)
+                
+                {chunks, %{state | buffer: new_buffer}}
+
+              :stream_done ->
+                # Flush remaining buffer
+                {lines, _} = process_line_buffer(state.buffer, true)
+                {OpenAI.parse_lines(lines), %{state | done: true, buffer: ""}}
+
+            after
+              receive_timeout ->
+                Task.shutdown(state.task)
+                # 5. Explicit Timeout Event (No Silent Failure)
+                {[%{"error" => %{"message" => "NexAI Streaming Timeout after #{receive_timeout}ms", "type" => "timeout"}}], %{state | done: true}}
+            end
         end,
-        fn task -> Task.shutdown(task) end
+        fn state -> Task.shutdown(state.task) end
       )
+    end
+
+    defp process_line_buffer(buffer, final \\ false) do
+      # SSE lines are delimited by \n or \r\n
+      if String.contains?(buffer, "\n") do
+        parts = String.split(buffer, ~r/\r?\n/)
+        # The last element is either empty (if buffer ends in \n) or a partial line
+        {complete, [rest]} = Enum.split(parts, length(parts) - 1)
+        {complete, rest}
+      else
+        if final and buffer != "", do: {[buffer], ""}, else: {[], buffer}
+      end
     end
   end
 
@@ -166,9 +205,8 @@ defmodule NexAI.Provider.OpenAI do
   end
   def format_usage(_), do: nil
 
-  def parse_sse(data) do
-    data
-    |> String.split("\n")
+  def parse_lines(lines) do
+    lines
     |> Enum.map(&String.trim/1)
     |> Enum.filter(&(&1 != "" and &1 != "data: [DONE]"))
     |> Enum.flat_map(fn 
@@ -222,7 +260,6 @@ defmodule NexAI.Provider.OpenAI do
     end
   end
 
-  # ... embed_many and generate_image remain similar but should use standard headers
   def embed_many(values, opts \\ []) do
     api_key = opts[:api_key] || System.get_env("OPENAI_API_KEY")
     url = (opts[:base_url] || @default_base_url) <> "/embeddings"
@@ -253,7 +290,7 @@ defmodule NexAI.Provider.OpenAI do
       {:ok, %{status: 200, body: body}} ->
         images = Enum.map(body["data"], &(&1["b64_json"] || &1["url"]))
         {:ok, %{images: images, raw: body}}
-      {:ok, res} -> {:error, res.body}
+        {:ok, res} -> {:error, res.body}
     end
   end
 end

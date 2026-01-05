@@ -1,20 +1,37 @@
 defmodule NexAI.Middleware.SimulateStreaming do
   @moduledoc """
-  Middleware that simulates streaming behavior for models that only support blocking generation.
-  Maps to `simulateStreamingMiddleware`.
+  Middleware that simulates streaming for models that only support generate.
   """
-  @behaviour NexAI.Middleware
+  alias NexAI.LanguageModel.Protocol, as: ModelProtocol
 
-  def wrap(model, opts \\ []) do
-    _chunk_size = opts[:chunk_size] || 10
-    _delay_ms = opts[:delay_ms] || 10
+  def do_stream(model, params, opts) do
+    chunk_size = opts[:chunk_size] || 5
+    delay = opts[:delay] || 50
 
-    # In a full implementation, this wrapper would intercept `stream_text` calls.
-    # If the underlying model supports `generate_text` but not `stream_text`,
-    # it would call `generate_text`, take the full response, and then
-    # return a Stream that yields chunks of that response with delays.
-    
-    # Returning the model as is for now, marking as implemented in architecture.
-    model
+    Stream.resource(
+      fn ->
+        case ModelProtocol.do_generate(model, params) do
+          {:ok, res} -> {String.graphemes(res.text || ""), res}
+          {:error, _} = err -> err
+        end
+      end,
+      fn
+        {:error, _} = err -> {[err], :done}
+        :done -> {:halt, :done}
+        {chars, res} ->
+          {chunk, rest} = Enum.split(chars, chunk_size)
+          Process.sleep(delay)
+          
+          events = if rest == [] do
+            # Final chunk: include usage/metadata
+            [%{"choices" => [%{"delta" => %{"content" => Enum.join(chunk)}}]}, %{"usage" => res.usage}]
+          else
+            [%{"choices" => [%{"delta" => %{"content" => Enum.join(chunk)}}]}]
+          end
+
+          {events, if(rest == [], do: :done, else: {rest, res})}
+      end,
+      fn _ -> :ok end
+    )
   end
 end

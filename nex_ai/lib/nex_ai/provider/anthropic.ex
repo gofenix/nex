@@ -77,12 +77,12 @@ defmodule NexAI.Provider.Anthropic do
       }
 
       body = if params.tools, do: Map.put(body, :tools, Anthropic.format_tools(params.tools)), else: body
-
       parent = self()
+      receive_timeout = params.config[:receive_timeout] || 30_000
 
       Stream.resource(
         fn ->
-          Task.async(fn ->
+          task = Task.Supervisor.async_nolink(NexAI.TaskSupervisor, fn ->
             Req.post(model.base_url <> "/messages",
               json: body,
               headers: [
@@ -90,21 +90,38 @@ defmodule NexAI.Provider.Anthropic do
                 {"anthropic-version", Anthropic.api_version()}
               ],
               into: fn {:data, data}, acc ->
-                send(parent, {:stream_data, data})
-                {:cont, acc}
+                send(parent, {:stream_data, self(), data})
+                receive do
+                  :ack -> {:cont, acc}
+                after
+                  receive_timeout -> {:halt, acc}
+                end
               end
             )
             send(parent, :stream_done)
           end)
+          %{task: task, buffer: "", done: false}
         end,
-        fn task ->
-          receive do
-            {:stream_data, data} -> {Anthropic.parse_sse(data), task}
-            :stream_done -> {:halt, task}
-          after 30_000 -> {:halt, task}
-          end
+        fn 
+          %{done: true} = state -> {:halt, state}
+          state ->
+            receive do
+              {:stream_data, pid, data} ->
+                {lines, new_buffer} = Anthropic.process_line_buffer(state.buffer <> data)
+                chunks = Anthropic.parse_lines(lines)
+                send(pid, :ack)
+                {chunks, %{state | buffer: new_buffer}}
+
+              :stream_done ->
+                {lines, _} = Anthropic.process_line_buffer(state.buffer, true)
+                {Anthropic.parse_lines(lines), %{state | done: true, buffer: ""}}
+            after
+              receive_timeout ->
+                Task.shutdown(state.task)
+                {[%{"error" => %{"message" => "NexAI Streaming Timeout (Anthropic) after #{receive_timeout}ms", "type" => "timeout"}}], %{state | done: true}}
+            end
         end,
-        fn task -> Task.shutdown(task) end
+        fn state -> Task.shutdown(state.task) end
       )
     end
   end
@@ -161,22 +178,46 @@ defmodule NexAI.Provider.Anthropic do
     %Usage{promptTokens: i, completionTokens: o, totalTokens: i + o}
   end
 
-  def parse_sse(data) do
+  def parse_lines(lines) do
     # Anthropic SSE is slightly different (event/data lines)
-    data
-    |> String.split("\n")
+    lines
     |> Enum.map(&String.trim/1)
     |> Enum.flat_map(fn
       "data: " <> json ->
         case Jason.decode(json) do
-          {:ok, %{"type" => "content_block_delta", "delta" => %{"text" => text}}} -> 
-            # Map to OpenAI style for the Facade to consume easily
-            [%{"choices" => [%{"delta" => %{"content" => text}}]}]
+          # 1. Text Delta
+          {:ok, %{"type" => "content_block_delta", "index" => idx, "delta" => %{"type" => "text_delta", "text" => text}}} ->
+            [%{"choices" => [%{"index" => 0, "delta" => %{"content" => text}}]}]
+
+          # 2. Tool Use Start
+          {:ok, %{"type" => "content_block_start", "index" => idx, "content_block" => %{"type" => "tool_use", "id" => id, "name" => name}}} ->
+            [%{"choices" => [%{"index" => 0, "delta" => %{"tool_calls" => [%{"index" => idx, "id" => id, "function" => %{"name" => name}}]}}]}]
+
+          # 3. Tool Input Delta
+          {:ok, %{"type" => "content_block_delta", "index" => idx, "delta" => %{"type" => "input_json_delta", "partial_json" => delta}}} ->
+            [%{"choices" => [%{"index" => 0, "delta" => %{"tool_calls" => [%{"index" => idx, "function" => %{"arguments" => delta}}]}}]}]
+
+          # 4. Usage / Message Delta
           {:ok, %{"type" => "message_delta", "usage" => usage}} ->
             [%{"usage" => %{"prompt_tokens" => 0, "completion_tokens" => usage["output_tokens"], "total_tokens" => 0}}]
+
+          # 5. Error
+          {:ok, %{"type" => "error", "error" => error}} ->
+            [%{"error" => error}]
+
           _ -> []
         end
       _ -> []
     end)
+  end
+
+  def process_line_buffer(buffer, final \\ false) do
+    if String.contains?(buffer, "\n") do
+      parts = String.split(buffer, ~r/\r?\n/)
+      {complete, [rest]} = Enum.split(parts, length(parts) - 1)
+      {complete, rest}
+    else
+      if final and buffer != "", do: {[buffer], ""}, else: {[], buffer}
+    end
   end
 end

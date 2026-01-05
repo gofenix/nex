@@ -1,7 +1,20 @@
 defmodule NexAI.Middleware do
   @moduledoc """
   Proper middleware system for NexAI.
-  Wraps a LanguageModel and intercepts calls.
+  Wraps a LanguageModel and intercepts calls using the Interceptor pattern.
+  
+  ### Creating a Middleware
+  A middleware is a module that optionally implements `do_generate/3` and `do_stream/3`.
+  
+  Example:
+  ```elixir
+  defmodule MyLogger do
+    def do_generate(model, params, opts) do
+      IO.inspect(params, label: "Request")
+      NexAI.LanguageModel.Protocol.do_generate(model, params)
+    end
+  end
+  ```
   """
   alias NexAI.LanguageModel.Protocol, as: ModelProtocol
 
