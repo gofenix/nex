@@ -21,6 +21,7 @@ defmodule NexAI.Result do
     defstruct [
       :stepType, # :initial, :tool_result
       :text,
+      :reasoning,
       :toolCalls,
       :toolResults,
       :finishReason,
@@ -33,6 +34,7 @@ defmodule NexAI.Result do
     @derive Jason.Encoder
     defstruct [
       :text,
+      :reasoning,
       :toolCalls,
       :toolResults,
       :finishReason,

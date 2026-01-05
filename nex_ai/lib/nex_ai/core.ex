@@ -6,7 +6,7 @@ defmodule NexAI.Core do
   alias NexAI.Provider.OpenAI
   alias NexAI.Message
 
-  def generate_text(opts) do
+  def generate_text(opts) when is_list(opts) do
     opts = normalize_opts(opts)
     {opts, output_config} = handle_output_config(opts)
     messages = build_messages(opts)
@@ -19,6 +19,10 @@ defmodule NexAI.Core do
         {:ok, result}
       error -> error
     end
+  end
+
+  def generate_text(messages, opts) do
+    generate_text(Keyword.put(opts, :messages, messages))
   end
 
   def stream_text(opts) do
@@ -42,6 +46,7 @@ defmodule NexAI.Core do
         current_step = %Step{
           stepType: if(step == 0, do: :initial, else: :tool_result),
           text: res.text,
+          reasoning: Map.get(res, :reasoning),
           toolCalls: res.tool_calls,
           usage: res.usage,
           finishReason: res.finish_reason
@@ -50,7 +55,7 @@ defmodule NexAI.Core do
         new_steps = steps_acc ++ [current_step]
 
         if step + 1 < max_steps and length(res.tool_calls) > 0 do
-          {tool_results, tool_messages} = execute_tools_sync(res.tool_calls, tool_map)
+          {_tool_results, tool_messages} = execute_tools_sync(res.tool_calls, tool_map)
           
           assistant_msg = %{
             "role" => "assistant",
@@ -65,6 +70,7 @@ defmodule NexAI.Core do
         else
           {:ok, %GenerateTextResult{
             text: res.text,
+            reasoning: Map.get(res, :reasoning),
             toolCalls: res.tool_calls,
             toolResults: List.last(steps_acc || []) |> Kernel.get_in([Access.key(:toolResults)]) || [],
             finishReason: res.finish_reason,
@@ -78,68 +84,95 @@ defmodule NexAI.Core do
   end
 
   defp build_lazy_stream(model, messages, opts, output_config, step \\ 0) do
-    params = build_params(messages, opts)
     max_steps = opts[:max_steps] || 1
     tool_map = build_tool_map(opts[:tools])
-    receive_timeout = opts[:receive_timeout] || 30_000
 
     Stream.resource(
-      fn -> %{stream: ModelProtocol.do_stream(model, params), tool_calls: %{}, full_text: "", done: false, current_step: step} end,
-      fn state ->
-        if state.done do
-          {:halt, state}
-        else
-          case Enum.take(state.stream, 1) do
-            [] ->
-              if state.current_step + 1 < max_steps and map_size(state.tool_calls) > 0 do
-                {tool_results, tool_messages} = execute_tools_sync(Map.values(state.tool_calls), tool_map)
-                result_events = Enum.map(tool_results, fn tr -> %{type: :tool_result, payload: tr} end)
-                
-                assistant_msg = %{
-                  "role" => "assistant",
-                  "content" => state.full_text,
-                  "tool_calls" => Enum.map(state.tool_calls, fn {_, tc} -> 
-                    %{"id" => tc.toolCallId, "type" => "function", "function" => %{"name" => tc.toolName, "arguments" => Jason.encode!(tc.args)}}
-                  end)
-                }
-                
-                new_messages = messages ++ [assistant_msg] ++ tool_messages
-                next_stream = build_lazy_stream(model, new_messages, opts, output_config, state.current_step + 1)
-                {result_events, %{state | stream: next_stream, done: false, tool_calls: %{}, current_step: state.current_step + 1}}
-              else
-                {[%{type: :stream_finish, payload: %{finishReason: "stop"}}], %{state | done: true}}
-              end
-
-            [chunk] ->
-              {events, new_state} = process_chunk(chunk, state, output_config)
-              {events, new_state}
-          end
+      fn ->
+        # Start the first step's stream and pull the first chunk
+        stream = ModelProtocol.do_stream(model, build_params(messages, opts))
+        case Enumerable.reduce(stream, {:cont, nil}, fn x, _ -> {:suspend, x} end) do
+          {:suspended, chunk, next} -> %{next: next, chunk: chunk, tool_calls: %{}, full_text: "", step: step}
+          _ -> %{next: nil, chunk: nil, tool_calls: %{}, full_text: "", step: step}
         end
       end,
-      fn _state -> :ok end
+      fn state ->
+        cond do
+          state.step == :done ->
+            {:halt, state}
+
+          is_nil(state.chunk) ->
+            # Current step is finished, check for tool calls
+            if state.step + 1 < max_steps and map_size(state.tool_calls) > 0 do
+              {tool_results, tool_messages} = execute_tools_sync(Map.values(state.tool_calls), tool_map)
+              result_events = Enum.map(tool_results, fn tr -> %{type: :tool_result, payload: tr} end)
+              
+              assistant_msg = %{
+                "role" => "assistant",
+                "content" => state.full_text,
+                "tool_calls" => Enum.map(state.tool_calls, fn {_, tc} -> 
+                  %{"id" => tc.toolCallId, "type" => "function", "function" => %{"name" => tc.toolName, "arguments" => Jason.encode!(tc.args)}}
+                end)
+              }
+              new_messages = messages ++ [assistant_msg] ++ tool_messages
+              
+              # Start the next step's stream
+              new_stream = ModelProtocol.do_stream(model, build_params(new_messages, opts))
+              case Enumerable.reduce(new_stream, {:cont, nil}, fn x, _ -> {:suspend, x} end) do
+                {:suspended, first_chunk, next} ->
+                  {result_events, %{state | next: next, chunk: first_chunk, step: state.step + 1, tool_calls: %{}, full_text: ""}}
+                _ ->
+                  {result_events ++ [%{type: :stream_finish, payload: %{finishReason: "stop"}}], %{state | step: :done}}
+              end
+            else
+              {[%{type: :stream_finish, payload: %{finishReason: "stop"}}], %{state | step: :done}}
+            end
+
+          true ->
+            # Process the current chunk
+            {events, new_acc} = process_chunk(state.chunk, state, output_config)
+            
+            # Pull the next chunk from the current stream
+            new_state = case state.next.({:cont, nil}) do
+              {:suspended, next_chunk, next_next} ->
+                %{state | next: next_next, chunk: next_chunk, tool_calls: new_acc.tool_calls, full_text: new_acc.full_text}
+              _ ->
+                # Current stream is finished
+                %{state | next: nil, chunk: nil, tool_calls: new_acc.tool_calls, full_text: new_acc.full_text}
+            end
+            {events, new_state}
+        end
+      end,
+      fn 
+        %{next: next} when is_function(next) -> next.({:halt, nil})
+        _ -> :ok
+      end
     )
   end
 
   defp process_chunk(chunk, state, output_config) do
-    cond do
-      error = chunk["error"] ->
-        message = if is_map(error), do: error["message"] || inspect(error), else: to_string(error)
-        {[%{type: :error, payload: message}], %{state | done: true}}
+    if error = chunk["error"] do
+      message = if is_map(error), do: error["message"] || inspect(error), else: to_string(error)
+      {[%{type: :error, payload: message}], %{state | chunk: nil, next: nil}}
+    else
+      events = []
+      
+      # 1. Handle Usage/Metadata (Non-exclusive)
+      events = if usage = chunk["usage"], do: events ++ [%{type: :metadata, payload: %{usage: usage}}], else: events
 
-      usage = chunk["usage"] ->
-        {[%{type: :metadata, payload: %{usage: usage}}], state}
-
-      delta = get_in(chunk, ["choices", Access.at(0), "delta"]) ->
-        events = []
-        
-        {events, full_text} = if content = delta["content"] do
+      # 2. Handle Delta (Non-exclusive)
+      delta = get_in(chunk, ["choices", Access.at(0), "delta"])
+      
+      {events, full_text} = case delta && delta["content"] do
+        nil -> {events, state.full_text}
+        content ->
           type = if output_config, do: :object_delta, else: :text
           {events ++ [%{type: type, payload: content}], state.full_text <> content}
-        else
-          {events, state.full_text}
-        end
+      end
 
-        {events, tool_calls} = if tcs = delta["tool_calls"] do
+      {events, tool_calls} = case delta && delta["tool_calls"] do
+        nil -> {events, state.tool_calls}
+        tcs ->
           Enum.reduce(tcs, {events, state.tool_calls}, fn tc, {evs, st} ->
             idx = tc["index"]
             existing = st[idx] || %ToolCall{args: ""}
@@ -155,14 +188,9 @@ defmodule NexAI.Core do
             }
             {evs, Map.put(st, idx, updated)}
           end)
-        else
-          {events, state.tool_calls}
-        end
+      end
 
-        {events, %{state | full_text: full_text, tool_calls: tool_calls}}
-
-      true ->
-        {[], state}
+      {events, %{state | full_text: full_text, tool_calls: tool_calls}}
     end
   end
 
@@ -188,7 +216,7 @@ defmodule NexAI.Core do
   defp build_tool_map(nil), do: %{}
   defp build_tool_map(tools), do: Map.new(tools, fn t -> {t.name, t} end)
 
-  defp normalize_opts(opts) do
+  def normalize_opts(opts) do
     mapping = [{:maxSteps, :max_steps}, {:onFinish, :on_finish}, {:onToken, :on_token}]
     Enum.reduce(mapping, opts, fn {camel, snake}, acc -> if val = acc[camel], do: Keyword.put(acc, snake, val), else: acc end)
   end

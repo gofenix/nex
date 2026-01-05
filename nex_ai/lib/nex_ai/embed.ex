@@ -19,7 +19,7 @@ defmodule NexAI.Embed do
   end
 
   def cosine_similarity(v1, v2) when is_list(v1) and is_list(v2) do
-    if length(v1) != length(v2), do: raise ArgumentError, "Vectors must have the same length"
+    if length(v1) != length(v2), do: raise(ArgumentError, "Vectors must have the same length")
     dot = Enum.zip(v1, v2) |> Enum.map(fn {a, b} -> a * b end) |> Enum.sum()
     m1 = :math.sqrt(Enum.map(v1, &(&1 * &1)) |> Enum.sum())
     m2 = :math.sqrt(Enum.map(v2, &(&1 * &1)) |> Enum.sum())

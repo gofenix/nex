@@ -186,7 +186,7 @@ defmodule NexAI.Provider.Anthropic do
       "data: " <> json ->
         case Jason.decode(json) do
           # 1. Text Delta
-          {:ok, %{"type" => "content_block_delta", "index" => idx, "delta" => %{"type" => "text_delta", "text" => text}}} ->
+          {:ok, %{"type" => "content_block_delta", "index" => _idx, "delta" => %{"type" => "text_delta", "text" => text}}} ->
             [%{"choices" => [%{"index" => 0, "delta" => %{"content" => text}}]}]
 
           # 2. Tool Use Start

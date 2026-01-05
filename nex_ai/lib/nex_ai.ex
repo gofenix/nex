@@ -70,7 +70,7 @@ defmodule NexAI do
   def generate_id, do: :crypto.strong_rand_bytes(5) |> Base.encode32(case: :lower, padding: false) |> binary_part(0, 7)
 
   defp wrap_response(body_fn, content_type, extra_headers) do
-    case if(Code.ensure_compiled?(Nex.Response), do: Nex.Response, else: nil) do
+    case if(Code.ensure_compiled(Nex.Response) == {:module, Nex.Response}, do: Nex.Response, else: nil) do
       nil -> body_fn
       mod ->
         Kernel.struct(mod, [
