@@ -1,11 +1,13 @@
 defmodule NexAI.Provider.OpenAI do
   @moduledoc """
   OpenAI Provider for NexAI.
+  Implements the LanguageModel protocol.
   """
-  @behaviour NexAI.Model
-  
-  defstruct [:api_key, :base_url, model: "gpt-4o"]
-  
+  alias NexAI.Result.{Usage, Response, ToolCall}
+  alias NexAI.LanguageModel.Protocol, as: ModelProtocol
+
+  defstruct [:api_key, :base_url, model: "gpt-4o", config: %{}]
+
   require Logger
 
   @default_base_url "https://api.openai.com/v1"
@@ -14,264 +16,122 @@ defmodule NexAI.Provider.OpenAI do
   def chat(model_id, opts \\ []) do
     %__MODULE__{
       model: model_id,
-      api_key: opts[:api_key],
-      base_url: opts[:base_url]
+      api_key: opts[:api_key] || System.get_env("OPENAI_API_KEY"),
+      base_url: opts[:base_url] || System.get_env("OPENAI_BASE_URL") || @default_base_url,
+      config: Map.new(opts)
     }
   end
 
-  def stream_text(messages, opts \\ []) do
-    model_instance = opts[:model]
-    
-    api_key = opts[:api_key] || (is_struct(model_instance, __MODULE__) && model_instance.api_key) || System.get_env("OPENAI_API_KEY")
-    
-    if !api_key do
-      raise "OPENAI_API_KEY is not configured"
-    end
+  defimpl ModelProtocol do
+    alias NexAI.Provider.OpenAI
+    alias NexAI.Result.{Usage, Response, ToolCall}
 
-    base_url = opts[:base_url] || (is_struct(model_instance, __MODULE__) && model_instance.base_url) || System.get_env("OPENAI_BASE_URL") || @default_base_url
-    model_name = (is_struct(model_instance, __MODULE__) && model_instance.model) || (is_binary(model_instance) && model_instance) || opts[:model_id] || "gpt-4o"
-    tools = opts[:tools]
+    def do_generate(model, params) do
+      url = model.base_url <> "/chat/completions"
+      body = %{
+        model: model.model,
+        messages: OpenAI.format_messages(params.prompt),
+        stream: false
+      }
+      
+      body = if params.tools && length(params.tools) > 0, do: Map.put(body, :tools, OpenAI.format_tools(params.tools)), else: body
+      body = if tc = params.tool_choice, do: Map.put(body, :tool_choice, tc), else: body
+      body = if rf = params.response_format, do: Map.put(body, :response_format, rf), else: body
+      
+      # Merge model config (temperature, etc)
+      body = Map.merge(body, model.config)
 
-    body = %{
-      model: model_name,
-      messages: Enum.map(messages, &format_openai_message/1),
-      stream: true
-    }
-
-    body = if tools && length(tools) > 0, do: Map.put(body, :tools, format_tools(tools)), else: body
-    body = if tc = opts[:tool_choice] || opts[:toolChoice], do: Map.put(body, :tool_choice, tc), else: body
-
-    parent = self()
-
-    receive_timeout = opts[:receive_timeout] || 60_000
-    stream_timeout = opts[:stream_timeout] || 30_000
-
-    Stream.resource(
-      fn ->
-        Task.async(fn ->
-          Req.post(base_url <> "/chat/completions",
-            json: body,
-            headers: [
-              {"authorization", "Bearer #{api_key}"},
-              {"content-type", "application/json"}
-            ],
-            into: fn {:data, data}, acc ->
-              send(parent, {:stream_data, data})
-              {:cont, acc}
-            end,
-            receive_timeout: receive_timeout
-          )
-          send(parent, :stream_done)
-        end)
-      end,
-      fn task ->
-        receive do
-          {:stream_data, data} ->
-            chunks = 
-              data
-              |> String.split("\n")
-              |> Enum.map(&String.trim/1)
-              |> Enum.filter(&(&1 != "" and &1 != "data: [DONE]"))
-              |> Enum.map(fn 
-                "data: " <> json -> 
-                  case Jason.decode(json) do
-                    {:ok, decoded} -> decoded
-                    {:error, _} -> %{}
-                  end
-                _ -> %{}
-              end)
-              |> Enum.filter(&(&1 != %{}))
-            
-            {chunks, task}
+      case Req.post(url, json: body, auth: {:bearer, model.api_key}) do
+        {:ok, %{status: 200, body: body, headers: headers}} ->
+          message = get_in(body, ["choices", Access.at(0), "message"])
           
-          :stream_done ->
-            {:halt, task}
-        after
-          stream_timeout -> 
-            Logger.warning("OpenAI stream timeout after #{stream_timeout}ms")
-            {:halt, task}
-        end
-      end,
-      fn task -> 
-        case Task.yield(task, 0) || Task.shutdown(task) do
-          nil -> :ok
-          _ -> :ok
-        end
+          {:ok, %{
+            text: message["content"],
+            tool_calls: OpenAI.extract_tool_calls(message["tool_calls"]),
+            finish_reason: OpenAI.map_finish_reason(get_in(body, ["choices", Access.at(0), "finish_reason"])),
+            usage: OpenAI.format_usage(body["usage"]),
+            response: %Response{
+              id: body["id"],
+              modelId: body["model"],
+              timestamp: body["created"],
+              headers: Map.new(headers)
+            },
+            raw: body
+          }}
+        {:ok, %{status: status, body: body}} ->
+          {:error, "OpenAI Error #{status}: #{inspect(body)}"}
+        {:error, reason} ->
+          {:error, reason}
       end
-    )
-  end
+    end
 
-  def generate_text(messages, opts \\ []) do
-    model_instance = opts[:model]
-    api_key = opts[:api_key] || (is_struct(model_instance, __MODULE__) && model_instance.api_key) || System.get_env("OPENAI_API_KEY")
-    base_url = opts[:base_url] || (is_struct(model_instance, __MODULE__) && model_instance.base_url) || System.get_env("OPENAI_BASE_URL") || @default_base_url
-    model_name = (is_struct(model_instance, __MODULE__) && model_instance.model) || (is_binary(model_instance) && model_instance) || opts[:model_id] || "gpt-4o"
-    
-    case Req.post(base_url <> "/chat/completions",
-      json: %{model: model_name, messages: messages},
-      headers: [
-        {"authorization", "Bearer #{api_key}"}
-      ]
-    ) do
-      {:ok, %{status: 200, body: body}} ->
-        content = get_in(body, ["choices", Access.at(0), "message", "content"])
-        usage = format_usage(body["usage"])
-        {:ok, %{text: content, usage: usage, raw: body}}
-      {:ok, response} -> {:error, response}
-      {:error, error} -> {:error, error}
+    def do_stream(model, params) do
+      url = model.base_url <> "/chat/completions"
+      body = %{
+        model: model.model,
+        messages: OpenAI.format_messages(params.prompt),
+        stream: true,
+        stream_options: %{include_usage: true}
+      }
+
+      body = if params.tools && length(params.tools) > 0, do: Map.put(body, :tools, OpenAI.format_tools(params.tools)), else: body
+      body = if tc = params.tool_choice, do: Map.put(body, :tool_choice, tc), else: body
+      body = if rf = params.response_format, do: Map.put(body, :response_format, rf), else: body
+      
+      body = Map.merge(body, model.config)
+
+      parent = self()
+      
+      Stream.resource(
+        fn ->
+          Task.async(fn ->
+            Req.post(url,
+              json: body,
+              auth: {:bearer, model.api_key},
+              into: fn {:data, data}, acc ->
+                send(parent, {:stream_data, data})
+                {:cont, acc}
+              end
+            )
+            send(parent, :stream_done)
+          end)
+        end,
+        fn task ->
+          receive do
+            {:stream_data, data} ->
+              chunks = OpenAI.parse_sse(data)
+              {chunks, task}
+            :stream_done ->
+              {:halt, task}
+          after
+            30_000 -> {:halt, task}
+          end
+        end,
+        fn task -> Task.shutdown(task) end
+      )
     end
   end
 
-  def embed_many(values, opts \\ []) do
-    model_instance = opts[:model]
-    api_key = opts[:api_key] || (is_struct(model_instance, __MODULE__) && model_instance.api_key) || System.get_env("OPENAI_API_KEY")
-    base_url = opts[:base_url] || (is_struct(model_instance, __MODULE__) && model_instance.base_url) || System.get_env("OPENAI_BASE_URL") || @default_base_url
-    model_name = (is_struct(model_instance, __MODULE__) && model_instance.model) || (is_binary(model_instance) && model_instance) || opts[:model_id] || "text-embedding-3-small"
+  # --- Internal Helpers for Protocol Implementation ---
 
-    case Req.post(base_url <> "/embeddings",
-      json: %{model: model_name, input: values},
-      headers: [
-        {"authorization", "Bearer #{api_key}"}
-      ]
-    ) do
-      {:ok, %{status: 200, body: body}} ->
-        embeddings = body["data"] 
-          |> Enum.sort_by(& &1["index"])
-          |> Enum.map(& &1["embedding"])
-        {:ok, embeddings}
-      {:ok, response} -> {:error, response}
-      {:error, error} -> {:error, error}
-    end
+  def format_messages(messages) do
+    Enum.map(messages, fn msg ->
+      content = case msg["content"] do
+        list when is_list(list) ->
+          Enum.map(list, fn
+            %{type: "text", text: text} -> %{type: "text", text: text}
+            %{type: "image", image: img, mime_type: mime} ->
+              url = if String.starts_with?(img, "http"), do: img, else: "data:#{mime};base64,#{img}"
+              %{type: "image_url", image_url: %{url: url}}
+            other -> other
+          end)
+        other -> other
+      end
+      msg |> Map.put("content", content)
+    end)
   end
 
-  def generate_image(prompt, opts \\ []) do
-    model_instance = opts[:model]
-    api_key = opts[:api_key] || (is_struct(model_instance, __MODULE__) && model_instance.api_key) || System.get_env("OPENAI_API_KEY")
-    base_url = opts[:base_url] || (is_struct(model_instance, __MODULE__) && model_instance.base_url) || System.get_env("OPENAI_BASE_URL") || @default_base_url
-    model_name = (is_struct(model_instance, __MODULE__) && model_instance.model) || (is_binary(model_instance) && model_instance) || opts[:model_id] || "dall-e-3"
-
-    body = %{
-      model: model_name,
-      prompt: prompt,
-      n: opts[:n] || 1,
-      size: opts[:size] || "1024x1024",
-      response_format: opts[:response_format] || "b64_json"
-    }
-
-    case Req.post(base_url <> "/images/generations",
-      json: body,
-      headers: [
-        {"authorization", "Bearer #{api_key}"}
-      ]
-    ) do
-      {:ok, %{status: 200, body: body}} ->
-        images = Enum.map(body["data"], fn item -> 
-          item["b64_json"] || item["url"]
-        end)
-        {:ok, %{images: images, raw: body}}
-      {:ok, response} -> {:error, response}
-      {:error, error} -> {:error, error}
-    end
-  end
-
-  def generate_speech(text, opts \\ []) do
-    model_instance = opts[:model]
-    api_key = opts[:api_key] || (is_struct(model_instance, __MODULE__) && model_instance.api_key) || System.get_env("OPENAI_API_KEY")
-    base_url = opts[:base_url] || (is_struct(model_instance, __MODULE__) && model_instance.base_url) || System.get_env("OPENAI_BASE_URL") || @default_base_url
-    model_name = (is_struct(model_instance, __MODULE__) && model_instance.model) || (is_binary(model_instance) && model_instance) || opts[:model_id] || "tts-1"
-
-    body = %{
-      model: model_name,
-      input: text,
-      voice: opts[:voice] || "alloy",
-      response_format: opts[:response_format] || "mp3",
-      speed: opts[:speed] || 1.0
-    }
-
-    case Req.post(base_url <> "/audio/speech",
-      json: body,
-      headers: [
-        {"authorization", "Bearer #{api_key}"}
-      ]
-    ) do
-      {:ok, %{status: 200, body: body}} ->
-        {:ok, %{audio: body}}
-      {:ok, response} -> {:error, response}
-      {:error, error} -> {:error, error}
-    end
-  end
-
-  def transcribe(file_content, opts \\ []) do
-    model_instance = opts[:model]
-    api_key = opts[:api_key] || (is_struct(model_instance, __MODULE__) && model_instance.api_key) || System.get_env("OPENAI_API_KEY")
-    base_url = opts[:base_url] || (is_struct(model_instance, __MODULE__) && model_instance.base_url) || System.get_env("OPENAI_BASE_URL") || @default_base_url
-    model_name = (is_struct(model_instance, __MODULE__) && model_instance.model) || (is_binary(model_instance) && model_instance) || opts[:model_id] || "whisper-1"
-
-    # We need to construct a multipart request manually or use Req's support if available.
-    # For simplicity, we assume file_content is the binary data.
-    # NOTE: Req doesn't handle multipart form-data for file uploads automatically with simple params.
-    # We will use a basic Multipart builder approach or rely on Req's :form option if it supports file upload directly.
-    # However, Req's :form often expects basic key-values.
-    # For robustness, we'll assume the user might provide a path or binary.
-    
-    # A simplified implementation using Req's :form support for multipart which might handle files if formatted correctly
-    # But usually "audio/transcriptions" expects a file part named "file".
-    
-    # NOTE: As of Req 0.5+, we can just pass a list of parts or a map.
-    # We will assume simple usage for now.
-
-    # This is a bit complex in pure Elixir without a robust Multipart library, 
-    # but let's try to map it to what Req expects for multipart.
-    
-    # We will assume the user passes binary content for now.
-    multipart = 
-      Multipart.new()
-      |> Multipart.add_part(Multipart.Part.file_content_field("file", file_content, "audio.mp3", filename: "audio.mp3"))
-      |> Multipart.add_part(Multipart.Part.text_field(model_name, :model))
-
-    content_type = Multipart.content_type(multipart, "multipart/form-data")
-    body = Multipart.body_binary(multipart)
-    content_length = byte_size(body)
-
-    case Req.post(base_url <> "/audio/transcriptions",
-      body: body,
-      headers: [
-        {"authorization", "Bearer #{api_key}"},
-        {"content-type", content_type},
-        {"content-length", to_string(content_length)}
-      ]
-    ) do
-      {:ok, %{status: 200, body: body}} ->
-        {:ok, %{text: body["text"], raw: body}}
-      {:ok, response} -> {:error, response}
-      {:error, error} -> {:error, error}
-    end
-  end
-
-  def rerank(_query, _documents, _opts) do
-    {:error, :not_implemented_by_openai}
-  end
-
-  defp format_openai_message(msg) do
-    content = case msg["content"] do
-      list when is_list(list) ->
-        Enum.map(list, fn
-          %{type: "text", text: text} -> %{type: "text", text: text}
-          %{type: "image", image: img, mime_type: mime} ->
-            url = if String.starts_with?(img, "http"), do: img, else: "data:#{mime};base64,#{img}"
-            %{type: "image_url", image_url: %{url: url}}
-          other -> other
-        end)
-      other -> other
-    end
-    
-    msg |> Map.put("content", content)
-  end
-
-  defp format_usage(u) when is_map(u), do: %{promptTokens: u["prompt_tokens"], completionTokens: u["completion_tokens"], totalTokens: u["total_tokens"]}
-  defp format_usage(_), do: nil
-
-  defp format_tools(tools) do
+  def format_tools(tools) do
     Enum.map(tools, fn tool ->
       %{
         type: "function",
@@ -282,5 +142,118 @@ defmodule NexAI.Provider.OpenAI do
         }
       }
     end)
+  end
+
+  def extract_tool_calls(nil), do: []
+  def extract_tool_calls(calls) do
+    Enum.map(calls, fn tc ->
+      %ToolCall{
+        toolCallId: tc["id"],
+        toolName: tc["function"]["name"],
+        args: Jason.decode!(tc["function"]["arguments"])
+      }
+    end)
+  end
+
+  def map_finish_reason("stop"), do: "stop"
+  def map_finish_reason("length"), do: "length"
+  def map_finish_reason("tool_calls"), do: "tool-calls"
+  def map_finish_reason("content_filter"), do: "content-filter"
+  def map_finish_reason(_), do: "unknown"
+
+  def format_usage(%{"prompt_tokens" => p, "completion_tokens" => c, "total_tokens" => t}) do
+    %Usage{promptTokens: p, completionTokens: c, totalTokens: t}
+  end
+  def format_usage(_), do: nil
+
+  def parse_sse(data) do
+    data
+    |> String.split("\n")
+    |> Enum.map(&String.trim/1)
+    |> Enum.filter(&(&1 != "" and &1 != "data: [DONE]"))
+    |> Enum.flat_map(fn 
+      "data: " <> json -> 
+        case Jason.decode(json) do
+          {:ok, decoded} -> [decoded]
+          _ -> []
+        end
+      _ -> []
+    end)
+  end
+
+  # --- Legacy / Helper functions for other tasks ---
+
+  def generate_speech(text, opts \\ []) do
+    model_id = opts[:model_id] || "tts-1"
+    api_key = opts[:api_key] || System.get_env("OPENAI_API_KEY")
+    url = (opts[:base_url] || @default_base_url) <> "/audio/speech"
+
+    body = %{
+      model: model_id,
+      input: text,
+      voice: opts[:voice] || "alloy",
+      response_format: opts[:response_format] || "mp3"
+    }
+
+    # Return raw binary
+    case Req.post(url, json: body, auth: {:bearer, api_key}) do
+      {:ok, %{status: 200, body: binary}} -> {:ok, binary}
+      {:ok, res} -> {:error, res.body}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  def transcribe(file_content, opts \\ []) do
+    model_id = opts[:model_id] || "whisper-1"
+    api_key = opts[:api_key] || System.get_env("OPENAI_API_KEY")
+    url = (opts[:base_url] || @default_base_url) <> "/audio/transcriptions"
+
+    # Use Req's multipart support
+    case Req.post(url, 
+      auth: {:bearer, api_key},
+      form: [
+        file: {"audio.mp3", file_content},
+        model: model_id
+      ]
+    ) do
+      {:ok, %{status: 200, body: body}} -> {:ok, body["text"]}
+      {:ok, res} -> {:error, res.body}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  # ... embed_many and generate_image remain similar but should use standard headers
+  def embed_many(values, opts \\ []) do
+    api_key = opts[:api_key] || System.get_env("OPENAI_API_KEY")
+    url = (opts[:base_url] || @default_base_url) <> "/embeddings"
+    model = opts[:model_id] || "text-embedding-3-small"
+
+    case Req.post(url, json: %{model: model, input: values}, auth: {:bearer, api_key}) do
+      {:ok, %{status: 200, body: body}} ->
+        embeddings = body["data"] |> Enum.sort_by(& &1["index"]) |> Enum.map(& &1["embedding"])
+        {:ok, embeddings}
+      {:error, reason} -> {:error, reason}
+      {:ok, res} -> {:error, res.body}
+    end
+  end
+
+  def generate_image(prompt, opts \\ []) do
+    api_key = opts[:api_key] || System.get_env("OPENAI_API_KEY")
+    url = (opts[:base_url] || @default_base_url) <> "/images/generations"
+    
+    body = %{
+      prompt: prompt,
+      model: opts[:model_id] || "dall-e-3",
+      n: 1,
+      size: opts[:size] || "1024x1024",
+      response_format: "b64_json"
+    }
+
+    case Req.post(url, json: body, auth: {:bearer, api_key}) do
+      {:ok, %{status: 200, body: body}} ->
+        images = Enum.map(body["data"], &(&1["b64_json"] || &1["url"]))
+        {:ok, %{images: images, raw: body}}
+      {:ok, res} -> {:error, res.body}
+    end
   end
 end

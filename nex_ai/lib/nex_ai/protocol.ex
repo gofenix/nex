@@ -1,55 +1,61 @@
 defmodule NexAI.Protocol do
   @moduledoc """
-  Implements the Vercel AI SDK Data Stream Protocol (v6).
+  Implements the Vercel AI SDK Data Stream Protocol (v1 / AI SDK 6).
+  Uses prefix-based encoding for maximum compatibility and performance.
   
-  Documentation: https://sdk.vercel.ai/docs/ai-sdk-ui/stream-protocol
+  Format: <prefix>:<JSON stringified payload>\n
   """
 
-  @type part_type :: 
-    :text | :data | :error | 
-    :tool_call | :tool_result | 
-    :tool_call_start | :tool_call_delta |
-    :step_finish | :stream_finish | 
-    :attachment | :metadata | :control |
-    :diff
-
-  @doc "Encodes to Data Stream Protocol (JSON over SSE) - AI SDK 6 Standard"
+  @doc "Encodes to Data Stream Protocol"
   def encode(type, payload)
-
-  def encode(:text, text) when is_binary(text) do
-    Jason.encode!(%{type: "text-delta", delta: text})
-  end
-
-  def encode(:object_delta, delta) when is_binary(delta) do
-    Jason.encode!(%{type: "object-delta", delta: delta})
-  end
-
-  def encode(:tool_call_start, %{toolCallId: id, toolName: name}) do
-    Jason.encode!(%{type: "tool-input-start", toolCallId: id, toolName: name})
-  end
-
-  def encode(:tool_call_delta, %{toolCallId: id, inputTextDelta: delta}) do
-    Jason.encode!(%{type: "tool-input-delta", toolCallId: id, inputTextDelta: delta})
-  end
-
+  
+  # 0: Text delta
+  def encode(:text, text) when is_binary(text), do: "0:#{Jason.encode!(text)}\n"
+  
+  # 1: Data part
+  def encode(:data, data), do: "1:#{Jason.encode!(data)}\n"
+  
+  # 2: Error part
+  def encode(:error, error), do: "2:#{Jason.encode!(error)}\n"
+  
+  # 3: Control part (e.g. finish reason)
+  def encode(:control, control), do: "3:#{Jason.encode!(control)}\n"
+  
+  # 8: Message metadata
+  def encode(:metadata, meta), do: "8:#{Jason.encode!(meta)}\n"
+  
+  # 9: Tool call start/input
   def encode(:tool_call, %{toolCallId: id, toolName: name, args: args}) do
-    Jason.encode!(%{type: "tool-input-available", toolCallId: id, toolName: name, input: args})
+    "9:#{Jason.encode!(%{toolCallId: id, toolName: name, args: args})}\n"
   end
 
+  # a: Tool result
   def encode(:tool_result, %{toolCallId: id, result: result}) do
-    Jason.encode!(%{type: "tool-output-available", toolCallId: id, output: result})
+    "a:#{Jason.encode!(%{toolCallId: id, result: result})}\n"
   end
 
-  def encode(:error, error) when is_binary(error) do
-    Jason.encode!(%{type: "error", errorText: error})
+  # b: Tool call start (AI SDK 4+ / v1 Data Stream)
+  def encode(:tool_call_start, %{toolCallId: id, toolName: name}) do
+    "b:#{Jason.encode!(%{toolCallId: id, toolName: name})}\n"
   end
 
-  def encode(:stream_finish, _payload) do
-    Jason.encode!(%{type: "finish"})
+  # c: Tool call delta
+  def encode(:tool_call_delta, %{toolCallId: id, inputTextDelta: delta}) do
+    "c:#{Jason.encode!(%{toolCallId: id, inputTextDelta: delta})}\n"
   end
 
-  def encode(type, payload) when is_map(payload) do
-    # Fallback for custom data parts
-    Jason.encode!(payload |> Map.put_new(:type, "data-#{type}"))
+  # d: Finish part
+  def encode(:stream_finish, payload) do
+    "d:#{Jason.encode!(payload)}\n"
+  end
+
+  # e: Object delta (Experimental)
+  def encode(:object_delta, delta) when is_binary(delta) do
+    "e:#{Jason.encode!(delta)}\n"
+  end
+
+  def encode(type, payload) do
+    # Fallback for unknown parts
+    "x-#{type}:#{Jason.encode!(payload)}\n"
   end
 end
