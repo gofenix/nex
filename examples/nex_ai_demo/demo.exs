@@ -29,21 +29,24 @@ end
 IO.puts "\n🚀 [示例 2] 流式生成 (stream_text) - 实时打印 Token"
 IO.puts "---------------------------------------------------"
 
-result = NexAI.stream_text(
+case NexAI.stream_text(
   model: NexAI.openai("gpt-4o"),
   messages: [%User{content: "请写一段 50 字左右的诗。"}]
-)
-
-IO.write "AI 正在创作: "
-Enum.each(result.full_stream, fn event ->
-  case event.type do
-    :text -> 
-      IO.write(event.payload)
-    :error -> IO.puts "\n[流错误] #{event.payload}"
-    :stream_finish -> IO.puts "\n[流结束] 原因: #{event.payload.finishReason}"
-    _ -> :ok
-  end
-end)
+) do
+  {:error, err} -> 
+    IO.puts "❌ [流验证失败] #{inspect(err)}"
+  result ->
+    IO.write "AI 正在创作: "
+    Enum.each(result.full_stream, fn event ->
+      case event.type do
+        :text -> 
+          IO.write(event.payload)
+        :error -> IO.puts "\n[流错误] #{inspect(event.payload)}"
+        :stream_finish -> IO.puts "\n[流结束] 原因: #{event.payload.finishReason}"
+        _ -> :ok
+      end
+    end)
+end
 
 IO.puts "\n🚀 [示例 3] 自动工具调用 (Multi-step Tool Use)"
 IO.puts "---------------------------------------------------"
@@ -90,4 +93,30 @@ smart_model = NexAI.Middleware.wrap_model(
 IO.puts "AI 的思考过程: #{res.reasoning || "未捕获到"}"
 IO.puts "AI 的正式回答: #{res.text}"
 
-IO.puts "\n✅ 所有演示执行完毕。"
+IO.puts "\n🚀 [示例 5] 流式推理提取 (Streaming Reasoning Extraction)"
+IO.puts "---------------------------------------------------"
+
+smart_model = NexAI.Middleware.wrap_model(
+  NexAI.openai("gpt-4o"),
+  [{NexAI.Middleware.ExtractReasoning, tag: "thought"}]
+)
+
+result = NexAI.stream_text(
+  model: smart_model,
+  messages: [%User{content: "为什么天空是蓝色的？请在 <thought> 中先思考。"}]
+)
+
+IO.write "AI 正在思考并回答...\n"
+Enum.each(result.full_stream, fn event ->
+  case event.type do
+    :reasoning -> 
+      IO.write("\e[33m#{event.payload}\e[0m") # Yellow for reasoning
+    :text -> 
+      IO.write(event.payload)
+    :error ->
+      IO.puts "\n❌ [流错误] #{inspect(event.payload)}"
+    _ -> :ok
+  end
+end)
+
+IO.puts "\n\n✅ 所有演示执行完毕。"

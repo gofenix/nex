@@ -41,28 +41,40 @@ defmodule NexAI.Provider.OpenAI do
       # Merge model config (temperature, etc)
       body = Map.merge(body, model.config)
 
-      case Req.post(url, json: body, auth: {:bearer, model.api_key}) do
-        {:ok, %{status: 200, body: body, headers: headers}} ->
-          message = get_in(body, ["choices", Access.at(0), "message"])
-          
-          {:ok, %{
-            text: message["content"],
-            tool_calls: OpenAI.extract_tool_calls(message["tool_calls"]),
-            finish_reason: OpenAI.map_finish_reason(get_in(body, ["choices", Access.at(0), "finish_reason"])),
-            usage: OpenAI.format_usage(body["usage"]),
-            response: %Response{
-              id: body["id"],
-              modelId: body["model"],
-              timestamp: body["created"],
-              headers: Map.new(headers)
-            },
-            raw: body
-          }}
-        {:ok, %{status: status, body: body}} ->
-          {:error, "OpenAI Error #{status}: #{inspect(body)}"}
-        {:error, reason} ->
-          {:error, reason}
-      end
+      metadata = %{model: model.model, provider: :openai}
+      :telemetry.span([:nex_ai, :provider, :request], metadata, fn ->
+        finch_name = model.config[:finch] || NexAI.Finch
+        res = case Req.post(url, 
+          json: body, 
+          auth: {:bearer, model.api_key},
+          finch: finch_name
+        ) do
+          {:ok, %{status: 200, body: body, headers: headers}} ->
+            message = get_in(body, ["choices", Access.at(0), "message"])
+            
+            {:ok, %{
+              text: message["content"],
+              reasoning: message["reasoning_content"],
+              tool_calls: OpenAI.extract_tool_calls(message["tool_calls"]),
+              finish_reason: OpenAI.map_finish_reason(get_in(body, ["choices", Access.at(0), "finish_reason"])),
+              usage: OpenAI.format_usage(body["usage"]),
+              response: %Response{
+                id: body["id"],
+                modelId: body["model"],
+                timestamp: body["created"],
+                headers: Map.new(headers)
+              },
+              raw: body
+            }}
+          {:ok, %{status: 429, body: body}} ->
+            {:error, %NexAI.Error.RateLimitError{message: get_in(body, ["error", "message"]) || "Rate limit reached"}}
+          {:ok, %{status: status, body: body}} ->
+            {:error, %NexAI.Error.APIError{message: get_in(body, ["error", "message"]), status: status, type: get_in(body, ["error", "type"]), raw: body}}
+          {:error, reason} ->
+            {:error, reason}
+        end
+        {res, Map.put(metadata, :result, res)}
+      end)
     end
 
     def do_stream(model, params) do
@@ -86,9 +98,11 @@ defmodule NexAI.Provider.OpenAI do
         fn ->
           # 1. Start Async Task with Pull-based Flow Control (Backpressure)
           task = Task.Supervisor.async_nolink(NexAI.TaskSupervisor, fn ->
+            finch_name = model.config[:finch] || NexAI.Finch
             Req.post(url,
               json: body,
               auth: {:bearer, model.api_key},
+              finch: finch_name,
               into: fn {:data, data}, acc ->
                 # Send raw data to consumer
                 send(parent, {:stream_data, self(), data})
@@ -131,7 +145,8 @@ defmodule NexAI.Provider.OpenAI do
               receive_timeout ->
                 Task.shutdown(state.task)
                 # 5. Explicit Timeout Event (No Silent Failure)
-                {[%{"error" => %{"message" => "NexAI Streaming Timeout after #{receive_timeout}ms", "type" => "timeout"}}], %{state | done: true}}
+                err = %NexAI.Error.TimeoutError{message: "NexAI Streaming Timeout after #{receive_timeout}ms", timeout_ms: receive_timeout}
+                {[%{"error" => err}], %{state | done: true}}
             end
         end,
         fn state -> Task.shutdown(state.task) end

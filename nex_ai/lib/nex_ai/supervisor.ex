@@ -9,6 +9,7 @@ defmodule NexAI.Supervisor do
   @impl true
   def init(_opts) do
     children = [
+      {Finch, name: NexAI.Finch},
       {Task.Supervisor, name: NexAI.TaskSupervisor}
     ]
     Supervisor.init(children, strategy: :one_for_one)

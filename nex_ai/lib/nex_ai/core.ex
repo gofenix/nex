@@ -3,21 +3,49 @@ defmodule NexAI.Core do
   
   alias NexAI.LanguageModel.Protocol, as: ModelProtocol
   alias NexAI.Result.{GenerateTextResult, Step, ToolCall, ToolResult}
-  alias NexAI.Provider.OpenAI
   alias NexAI.Message
 
-  def generate_text(opts) when is_list(opts) do
-    opts = normalize_opts(opts)
-    {opts, output_config} = handle_output_config(opts)
-    messages = build_messages(opts)
-    model = opts[:model] || OpenAI.chat("gpt-4o")
-    max_steps = opts[:max_steps] || 1
+  @common_schema [
+    model: [type: :any, required: true],
+    messages: [type: {:list, :any}, required: true],
+    system: [type: :string],
+    max_steps: [type: :integer, default: 1],
+    maxSteps: [type: :integer], # CamelCase compatibility
+    temperature: [type: :float],
+    top_p: [type: :float],
+    presence_penalty: [type: :float],
+    frequency_penalty: [type: :float],
+    max_tokens: [type: :integer],
+    stop: [type: {:custom, __MODULE__, :validate_stop, []}],
+    tools: [type: {:list, :any}],
+    tool_choice: [type: :any],
+    output: [type: :map]
+  ]
 
-    case do_generate_loop(model, messages, opts, max_steps, 0, []) do
-      {:ok, result} ->
-        result = if output_config, do: process_object_result(result, output_config), else: result
-        {:ok, result}
-      error -> error
+  def validate_stop(val) when is_list(val) or is_binary(val), do: {:ok, val}
+  def validate_stop(_), do: {:error, "must be a string or a list of strings"}
+
+  def generate_text(opts) when is_list(opts) do
+    case NimbleOptions.validate(opts, @common_schema) do
+      {:ok, opts} ->
+        metadata = %{opts: opts, method: :generate_text}
+        :telemetry.span([:nex_ai, :generate], metadata, fn ->
+          opts = normalize_opts(opts)
+          {opts, output_config} = handle_output_config(opts)
+          messages = build_messages(opts)
+          model = opts[:model]
+          max_steps = opts[:max_steps]
+
+          result = case do_generate_loop(model, messages, opts, max_steps, 0, []) do
+            {:ok, result} ->
+              result = if output_config, do: process_object_result(result, output_config), else: result
+              {:ok, result}
+            error -> error
+          end
+          {result, Map.put(metadata, :result, result)}
+        end)
+      {:error, %NimbleOptions.ValidationError{message: msg}} ->
+        {:error, %NexAI.Error.InvalidRequestError{message: msg}}
     end
   end
 
@@ -26,13 +54,23 @@ defmodule NexAI.Core do
   end
 
   def stream_text(opts) do
-    opts = normalize_opts(opts)
-    {opts, output_config} = handle_output_config(opts)
-    messages = build_messages(opts)
-    model = opts[:model] || OpenAI.chat("gpt-4o")
-    
-    full_stream = build_lazy_stream(model, messages, opts, output_config)
-    %{full_stream: full_stream, opts: opts}
+    case NimbleOptions.validate(opts, @common_schema) do
+      {:ok, opts} ->
+        metadata = %{opts: opts, method: :stream_text}
+        :telemetry.execute([:nex_ai, :stream, :start], %{system_time: System.system_time()}, metadata)
+        
+        opts = normalize_opts(opts)
+        {opts, output_config} = handle_output_config(opts)
+        messages = build_messages(opts)
+        model = opts[:model]
+        
+        full_stream = build_lazy_stream(model, messages, opts, output_config)
+        %{full_stream: full_stream, opts: opts}
+      {:error, %NimbleOptions.ValidationError{message: msg}} ->
+        # For stream, we return a map with an error stream or just raise?
+        # Vercel SDK usually throws, let's return an error object that can be handled
+        {:error, %NexAI.Error.InvalidRequestError{message: msg}}
+    end
   end
 
   # --- Internal Helpers ---
@@ -92,8 +130,8 @@ defmodule NexAI.Core do
         # Start the first step's stream and pull the first chunk
         stream = ModelProtocol.do_stream(model, build_params(messages, opts))
         case Enumerable.reduce(stream, {:cont, nil}, fn x, _ -> {:suspend, x} end) do
-          {:suspended, chunk, next} -> %{next: next, chunk: chunk, tool_calls: %{}, full_text: "", step: step}
-          _ -> %{next: nil, chunk: nil, tool_calls: %{}, full_text: "", step: step}
+          {:suspended, chunk, next} -> %{next: next, chunk: chunk, tool_calls: %{}, full_text: "", full_reasoning: "", step: step}
+          _ -> %{next: nil, chunk: nil, tool_calls: %{}, full_text: "", full_reasoning: "", step: step}
         end
       end,
       fn state ->
@@ -120,7 +158,7 @@ defmodule NexAI.Core do
               new_stream = ModelProtocol.do_stream(model, build_params(new_messages, opts))
               case Enumerable.reduce(new_stream, {:cont, nil}, fn x, _ -> {:suspend, x} end) do
                 {:suspended, first_chunk, next} ->
-                  {result_events, %{state | next: next, chunk: first_chunk, step: state.step + 1, tool_calls: %{}, full_text: ""}}
+                  {result_events, %{state | next: next, chunk: first_chunk, step: state.step + 1, tool_calls: %{}, full_text: "", full_reasoning: ""}}
                 _ ->
                   {result_events ++ [%{type: :stream_finish, payload: %{finishReason: "stop"}}], %{state | step: :done}}
               end
@@ -135,17 +173,21 @@ defmodule NexAI.Core do
             # Pull the next chunk from the current stream
             new_state = case state.next.({:cont, nil}) do
               {:suspended, next_chunk, next_next} ->
-                %{state | next: next_next, chunk: next_chunk, tool_calls: new_acc.tool_calls, full_text: new_acc.full_text}
+                %{state | next: next_next, chunk: next_chunk, tool_calls: new_acc.tool_calls, full_text: new_acc.full_text, full_reasoning: new_acc.full_reasoning}
               _ ->
                 # Current stream is finished
-                %{state | next: nil, chunk: nil, tool_calls: new_acc.tool_calls, full_text: new_acc.full_text}
+                %{state | next: nil, chunk: nil, tool_calls: new_acc.tool_calls, full_text: new_acc.full_text, full_reasoning: new_acc.full_reasoning}
             end
             {events, new_state}
         end
       end,
       fn 
-        %{next: next} when is_function(next) -> next.({:halt, nil})
-        _ -> :ok
+        %{next: next} when is_function(next) -> 
+          :telemetry.execute([:nex_ai, :stream, :stop], %{system_time: System.system_time()}, %{step: step})
+          next.({:halt, nil})
+        _ -> 
+          :telemetry.execute([:nex_ai, :stream, :stop], %{system_time: System.system_time()}, %{step: step})
+          :ok
       end
     )
   end
@@ -170,6 +212,13 @@ defmodule NexAI.Core do
           {events ++ [%{type: type, payload: content}], state.full_text <> content}
       end
 
+      # 3. Handle Native Reasoning Content (OpenAI style)
+      {events, full_reasoning} = case delta && delta["reasoning_content"] do
+        nil -> {events, state.full_reasoning}
+        reasoning ->
+          {events ++ [%{type: :reasoning, payload: reasoning}], state.full_reasoning <> reasoning}
+      end
+
       {events, tool_calls} = case delta && delta["tool_calls"] do
         nil -> {events, state.tool_calls}
         tcs ->
@@ -190,7 +239,7 @@ defmodule NexAI.Core do
           end)
       end
 
-      {events, %{state | full_text: full_text, tool_calls: tool_calls}}
+      {events, %{state | full_text: full_text, full_reasoning: full_reasoning, tool_calls: tool_calls}}
     end
   end
 

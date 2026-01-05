@@ -22,7 +22,9 @@ defmodule NexAI.MixProject do
     [
       {:jason, "~> 1.4"},
       {:req, "~> 0.5"},
-      {:multipart, "~> 0.4.0"}
+      {:multipart, "~> 0.4.0"},
+      {:telemetry, "~> 1.0"},
+      {:nimble_options, "~> 1.1"}
     ]
   end
 end

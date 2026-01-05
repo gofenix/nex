@@ -54,6 +54,11 @@ defmodule NexAI.Protocol do
     "e:#{Jason.encode!(delta)}\n"
   end
 
+  # h: Reasoning delta
+  def encode(:reasoning, delta) when is_binary(delta) do
+    "h:#{Jason.encode!(delta)}\n"
+  end
+
   def encode(type, payload) do
     # Fallback for unknown parts
     "x-#{type}:#{Jason.encode!(payload)}\n"

@@ -36,33 +36,43 @@ defmodule NexAI.Provider.Anthropic do
 
       body = if params.tools, do: Map.put(body, :tools, Anthropic.format_tools(params.tools)), else: body
 
-      case Req.post(model.base_url <> "/messages",
-        json: body,
-        headers: [
-          {"x-api-key", model.api_key},
-          {"anthropic-version", Anthropic.api_version()}
-        ]
-      ) do
-        {:ok, %{status: 200, body: body, headers: headers}} ->
-          content_block = Enum.find(body["content"], &(&1["type"] == "text"))
-          tool_blocks = Enum.filter(body["content"], &(&1["type"] == "tool_use"))
+      metadata = %{model: model.model, provider: :anthropic}
+      :telemetry.span([:nex_ai, :provider, :request], metadata, fn ->
+        finch_name = model.config[:finch] || NexAI.Finch
+        res = case Req.post(model.base_url <> "/messages",
+          json: body,
+          finch: finch_name,
+          headers: [
+            {"x-api-key", model.api_key},
+            {"anthropic-version", Anthropic.api_version()}
+          ]
+        ) do
+          {:ok, %{status: 200, body: body, headers: headers}} ->
+            content_block = Enum.find(body["content"], &(&1["type"] == "text"))
+            tool_blocks = Enum.filter(body["content"], &(&1["type"] == "tool_use"))
 
-          {:ok, %{
-            text: if(content_block, do: content_block["text"]),
-            tool_calls: Anthropic.extract_tool_calls(tool_blocks),
-            finish_reason: Anthropic.map_finish_reason(body["stop_reason"]),
-            usage: Anthropic.format_usage(body["usage"]),
-            response: %Response{
-              id: body["id"],
-              modelId: body["model"],
-              timestamp: System.system_time(:second),
-              headers: Map.new(headers)
-            },
-            raw: body
-          }}
-        {:ok, res} -> {:error, res.body}
-        {:error, reason} -> {:error, reason}
-      end
+            {:ok, %{
+              text: if(content_block, do: content_block["text"]),
+              tool_calls: Anthropic.extract_tool_calls(tool_blocks),
+              finish_reason: Anthropic.map_finish_reason(body["stop_reason"]),
+              usage: Anthropic.format_usage(body["usage"]),
+              response: %Response{
+                id: body["id"],
+                modelId: body["model"],
+                timestamp: System.system_time(:second),
+                headers: Map.new(headers)
+              },
+              raw: body
+            }}
+          {:ok, %{status: 429, body: body}} ->
+            {:error, %NexAI.Error.RateLimitError{message: get_in(body, ["error", "message"]) || "Rate limit reached"}}
+          {:ok, %{status: status, body: body}} ->
+            {:error, %NexAI.Error.APIError{message: get_in(body, ["error", "message"]), status: status, type: get_in(body, ["error", "type"]), raw: body}}
+          {:error, reason} ->
+            {:error, reason}
+        end
+        {res, Map.put(metadata, :result, res)}
+      end)
     end
 
     def do_stream(model, params) do
@@ -83,8 +93,10 @@ defmodule NexAI.Provider.Anthropic do
       Stream.resource(
         fn ->
           task = Task.Supervisor.async_nolink(NexAI.TaskSupervisor, fn ->
+            finch_name = model.config[:finch] || NexAI.Finch
             Req.post(model.base_url <> "/messages",
               json: body,
+              finch: finch_name,
               headers: [
                 {"x-api-key", model.api_key},
                 {"anthropic-version", Anthropic.api_version()}
@@ -118,7 +130,8 @@ defmodule NexAI.Provider.Anthropic do
             after
               receive_timeout ->
                 Task.shutdown(state.task)
-                {[%{"error" => %{"message" => "NexAI Streaming Timeout (Anthropic) after #{receive_timeout}ms", "type" => "timeout"}}], %{state | done: true}}
+                err = %NexAI.Error.TimeoutError{message: "NexAI Streaming Timeout (Anthropic) after #{receive_timeout}ms", timeout_ms: receive_timeout}
+                {[%{"error" => err}], %{state | done: true}}
             end
         end,
         fn state -> Task.shutdown(state.task) end
