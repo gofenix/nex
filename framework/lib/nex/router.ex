@@ -11,6 +11,8 @@ defmodule Nex.Router do
 
   use Plug.Router
 
+  plug Plug.Logger
+
   plug Plug.Parsers,
     parsers: [:urlencoded, :multipart, :json],
     pass: ["*/*"],

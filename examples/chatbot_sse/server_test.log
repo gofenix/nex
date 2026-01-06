@@ -1,0 +1,31 @@
+==> nex_ai
+Compiling 1 file (.ex)
+Generated nex_ai app
+==> nex_core
+Compiling 1 file (.ex)
+     warning: clauses with the same name and arity (number of arguments) should be grouped together, "defp send_api_response/2" was previously defined (lib/nex/handler.ex:139)
+     │
+ 206 │   defp send_api_response(conn, :method_not_allowed) do
+     │        ~
+     │
+     └─ lib/nex/handler.ex:206:8
+
+Generated nex_core app
+==> chatbot_sse
+Compiling 5 files (.ex)
+Generated chatbot_sse app
+[Nex.Env] Loading environment from: /Users/bytedance/github/nex/examples/chatbot_sse/.env
+[Nex.Env] ✓ Environment loaded successfully (2 variables)
+
+11:12:03.171 [info] [Nex.Reloader] Watching for file changes in ["src/"]
+
+🚀 Nex dev server starting...
+
+   App module: ChatbotSse
+   URL: http://localhost:4000
+   Hot reload: enabled
+
+Press Ctrl+C to stop.
+
+
+11:12:03.189 [info] Running Nex.Router with Bandit 1.9.0 at 0.0.0.0:4000 (http)

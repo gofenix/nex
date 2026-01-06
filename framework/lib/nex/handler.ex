@@ -105,12 +105,28 @@ defmodule Nex.Handler do
   end
 
   # Format data for SSE streaming (used by Nex.stream/1)
+  defp format_sse_chunk({:raw, data}) when is_binary(data) do
+    data
+  end
+
   defp format_sse_chunk(data) when is_binary(data) do
-    "data: #{data}\n\n"
+    if String.starts_with?(data, "data: ") or String.starts_with?(data, "event: ") do
+      data
+    else
+      "data: #{data}\n\n"
+    end
   end
 
   defp format_sse_chunk(%{event: event, data: data}) do
-    "event: #{event}\ndata: #{encode_sse_data(data)}\n\n"
+    encoded = encode_sse_data(data)
+    # Ensure multiline data each have data: prefix
+    formatted_data = 
+      encoded
+      |> String.split("\n")
+      |> Enum.map(&"data: #{&1}")
+      |> Enum.join("\n")
+
+    "event: #{event}\n#{formatted_data}\n\n"
   end
 
   defp format_sse_chunk(data) when is_map(data) or is_list(data) do
@@ -120,7 +136,15 @@ defmodule Nex.Handler do
   defp encode_sse_data(data) when is_binary(data), do: data
   defp encode_sse_data(data), do: Jason.encode!(data)
 
-  defp send_api_response(conn, %Nex.Response{content_type: "text/event-stream"} = response) do
+  defp send_api_response(conn, %Nex.Response{} = response) do
+    if String.starts_with?(response.content_type || "", "text/event-stream") do
+      handle_sse_response(conn, response)
+    else
+      handle_regular_response(conn, response)
+    end
+  end
+
+  defp handle_sse_response(conn, response) do
     # Handle SSE streaming response
     conn =
       conn
@@ -161,7 +185,7 @@ defmodule Nex.Handler do
     end
   end
 
-  defp send_api_response(conn, %Nex.Response{} = response) do
+  defp handle_regular_response(conn, response) do
     conn =
       Enum.reduce(response.headers, conn, fn {k, v}, conn ->
         put_resp_header(conn, to_string(k), to_string(v))

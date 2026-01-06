@@ -19,8 +19,15 @@ defmodule NexAI.Core do
     stop: [type: {:custom, __MODULE__, :validate_stop, []}],
     tools: [type: {:list, :any}],
     tool_choice: [type: :any],
-    output: [type: :map]
+    output: [type: :map],
+    on_finish: [type: {:custom, __MODULE__, :validate_fn, []}],
+    onFinish: [type: {:custom, __MODULE__, :validate_fn, []}],
+    on_token: [type: {:custom, __MODULE__, :validate_fn, []}],
+    onToken: [type: {:custom, __MODULE__, :validate_fn, []}]
   ]
+
+  def validate_fn(val) when is_function(val), do: {:ok, val}
+  def validate_fn(_), do: {:error, "must be a function"}
 
   def validate_stop(val) when is_list(val) or is_binary(val), do: {:ok, val}
   def validate_stop(_), do: {:error, "must be a string or a list of strings"}

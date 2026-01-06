@@ -31,7 +31,7 @@ defmodule ChatbotSse.Layouts do
         <script src="https://unpkg.com/htmx.org@2.0.4"></script>
         <script src="https://unpkg.com/htmx-ext-sse@2.2.1/sse.js"></script>
         <script src="https://unpkg.com/alpinejs" defer></script>
-        <script type="module" src="https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.0-RC.7/bundles/datastar.js"></script>
+        <script type="module" src="https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.0-RC.7/bundles/datastar.js"></script>
       </head>
       <body class="bg-[#0b0f19] text-gray-100 min-h-screen">
         <div class="max-w-screen-xl mx-auto h-screen flex flex-col">

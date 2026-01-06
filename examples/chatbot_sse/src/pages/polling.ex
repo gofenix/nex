@@ -1,12 +1,15 @@
 defmodule ChatbotSse.Pages.Polling do
   @moduledoc """
-  Synchronous Chatbot - Traditional request-response pattern.
+  Async Polling Chatbot - Traditional short polling pattern.
 
-  Directly waits for AI response in the action handler,
-  demonstrating the simplest approach without SSE or async tasks.
+  1. User submits request -> Server starts Task, returns "Thinking..."
+  2. Client polls /poll status -> Server checks Task status
+  3. When done -> Server returns content
   """
   use Nex
+  use NexAI
   import ChatbotSse.Components.Chat.ChatMessage
+  require Logger
 
   def mount(_params) do
     %{
@@ -27,11 +30,11 @@ defmodule ChatbotSse.Pages.Polling do
           </a>
           <div>
             <h1 class="text-xl font-bold text-white">Classic Sync</h1>
-            <p class="text-xs text-gray-500 font-medium tracking-wider uppercase">Traditional Request-Response</p>
+            <p class="text-xs text-gray-500 font-medium tracking-wider uppercase">Async Polling Pattern</p>
           </div>
         </div>
         <div class="px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-bold uppercase tracking-tighter">
-          Synchronous
+          Polling
         </div>
       </header>
 
@@ -42,7 +45,7 @@ defmodule ChatbotSse.Pages.Polling do
         <div :if={length(@messages) == 0} class="h-full flex flex-col items-center justify-center text-center opacity-40 py-20">
           <div class="w-16 h-16 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center text-3xl mb-6">⏳</div>
           <h3 class="text-lg font-bold text-white mb-2">Classic Polling</h3>
-          <p class="max-w-xs text-sm">A simple request-response pattern. Perfect for reliability over speed.</p>
+          <p class="max-w-xs text-sm">Async job processing with client-side polling. Reliable and simple.</p>
         </div>
         <.chat_message :for={msg <- Enum.reverse(@messages)} message={msg} />
       </div>
@@ -52,7 +55,6 @@ defmodule ChatbotSse.Pages.Polling do
         <form hx-post="/chat"
               hx-target="#chat-container"
               hx-swap="beforeend"
-              hx-indicator="#loading-indicator"
               hx-on::after-request="this.reset()"
               class="relative group">
           <div class="absolute -inset-1 bg-gradient-to-r from-blue-500/20 to-primary-500/20 rounded-[26px] blur opacity-0 group-focus-within:opacity-100 transition duration-500"></div>
@@ -72,20 +74,8 @@ defmodule ChatbotSse.Pages.Polling do
           </button>
         </form>
         
-        <!-- Loading Indicator -->
-        <div id="loading-indicator" class="htmx-indicator absolute -top-12 left-0 right-0 flex justify-center">
-          <div class="bg-[#1f2937] border border-gray-700 px-4 py-2 rounded-full flex items-center gap-2 shadow-xl">
-            <span class="flex gap-1">
-              <span class="animate-bounce w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-              <span class="animate-bounce w-1.5 h-1.5 bg-blue-500 rounded-full" style="animation-delay: 0.1s"></span>
-              <span class="animate-bounce w-1.5 h-1.5 bg-blue-500 rounded-full" style="animation-delay: 0.2s"></span>
-            </span>
-            <span class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">AI is thinking</span>
-          </div>
-        </div>
-
         <p class="text-[10px] text-center text-gray-600 mt-4 tracking-tight uppercase font-medium">
-          Powered by Nex Traditional Action Pattern
+          Powered by Nex Polling Pattern
         </p>
       </div>
     </div>
@@ -105,34 +95,105 @@ defmodule ChatbotSse.Pages.Polling do
 
     Nex.Store.update(:polling_chat_messages, [], &[user_msg | &1])
 
-    # Use Nex.AI for consistent API calling
-    response = case Nex.AI.generate_text([
-      %{role: "system", content: "You are a friendly AI assistant, please reply in concise English."},
-      %{role: "user", content: user_message}
-    ]) do
-      {:ok, %{status: 200, body: %{"choices" => [%{"message" => %{"content" => content}} | _]}}} ->
-        content
-      {:ok, %{status: status}} ->
-        "Request failed (HTTP #{status})"
-      {:error, reason} ->
-        "Request failed: #{inspect(reason)}"
-    end
+    # Start Async Job
+    page_id = Nex.Store.get_page_id()
+    job_id = "job_#{msg_id}"
+    
+    # Store initial status
+    Nex.Store.put(job_id, :processing)
+    
+    # Run AI generation in background task
+    Task.start(fn ->
+      # Important: Set page_id in the task process so Store works
+      Nex.Store.set_page_id(page_id)
+      
+      response = case generate_text(
+        model: NexAI.openai("gpt-4o"),
+        messages: [
+          %{role: "system", content: "You are a friendly AI assistant, please reply in concise English."},
+          %{role: "user", content: user_message}
+        ]
+      ) do
+        {:ok, %{text: content}} -> {:ok, content}
+        {:error, reason} -> {:error, inspect(reason)}
+      end
+      
+      Nex.Store.put(job_id, {:done, response})
+    end)
 
-    ai_msg = %{
-      id: msg_id + 1,
-      role: :assistant,
-      content: response,
-      timestamp: format_time()
-    }
-
-    Nex.Store.update(:polling_chat_messages, [], &[ai_msg | &1])
-
-    # 返回用户消息和 AI 响应
-    assigns = %{user_msg: user_msg, ai_msg: ai_msg}
+    # Return user message and polling indicator
+    assigns = %{user_msg: user_msg, job_id: job_id}
     ~H"""
     <.chat_message message={@user_msg} />
-    <.chat_message message={@ai_msg} />
+    <div id={"poll-#{@job_id}"} 
+         hx-post="/poll" 
+         hx-vals={Jason.encode!(%{"job_id" => @job_id})} 
+         hx-trigger="load delay:1s" 
+         hx-swap="outerHTML">
+       <div class="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10 animate-pulse">
+         <div class="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center">
+           <div class="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+         </div>
+         <span class="text-sm text-gray-400">Thinking...</span>
+       </div>
+    </div>
     """
+  end
+
+  def poll(%{"job_id" => job_id}) do
+    case Nex.Store.get(job_id) do
+      :processing ->
+        assigns = %{job_id: job_id}
+        ~H"""
+        <div id={"poll-#{@job_id}"} 
+             hx-post="/poll" 
+             hx-vals={Jason.encode!(%{"job_id" => @job_id})} 
+             hx-trigger="load delay:1s" 
+             hx-swap="outerHTML">
+           <div class="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10 animate-pulse">
+             <div class="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center">
+               <div class="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+             </div>
+             <span class="text-sm text-gray-400">Thinking...</span>
+           </div>
+        </div>
+        """
+
+      {:done, {:ok, content}} ->
+        # Create and store AI message
+        msg_id = System.unique_integer([:positive])
+        ai_msg = %{
+          id: msg_id,
+          role: :assistant,
+          content: content,
+          timestamp: format_time()
+        }
+        
+        Nex.Store.update(:polling_chat_messages, [], &[ai_msg | &1])
+        Nex.Store.delete(job_id) # Cleanup job
+
+        assigns = %{ai_msg: ai_msg}
+        ~H"""
+        <.chat_message message={@ai_msg} />
+        """
+
+      {:done, {:error, reason}} ->
+        Nex.Store.delete(job_id) # Cleanup
+        assigns = %{reason: reason}
+        ~H"""
+        <div class="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+          Error: {@reason}
+        </div>
+        """
+
+      nil ->
+        assigns = %{}
+        ~H"""
+        <div class="p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-sm">
+          Job expired or not found.
+        </div>
+        """
+    end
   end
 
   defp format_time do

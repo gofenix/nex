@@ -105,16 +105,24 @@ defmodule ChatbotSse.Pages.Raw do
     base_url = Nex.Env.get(:OPENAI_BASE_URL, "https://api.openai.com/v1")
     url = String.trim_trailing(base_url, "/") <> "/chat/completions"
 
-    # 2. Manual Request Construction
+    # 2. Prepare History
+    # Get all messages, reverse to chronological order, and map to OpenAI format
+    history = Nex.Store.get(:raw_messages, [])
+              |> Enum.reverse()
+              |> Enum.map(fn m -> 
+                %{"role" => to_string(m.role), "content" => m.content} 
+              end)
+
+    # 3. Manual Request Construction
     body = %{
       "model" => "gpt-4o",
       "messages" => [
-        %{"role" => "system", "content" => "You are a helpful assistant. Reply in concise Chinese."},
-        %{"role" => "user", "content" => content}
+        %{"role" => "system", "content" => "You are a helpful assistant. Reply in concise Chinese."}
+        | history
       ]
     }
 
-    # 3. Manual API Call using Req
+    # 4. Manual API Call using Req
     response = Req.post(url, 
       json: body, 
       auth: {:bearer, api_key},

@@ -6,6 +6,7 @@ defmodule ChatbotSse.Pages.Interactive do
   before execution, using pure HTMX and Nex.Store.
   """
   use Nex
+  use NexAI
   import ChatbotSse.Components.Chat.ChatMessage
 
   def mount(_params) do
@@ -100,10 +101,17 @@ defmodule ChatbotSse.Pages.Interactive do
     user_msg = %{id: msg_id, role: :user, content: content, timestamp: format_time()}
     Nex.Store.update(:interactive_messages, [], &[user_msg | &1])
 
+    # Build history for context
+    history = Nex.Store.get(:interactive_messages, [])
+              |> Enum.reverse()
+              |> Enum.map(fn m -> %{role: to_string(m.role), content: m.content} end)
+
     # Call AI non-streaming to detect tool calls
-    response = Nex.AI.generate_text([
-      %{role: "user", content: content}
-    ], tools: weather_tools())
+    response = generate_text(
+      model: NexAI.openai("gpt-4o"),
+      messages: history,
+      tools: weather_tools()
+    )
 
     handle_ai_response(user_msg, response)
   end
@@ -131,16 +139,19 @@ defmodule ChatbotSse.Pages.Interactive do
       content: Jason.encode!(result)
     }
 
-    final_resp = Nex.AI.generate_text(user_messages ++ [tool_msg, result_msg])
+    final_resp = generate_text(
+      model: NexAI.openai("gpt-4o"),
+      messages: user_messages ++ [tool_msg, result_msg]
+    )
     
     case final_resp do
-      {:ok, %{status: 200, body: %{"choices" => [%{"message" => %{"content" => content}} | _]}}} ->
+      {:ok, %{text: content}} ->
         ai_msg = %{id: System.unique_integer([:positive]), role: :assistant, content: content, timestamp: format_time()}
         Nex.Store.update(:interactive_messages, [], &[ai_msg | &1])
         
-        assigns = %{ai_msg: ai_msg}
+        assigns = %{ai_msg: ai_msg, call_id: call_id}
         ~H"""
-        <div hx-swap-oob={"delete:#ai-approval-#{call_id}"}></div>
+        <div hx-swap-oob={"delete:#ai-approval-#{@call_id}"}></div>
         <.chat_message message={@ai_msg} />
         """
       _ ->
@@ -150,16 +161,14 @@ defmodule ChatbotSse.Pages.Interactive do
 
   # --- Helpers ---
 
-  defp handle_ai_response(user_msg, {:ok, %{status: 200, body: body}}) do
-    message = List.first(body["choices"])["message"]
-    
+  defp handle_ai_response(user_msg, {:ok, result}) do
     cond do
-      tool_calls = message["tool_calls"] ->
+      length(result.toolCalls) > 0 ->
         # Found a tool call! Ask for approval
-        tool_call = List.first(tool_calls)
-        call_id = tool_call["id"]
-        name = tool_call["function"]["name"]
-        args = tool_call["function"]["arguments"]
+        tool_call = List.first(result.toolCalls)
+        call_id = tool_call.toolCallId
+        name = tool_call.toolName
+        args = Jason.encode!(tool_call.args)
 
         assigns = %{user_msg: user_msg, call_id: call_id, name: name, args: args}
         ~H"""
@@ -204,7 +213,7 @@ defmodule ChatbotSse.Pages.Interactive do
         </div>
         """
 
-      content = message["content"] ->
+      content = result.text ->
         ai_msg = %{id: System.unique_integer([:positive]), role: :assistant, content: content, timestamp: format_time()}
         Nex.Store.update(:interactive_messages, [], &[ai_msg | &1])
         assigns = %{user_msg: user_msg, ai_msg: ai_msg}
@@ -214,26 +223,27 @@ defmodule ChatbotSse.Pages.Interactive do
         """
 
       true ->
-        Nex.html("<p class='text-red-500'>Empty AI response</p>")
+        assigns = %{}
+        ~H"""
+        <p class='text-red-500'>Empty AI response</p>
+        """
     end
   end
 
   defp weather_tools do
     [
-      %{
-        type: "function",
-        function: %{
-          name: "get_weather",
-          description: "Get current weather",
-          parameters: %{
-            type: "object",
-            properties: %{
-              location: %{type: "string"}
-            },
-            required: ["location"]
-          }
-        }
-      }
+      NexAI.tool(%{
+        name: "get_weather",
+        description: "Get current weather",
+        parameters: NexAI.zod_schema(%{
+          type: "object",
+          properties: %{
+            location: %{type: "string"}
+          },
+          required: ["location"]
+        }),
+        execute: fn _ -> "Manual execution" end
+      })
     ]
   end
 
