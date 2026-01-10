@@ -5,7 +5,7 @@ defmodule NexAI.Provider.Mistral do
   """
   alias NexAI.LanguageModel.Protocol, as: ModelProtocol
   alias NexAI.Result.{Usage, ToolCall}
-  alias NexAI.LanguageModel.V1
+  alias NexAI.LanguageModel.{GenerateResult, StreamResult, StreamPart, ResponseMetadata}
 
   defstruct [:api_key, :base_url, model: "mistral-small-latest", config: %{}]
 
@@ -47,23 +47,19 @@ defmodule NexAI.Provider.Mistral do
         {:ok, %{status: 200, body: body, headers: headers}} ->
           message = get_in(body, ["choices", Access.at(0), "message"])
 
-          {:ok, %V1.GenerateResult{
-            text: message["content"],
+          {:ok, %GenerateResult{
+            content: [%{type: "text", text: message["content"]}],
             tool_calls: OpenAI.extract_tool_calls(message["tool_calls"]),
             finish_reason: OpenAI.map_finish_reason(get_in(body, ["choices", Access.at(0), "finish_reason"])),
             usage: OpenAI.format_usage(body["usage"]),
-            response: %V1.ResponseMetadata{
+            response: %ResponseMetadata{
               id: body["id"],
               model_id: body["model"],
               timestamp: body["created"],
               headers: Map.new(headers)
             },
-            raw_call: %V1.CallMetadata{
-              model_id: model.model,
-              provider: "mistral",
-              params: params,
-              raw_request: body
-            }
+            raw_call: %{model_id: model.model, provider: "mistral", params: options},
+            raw_response: body
           }}
 
         {:ok, %{status: 401, body: body}} ->
@@ -130,20 +126,20 @@ defmodule NexAI.Provider.Mistral do
                 {lines, new_buffer} = OpenAI.process_line_buffer(state.buffer <> data)
                 raw_chunks = OpenAI.parse_lines(lines)
                 send(pid, :ack)
-                {v1_chunks, state} = OpenAI.map_to_v1_chunks(raw_chunks, state)
-                {v1_chunks, %{state | buffer: new_buffer}}
+                {parts, state} = OpenAI.map_to_stream_parts(raw_chunks, state)
+                {parts, %{state | buffer: new_buffer}}
 
               :stream_done ->
                 {lines, _} = OpenAI.process_line_buffer(state.buffer, true)
                 raw_chunks = OpenAI.parse_lines(lines)
-                {v1_chunks, state} = OpenAI.map_to_v1_chunks(raw_chunks, state)
-                {v1_chunks, %{state | done: true, buffer: ""}}
+                {parts, state} = OpenAI.map_to_stream_parts(raw_chunks, state)
+                {parts, %{state | done: true, buffer: ""}}
 
             after
               receive_timeout ->
                 Task.shutdown(state.task)
                 err = %NexAI.Error.TimeoutError{message: "NexAI Streaming Timeout after #{receive_timeout}ms", timeout_ms: receive_timeout}
-                {[%V1.StreamChunk{type: :error, content: err}], %{state | done: true}}
+                {[%StreamPart{type: :error, error: err}], %{state | done: true}}
             end
         end,
         fn state -> Task.shutdown(state.task) end

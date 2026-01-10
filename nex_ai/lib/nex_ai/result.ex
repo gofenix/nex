@@ -27,7 +27,7 @@ defmodule NexAI.Result do
       :finishReason,
       :usage,
       :warnings,
-      :response # %NexAI.LanguageModel.V1.ResponseMetadata{}
+      :response # %NexAI.LanguageModel.ResponseMetadata{}
     ]
   end
 
@@ -44,7 +44,7 @@ defmodule NexAI.Result do
       :response,
       :steps,
       :object, # Set when in object mode
-      :raw_call # %NexAI.LanguageModel.V1.CallMetadata{}
+      :raw_call # %NexAI.LanguageModel.CallMetadata{}
     ]
   end
 

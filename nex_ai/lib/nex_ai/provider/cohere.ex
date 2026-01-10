@@ -5,7 +5,7 @@ defmodule NexAI.Provider.Cohere do
   """
   alias NexAI.LanguageModel.Protocol, as: ModelProtocol
   alias NexAI.Result.{Usage, ToolCall}
-  alias NexAI.LanguageModel.V1
+  alias NexAI.LanguageModel.{GenerateResult, StreamResult, StreamPart, ResponseMetadata}
 
   defstruct [:api_key, :base_url, model: "command-r-plus", config: %{}]
 
@@ -47,23 +47,19 @@ defmodule NexAI.Provider.Cohere do
       finch_name = model.config[:finch] || NexAI.Finch
       case Req.post(url, json: body, auth: {:bearer, model.api_key}, finch: finch_name) do
         {:ok, %{status: 200, body: body, headers: headers}} ->
-          {:ok, %V1.GenerateResult{
-            text: body["text"],
+          {:ok, %GenerateResult{
+            content: [%{type: "text", text: body["text"]}],
             tool_calls: Cohere.extract_tool_calls(body["tool_calls"]),
             finish_reason: Cohere.map_finish_reason(body["finish_reason"]),
             usage: Cohere.format_usage(body["meta"]),
-            response: %V1.ResponseMetadata{
+            response: %ResponseMetadata{
               id: body["generation_id"],
               model_id: model.model,
               timestamp: System.system_time(:second),
               headers: Map.new(headers)
             },
-            raw_call: %V1.CallMetadata{
-              model_id: model.model,
-              provider: "cohere",
-              params: params,
-              raw_request: body
-            }
+            raw_call: %{model_id: model.model, provider: "cohere", params: options},
+            raw_response: body
           }}
 
         {:ok, %{status: 429, body: body}} ->
@@ -128,20 +124,20 @@ defmodule NexAI.Provider.Cohere do
                 {lines, new_buffer} = Cohere.process_line_buffer(state.buffer <> data)
                 raw_chunks = Cohere.parse_lines(lines)
                 send(pid, :ack)
-                {v1_chunks, state} = Cohere.map_to_v1_chunks(raw_chunks, state)
-                {v1_chunks, %{state | buffer: new_buffer}}
+                {parts, state} = Cohere.map_to_stream_parts(raw_chunks, state)
+                {parts, %{state | buffer: new_buffer}}
 
               :stream_done ->
                 {lines, _} = Cohere.process_line_buffer(state.buffer, true)
                 raw_chunks = Cohere.parse_lines(lines)
-                {v1_chunks, state} = Cohere.map_to_v1_chunks(raw_chunks, state)
-                {v1_chunks, %{state | done: true, buffer: ""}}
+                {parts, state} = Cohere.map_to_stream_parts(raw_chunks, state)
+                {parts, %{state | done: true, buffer: ""}}
 
             after
               receive_timeout ->
                 Task.shutdown(state.task)
                 err = %NexAI.Error.TimeoutError{message: "NexAI Streaming Timeout after #{receive_timeout}ms", timeout_ms: receive_timeout}
-                {[%V1.StreamChunk{type: :error, content: err}], %{state | done: true}}
+                {[%StreamPart{type: :error, error: err}], %{state | done: true}}
             end
         end,
         fn state -> Task.shutdown(state.task) end
@@ -242,23 +238,23 @@ defmodule NexAI.Provider.Cohere do
     end)
   end
 
-  def map_to_v1_chunks(raw_chunks, state) do
+  def map_to_stream_parts(raw_chunks, state) do
     Enum.reduce(raw_chunks, {[], state}, fn chunk, {acc, st} ->
-      {new_chunks, st} = do_map_chunk(chunk, st)
-      {acc ++ new_chunks, st}
+      {new_parts, st} = do_map_chunk_to_part(chunk, st)
+      {acc ++ new_parts, st}
     end)
   end
 
-  defp do_map_chunk(chunk, state) do
+  defp do_map_chunk_to_part(chunk, state) do
     chunks = []
 
     {chunks, state} = if not state.response_sent and chunk["generation_id"] do
-      meta = %V1.ResponseMetadata{
+      meta = %ResponseMetadata{
         id: chunk["generation_id"],
         model_id: chunk["model"],
         timestamp: System.system_time(:second)
       }
-      {chunks ++ [%V1.StreamChunk{type: :response_metadata, response: meta}], %{state | response_sent: true}}
+      {chunks ++ [%StreamPart{type: :response_metadata, response: meta}], %{state | response_sent: true}}
     else
       {chunks, state}
     end
@@ -266,7 +262,7 @@ defmodule NexAI.Provider.Cohere do
     chunks = case chunk["event_type"] do
       "text-generation" ->
         if text = chunk["text"] do
-          chunks ++ [%V1.StreamChunk{type: :text_delta, content: text}]
+          chunks ++ [%StreamPart{type: :text_delta, text: text}]
         else
           chunks
         end
@@ -276,8 +272,8 @@ defmodule NexAI.Provider.Cohere do
           Enum.reduce(tool_calls, chunks, fn tc, acc ->
             id = :crypto.strong_rand_bytes(8) |> Base.encode16(case: :lower)
             acc ++ [
-              %V1.StreamChunk{type: :tool_call_start, tool_call_id: id, tool_name: tc["name"]},
-              %V1.StreamChunk{type: :tool_call_delta, tool_call_id: id, args_delta: Jason.encode!(tc["parameters"] || %{})}
+              %StreamPart{type: :tool_call_start, tool_call_id: id, tool_name: tc["name"]},
+              %StreamPart{type: :tool_call_delta, tool_call_id: id, args_delta: Jason.encode!(tc["parameters"] || %{})}
             ]
           end)
         else
@@ -287,8 +283,8 @@ defmodule NexAI.Provider.Cohere do
       "stream-end" ->
         finish_reason = map_finish_reason(chunk["finish_reason"])
         usage = format_usage(chunk["response"])
-        chunks = chunks ++ [%V1.StreamChunk{type: :finish, finish_reason: finish_reason}]
-        if usage, do: chunks ++ [%V1.StreamChunk{type: :usage, usage: usage}], else: chunks
+        chunks = chunks ++ [%StreamPart{type: :finish, finish_reason: finish_reason}]
+        if usage, do: chunks ++ [%StreamPart{type: :usage, usage: usage}], else: chunks
 
       _ -> chunks
     end

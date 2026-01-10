@@ -1,11 +1,11 @@
 defmodule NexAI.Provider.Google do
   @moduledoc """
   Google Gemini Provider for NexAI.
-  Implements the LanguageModel protocol for Google's Gemini models.
+  Implements the LanguageModel protocol (Vercel AI SDK v6).
   """
   alias NexAI.LanguageModel.Protocol, as: ModelProtocol
   alias NexAI.Result.{Usage, ToolCall}
-  alias NexAI.LanguageModel.V1
+  alias NexAI.LanguageModel.{GenerateResult, StreamResult, StreamPart, ResponseMetadata}
 
   defstruct [:api_key, :base_url, model: "gemini-1.5-flash", config: %{}]
 
@@ -26,17 +26,17 @@ defmodule NexAI.Provider.Google do
     def provider(_model), do: "google"
     def model_id(model), do: model.model
 
-    def do_generate(model, params) do
+    def do_generate(model, options) do
       url = "#{model.base_url}/models/#{model.model}:generateContent?key=#{model.api_key}"
-      messages = Google.format_messages(params.prompt)
+      messages = Google.format_messages(options.prompt)
 
       body = %{
         contents: messages,
         generationConfig: build_generation_config(model.config)
       }
 
-      body = if params.tools && length(params.tools) > 0 do
-        Map.put(body, :tools, [%{functionDeclarations: Google.format_tools(params.tools)}])
+      body = if options.tools && length(options.tools) > 0 do
+        Map.put(body, :tools, [%{functionDeclarations: Google.format_tools(options.tools)}])
       else
         body
       end
@@ -44,29 +44,17 @@ defmodule NexAI.Provider.Google do
       finch_name = model.config[:finch] || NexAI.Finch
       case Req.post(url, json: body, finch: finch_name) do
         {:ok, %{status: 200, body: body, headers: headers}} ->
-          candidate = get_in(body, ["candidates", Access.at(0)])
-          content = get_in(candidate, ["content"])
-          parts = content["parts"] || []
-
-          text_parts = Enum.filter(parts, &(&1["text"]))
-          tool_parts = Enum.filter(parts, &(&1["functionCall"]))
-
-          {:ok, %V1.GenerateResult{
-            text: text_parts |> Enum.map(&(&1["text"])) |> Enum.join(""),
-            tool_calls: Google.extract_tool_calls(tool_parts),
-            finish_reason: Google.map_finish_reason(get_in(candidate, ["finishReason"])),
+          content = Google.build_content(body)
+          {:ok, %GenerateResult{
+            content: content,
+            finish_reason: Google.map_finish_reason(body["candidates"][0]["finishReason"]),
             usage: Google.format_usage(body["usageMetadata"]),
-            response: %V1.ResponseMetadata{
-              id: body["modelVersion"],
+            raw_call: %{model_id: model.model, provider: "google", params: options},
+            raw_response: body,
+            response: %ResponseMetadata{
+              id: nil,
               model_id: model.model,
-              timestamp: System.system_time(:second),
-              headers: Map.new(headers)
-            },
-            raw_call: %V1.CallMetadata{
-              model_id: model.model,
-              provider: "google",
-              params: params,
-              raw_request: body
+              timestamp: nil
             }
           }}
 
@@ -84,25 +72,25 @@ defmodule NexAI.Provider.Google do
       end
     end
 
-    def do_stream(model, params) do
+    def do_stream(model, options) do
       url = "#{model.base_url}/models/#{model.model}:streamGenerateContent?key=#{model.api_key}&alt=sse"
-      messages = Google.format_messages(params.prompt)
+      messages = Google.format_messages(options.prompt)
 
       body = %{
         contents: messages,
         generationConfig: build_generation_config(model.config)
       }
 
-      body = if params.tools && length(params.tools) > 0 do
-        Map.put(body, :tools, [%{functionDeclarations: Google.format_tools(params.tools)}])
+      body = if options.tools && length(options.tools) > 0 do
+        Map.put(body, :tools, [%{functionDeclarations: Google.format_tools(options.tools)}])
       else
         body
       end
 
       parent = self()
-      receive_timeout = params.config[:receive_timeout] || 30_000
+      receive_timeout = options.config[:receive_timeout] || 30_000
 
-      Stream.resource(
+      stream = Stream.resource(
         fn ->
           task = Task.Supervisor.async_nolink(NexAI.TaskSupervisor, fn ->
             finch_name = model.config[:finch] || NexAI.Finch
@@ -130,24 +118,29 @@ defmodule NexAI.Provider.Google do
                 {lines, new_buffer} = Google.process_line_buffer(state.buffer <> data)
                 raw_chunks = Google.parse_lines(lines)
                 send(pid, :ack)
-                {v1_chunks, state} = Google.map_to_v1_chunks(raw_chunks, state)
-                {v1_chunks, %{state | buffer: new_buffer}}
+                {parts, state} = Google.map_to_stream_parts(raw_chunks, state)
+                {parts, %{state | buffer: new_buffer}}
 
               :stream_done ->
                 {lines, _} = Google.process_line_buffer(state.buffer, true)
                 raw_chunks = Google.parse_lines(lines)
-                {v1_chunks, state} = Google.map_to_v1_chunks(raw_chunks, state)
-                {v1_chunks, %{state | done: true, buffer: ""}}
+                {parts, state} = Google.map_to_stream_parts(raw_chunks, state)
+                {parts, %{state | done: true, buffer: ""}}
 
             after
               receive_timeout ->
                 Task.shutdown(state.task)
                 err = %NexAI.Error.TimeoutError{message: "NexAI Streaming Timeout after #{receive_timeout}ms", timeout_ms: receive_timeout}
-                {[%V1.StreamChunk{type: :error, content: err}], %{state | done: true}}
+                {[%StreamPart{type: :error, error: err}], %{state | done: true}}
             end
         end,
         fn state -> Task.shutdown(state.task) end
       )
+
+      {:ok, %StreamResult{
+        stream: stream,
+        raw_call: %{model_id: model.model, provider: "google", params: options}
+      }}
     end
 
     defp build_generation_config(config) do
@@ -250,40 +243,40 @@ defmodule NexAI.Provider.Google do
     end)
   end
 
-  def map_to_v1_chunks(raw_chunks, state) do
+  def map_to_stream_parts(raw_chunks, state) do
     Enum.reduce(raw_chunks, {[], state}, fn chunk, {acc, st} ->
-      {new_chunks, st} = do_map_chunk(chunk, st)
-      {acc ++ new_chunks, st}
+      {new_parts, st} = do_map_chunk_to_part(chunk, st)
+      {acc ++ new_parts, st}
     end)
   end
 
-  defp do_map_chunk(chunk, state) do
+  defp do_map_chunk_to_part(chunk, state) do
     chunks = []
 
     {chunks, state} = if not state.response_sent do
-      meta = %V1.ResponseMetadata{
+      meta = %ResponseMetadata{
         id: chunk["modelVersion"],
         model_id: chunk["modelVersion"],
         timestamp: System.system_time(:second)
       }
-      {chunks ++ [%V1.StreamChunk{type: :response_metadata, response: meta}], %{state | response_sent: true}}
+      {chunks ++ [%StreamPart{type: :response_metadata, response: meta}], %{state | response_sent: true}}
     else
       {chunks, state}
     end
 
     candidate = get_in(chunk, ["candidates", Access.at(0)])
-    parts = get_in(candidate, ["content", "parts"]) || []
+    content_parts = get_in(candidate, ["content", "parts"]) || []
 
-    chunks = Enum.reduce(parts, chunks, fn part, acc ->
+    chunks = Enum.reduce(content_parts, chunks, fn part, acc ->
       cond do
         text = part["text"] ->
-          acc ++ [%V1.StreamChunk{type: :text_delta, content: text}]
+          acc ++ [%StreamPart{type: :text_delta, text: text}]
 
         fc = part["functionCall"] ->
           id = :crypto.strong_rand_bytes(8) |> Base.encode16(case: :lower)
           acc ++ [
-            %V1.StreamChunk{type: :tool_call_start, tool_call_id: id, tool_name: fc["name"]},
-            %V1.StreamChunk{type: :tool_call_delta, tool_call_id: id, args_delta: Jason.encode!(fc["args"] || %{})}
+            %StreamPart{type: :tool_call_start, tool_call_id: id, tool_name: fc["name"]},
+            %StreamPart{type: :tool_call_delta, tool_call_id: id, args_delta: Jason.encode!(fc["args"] || %{})}
           ]
 
         true -> acc
@@ -291,9 +284,9 @@ defmodule NexAI.Provider.Google do
     end)
 
     finish_reason = get_in(candidate, ["finishReason"])
-    chunks = if finish_reason, do: chunks ++ [%V1.StreamChunk{type: :finish, finish_reason: map_finish_reason(finish_reason)}], else: chunks
+    chunks = if finish_reason, do: chunks ++ [%StreamPart{type: :finish, finish_reason: map_finish_reason(finish_reason)}], else: chunks
 
-    chunks = if usage = chunk["usageMetadata"], do: chunks ++ [%V1.StreamChunk{type: :usage, usage: format_usage(usage)}], else: chunks
+    chunks = if usage = chunk["usageMetadata"], do: chunks ++ [%StreamPart{type: :usage, usage: format_usage(usage)}], else: chunks
 
     {chunks, state}
   end

@@ -1,71 +1,79 @@
 defmodule NexAI.Provider.Anthropic do
   @moduledoc """
-  Anthropic (Claude) Provider for NexAI.
+  Anthropic Provider for NexAI.
+  Implements the LanguageModel protocol (Vercel AI SDK v6).
   """
   alias NexAI.LanguageModel.Protocol, as: ModelProtocol
-  alias NexAI.Result.{Usage, Response, ToolCall}
+  alias NexAI.LanguageModel.{GenerateResult, StreamResult, StreamPart, ResponseMetadata}
 
   defstruct [:api_key, :base_url, model: "claude-3-5-sonnet-latest", config: %{}]
 
-  @default_base_url "https://api.anthropic.com/v1"
-  @api_version "2023-06-01"
+  require Logger
 
+  @default_base_url "https://api.anthropic.com/v1/messages"
+
+  @doc "Factory function to create an Anthropic model instance"
   def claude(model_id, opts \\ []) do
     %__MODULE__{
       model: model_id,
-      api_key: opts[:api_key] || System.get_env("ANTHROPIC_API_KEY"),
-      base_url: opts[:base_url] || System.get_env("ANTHROPIC_BASE_URL") || @default_base_url,
+      api_key: opts[:api_key] || Application.get_env(:nex_ai, :anthropic_api_key) || System.get_env("ANTHROPIC_API_KEY"),
+      base_url: opts[:base_url] || Application.get_env(:nex_ai, :anthropic_base_url) || System.get_env("ANTHROPIC_BASE_URL") || @default_base_url,
       config: Map.new(opts)
     }
   end
 
   defimpl ModelProtocol do
     alias NexAI.Provider.Anthropic
-    alias NexAI.Result.{Usage, Response, ToolCall}
+    alias NexAI.LanguageModel.{GenerateResult, StreamResult, StreamPart, ResponseMetadata}
 
-    def do_generate(model, params) do
-      {system, messages} = Anthropic.extract_system(params.prompt)
-      
+    def provider(_model), do: "anthropic"
+    def model_id(model), do: model.model
+
+    def do_generate(model, options) do
+      url = model.base_url
+      {system_messages, messages} = Anthropic.extract_system(options.prompt)
+      messages = Anthropic.format_messages(messages)
+
       body = %{
         model: model.model,
-        messages: Anthropic.format_messages(messages),
-        system: system,
-        max_tokens: model.config[:max_tokens] || 4096,
+        messages: messages,
         stream: false
       }
-
-      body = if params.tools, do: Map.put(body, :tools, Anthropic.format_tools(params.tools)), else: body
+      body = if system_messages != "", do: Map.put(body, :system, system_messages), else: body
+      body = if options.tools && length(options.tools) > 0, do: Map.put(body, :tools, Anthropic.format_tools(options.tools)), else: body
+      body = if tc = options.tool_choice, do: Map.put(body, :tool_choice, tc), else: body
+      body = Map.merge(body, model.config)
 
       metadata = %{model: model.model, provider: :anthropic}
       :telemetry.span([:nex_ai, :provider, :request], metadata, fn ->
         finch_name = model.config[:finch] || NexAI.Finch
-        res = case Req.post(model.base_url <> "/messages",
+        res = case Req.post(url,
           json: body,
-          finch: finch_name,
-          headers: [
-            {"x-api-key", model.api_key},
-            {"anthropic-version", Anthropic.api_version()}
-          ]
+          auth: {:bearer, model.api_key},
+          headers: %{"anthropic-version" => "2023-06-01"},
+          finch: finch_name
         ) do
-          {:ok, %{status: 200, body: body, headers: headers}} ->
-            content_block = Enum.find(body["content"], &(&1["type"] == "text"))
-            tool_blocks = Enum.filter(body["content"], &(&1["type"] == "tool_use"))
+          {:ok, %{status: 200, body: body}} ->
+            content = Anthropic.build_content(body)
 
-            {:ok, %{
-              text: if(content_block, do: content_block["text"]),
-              tool_calls: Anthropic.extract_tool_calls(tool_blocks),
+            {:ok, %GenerateResult{
+              content: content,
               finish_reason: Anthropic.map_finish_reason(body["stop_reason"]),
               usage: Anthropic.format_usage(body["usage"]),
-              response: %Response{
+              raw_call: %{model_id: model.model, provider: "anthropic", params: options},
+              raw_response: body,
+              response: %ResponseMetadata{
                 id: body["id"],
-                modelId: body["model"],
-                timestamp: System.system_time(:second),
-                headers: Map.new(headers)
-              },
-              raw: body
+                model_id: body["model"],
+                timestamp: nil
+              }
             }}
+          {:ok, %{status: 401, body: body}} ->
+            {:error, %NexAI.Error.AuthenticationError{message: get_in(body, ["error", "message"]) || "Invalid API Key", status: 401, raw: body}}
           {:ok, %{status: 429, body: body}} ->
             {:error, %NexAI.Error.RateLimitError{message: get_in(body, ["error", "message"]) || "Rate limit reached"}}
+          {:ok, %{status: 400, body: body}} ->
+            {:error, %NexAI.Error.InvalidRequestError{message: get_in(body, ["error", "message"]), status: 400, raw: body}}
           {:ok, %{status: status, body: body}} ->
             {:error, %NexAI.Error.APIError{message: get_in(body, ["error", "message"]), status: status, type: get_in(body, ["error", "type"]), raw: body}}
           {:error, reason} ->
@@ -75,73 +83,170 @@ defmodule NexAI.Provider.Anthropic do
       end)
     end
 
-    def do_stream(model, params) do
-      {system, messages} = Anthropic.extract_system(params.prompt)
-      
+    def do_stream(model, options) do
+      url = model.base_url
+      {system_messages, messages} = Anthropic.extract_system(options.prompt)
+      messages = Anthropic.format_messages(messages)
+
       body = %{
         model: model.model,
-        messages: Anthropic.format_messages(messages),
-        system: system,
-        max_tokens: model.config[:max_tokens] || 4096,
+        messages: messages,
         stream: true
       }
+      body = if system_messages != "", do: Map.put(body, :system, system_messages), else: body
+      body = if options.tools && length(options.tools) > 0, do: Map.put(body, :tools, Anthropic.format_tools(options.tools)), else: body
+      body = if tc = options.tool_choice, do: Map.put(body, :tool_choice, tc), else: body
+      body = Map.merge(body, model.config)
 
-      body = if params.tools, do: Map.put(body, :tools, Anthropic.format_tools(params.tools)), else: body
       parent = self()
-      receive_timeout = params.config[:receive_timeout] || 30_000
+      receive_timeout = options.config[:receive_timeout] || 30_000
 
-      Stream.resource(
+      stream = Stream.resource(
         fn ->
           task = Task.Supervisor.async_nolink(NexAI.TaskSupervisor, fn ->
             finch_name = model.config[:finch] || NexAI.Finch
-            Req.post(model.base_url <> "/messages",
+            Req.post(url,
               json: body,
+              auth: {:bearer, model.api_key},
+              headers: %{"anthropic-version" => "2023-06-01"},
               finch: finch_name,
-              headers: [
-                {"x-api-key", model.api_key},
-                {"anthropic-version", Anthropic.api_version()}
-              ],
               into: fn {:data, data}, acc ->
                 send(parent, {:stream_data, self(), data})
-                receive do
-                  :ack -> {:cont, acc}
-                after
-                  receive_timeout -> {:halt, acc}
-                end
+                receive do :ack -> {:cont, acc} after receive_timeout -> {:halt, acc} end
               end
             )
             send(parent, :stream_done)
           end)
-          %{task: task, buffer: "", done: false}
+
+          %{task: task, buffer: "", done: false, response_sent: false}
         end,
-        fn 
+        fn
           %{done: true} = state -> {:halt, state}
           state ->
             receive do
-              {:stream_data, pid, data} ->
+              {:stream_data, producer_pid, data} ->
                 {lines, new_buffer} = Anthropic.process_line_buffer(state.buffer <> data)
-                chunks = Anthropic.parse_lines(lines)
-                send(pid, :ack)
-                {chunks, %{state | buffer: new_buffer}}
+                raw_chunks = Anthropic.parse_sse(lines)
+                send(producer_pid, :ack)
+
+                {parts, state} = Anthropic.map_to_stream_parts(raw_chunks, state)
+                {parts, %{state | buffer: new_buffer}}
 
               :stream_done ->
                 {lines, _} = Anthropic.process_line_buffer(state.buffer, true)
-                {Anthropic.parse_lines(lines), %{state | done: true, buffer: ""}}
+                raw_chunks = Anthropic.parse_sse(lines)
+                {parts, state} = Anthropic.map_to_stream_parts(raw_chunks, state)
+                {parts, %{state | done: true, buffer: ""}}
+
             after
               receive_timeout ->
                 Task.shutdown(state.task)
-                err = %NexAI.Error.TimeoutError{message: "NexAI Streaming Timeout (Anthropic) after #{receive_timeout}ms", timeout_ms: receive_timeout}
-                {[%{"error" => err}], %{state | done: true}}
+                err = %NexAI.Error.TimeoutError{message: "NexAI Streaming Timeout after #{receive_timeout}ms", timeout_ms: receive_timeout}
+                {[%StreamPart{type: :error, error: err}], %{state | done: true}}
             end
         end,
         fn state -> Task.shutdown(state.task) end
       )
+
+      {:ok, %StreamResult{
+        stream: stream,
+        raw_call: %{model_id: model.model, provider: "anthropic", params: options}
+      }}
     end
   end
 
   # --- Helpers ---
 
-  def api_version, do: @api_version
+  def api_version, do: "2023-06-01"
+
+  def build_content(body) do
+    content = []
+
+    if text = extract_text(body) do
+      content = content ++ [%{type: "text", text: text}]
+    end
+
+    if tool_calls = extract_tool_calls(body["content"] || []) do
+      content = content ++ Enum.map(tool_calls, fn tc ->
+        %{
+          type: "tool-call",
+          toolCallId: tc.toolCallId,
+          toolName: tc.toolName,
+          args: tc.args
+        }
+      end)
+    end
+
+    content
+  end
+
+  def extract_text(body) do
+    case body["content"] do
+      nil -> nil
+      list when is_list(list) ->
+        Enum.find_value(list, fn
+          %{"type" => "text", "text" => text} -> text
+          _ -> nil
+        end)
+      _ -> nil
+    end
+  end
+
+  def extract_reasoning(body), do: nil
+
+  def map_to_stream_parts(raw_chunks, state) do
+    Enum.reduce(raw_chunks, {[], state}, fn chunk, {acc, st} ->
+      {new_parts, st} = do_map_chunk_to_part(chunk, st)
+      {acc ++ new_parts, st}
+    end)
+  end
+
+  defp do_map_chunk_to_part(chunk, state) do
+    parts = []
+
+    # 1. First chunk with ID/created usually contains response metadata
+    {parts, state} = if not state.response_sent and chunk["id"] do
+      meta = %ResponseMetadata{
+        id: chunk["id"],
+        model_id: chunk["model"],
+        timestamp: nil
+      }
+      {parts ++ [%StreamPart{type: :response_metadata, response: meta}], %{state | response_sent: true}}
+    else
+      {parts, state}
+    end
+
+    # 2. Extract Delta
+    delta = get_in(chunk, ["choices", Access.at(0), "delta"])
+
+    parts = case delta && delta["content"] do
+      nil -> parts
+      content -> parts ++ [%StreamPart{type: :text_delta, text: content}]
+    end
+
+    # 3. Tool Calls
+    parts = case delta && delta["tool_calls"] do
+      nil -> parts
+      tcs ->
+        Enum.reduce(tcs, parts, fn tc, acc ->
+          id = tc["id"]
+          name = get_in(tc, ["function", "name"])
+          args = get_in(tc, ["function", "arguments"])
+
+          acc = if id, do: acc ++ [%StreamPart{type: :tool_call_start, tool_call_id: id, tool_name: name}], else: acc
+          if args, do: acc ++ [%StreamPart{type: :tool_call_delta, tool_call_id: id, args_delta: args}], else: acc
+        end)
+    end
+
+    # 4. Finish Reason
+    finish_reason = get_in(chunk, ["choices", Access.at(0), "finish_reason"])
+    parts = if finish_reason, do: parts ++ [%StreamPart{type: :finish, finish_reason: map_finish_reason(finish_reason)}], else: parts
+
+    # 5. Usage
+    parts = if usage = chunk["usage"], do: parts ++ [%StreamPart{type: :usage, usage: format_usage(usage)}], else: parts
+
+    {parts, state}
+  end
 
   def extract_system(messages) do
     system = messages |> Enum.filter(&(&1["role"] == "system")) |> Enum.map(& &1["content"]) |> Enum.join("\n")
@@ -161,7 +266,7 @@ defmodule NexAI.Provider.Anthropic do
   defp format_content(text, nil), do: text
   defp format_content(text, tool_calls) do
     blocks = if text, do: [%{type: "text", text: text}], else: []
-    blocks ++ Enum.map(tool_calls, fn tc -> 
+    blocks ++ Enum.map(tool_calls, fn tc ->
       %{type: "tool_use", id: tc.toolCallId, name: tc.toolName, input: tc.args}
     end)
   end
@@ -177,7 +282,7 @@ defmodule NexAI.Provider.Anthropic do
   end
 
   def extract_tool_calls(blocks) do
-    Enum.map(blocks, fn b -> 
+    Enum.map(blocks, fn b ->
       %ToolCall{toolCallId: b["id"], toolName: b["name"], args: b["input"]}
     end)
   end
@@ -189,6 +294,10 @@ defmodule NexAI.Provider.Anthropic do
 
   def format_usage(%{"input_tokens" => i, "output_tokens" => o}) do
     %Usage{promptTokens: i, completionTokens: o, totalTokens: i + o}
+  end
+
+  def parse_sse(lines) do
+    parse_lines(lines)
   end
 
   def parse_lines(lines) do

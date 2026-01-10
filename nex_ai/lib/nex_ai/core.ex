@@ -220,7 +220,7 @@ defmodule NexAI.Core do
             # Error during stream initialization
             %{
               next: nil,
-              chunk: %NexAI.LanguageModel.V1.StreamChunk{type: :error, content: err},
+              chunk: %NexAI.LanguageModel.StreamPart{type: :error, error: err},
               step: :error,
               opts: opts
             }
@@ -263,7 +263,7 @@ defmodule NexAI.Core do
                 # Map tool results to stream events
                 result_events =
                   Enum.map(tool_results, fn tr ->
-                    %NexAI.LanguageModel.V1.StreamChunk{
+                    %NexAI.LanguageModel.StreamPart{
                       type: :tool_call_finish,
                       tool_call_id: tr.toolCallId,
                       tool_name: tr.toolName,
@@ -294,7 +294,7 @@ defmodule NexAI.Core do
             end
 
           true ->
-            # Process the current chunk (already a V1.StreamChunk from Provider)
+            # Process the current chunk (already a StreamPart from Provider)
             {events, new_acc} = process_v1_chunk(state.chunk, state, output_config)
 
             # Pull the next chunk from the current stream
@@ -370,7 +370,7 @@ defmodule NexAI.Core do
         end
 
       {:error, err} ->
-        {[ %NexAI.LanguageModel.V1.StreamChunk{type: :error, content: err} ], %{state | step: :done}}
+        {[ %NexAI.LanguageModel.StreamPart{type: :error, error: err} ], %{state | step: :done}}
     end
   end
 

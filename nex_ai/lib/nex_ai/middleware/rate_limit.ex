@@ -39,9 +39,9 @@ defmodule NexAI.Middleware.RateLimit do
           Stream.resource(
             fn -> :error end,
             fn :error ->
-              {[%NexAI.LanguageModel.V1.StreamChunk{
+              {[%NexAI.LanguageModel.StreamPart{
                 type: :error,
-                content: %NexAI.Error.RateLimitError{message: "Rate limit exceeded, retry after #{wait_ms}ms"}
+                error: %NexAI.Error.RateLimitError{message: "Rate limit exceeded, retry after #{wait_ms}ms"}
               }], :done}
               :done -> {:halt, :done}
             end,

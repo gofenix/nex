@@ -1,10 +1,11 @@
 defmodule NexAI.Provider.OpenAI do
   @moduledoc """
   OpenAI Provider for NexAI.
-  Implements the LanguageModel protocol.
+  Implements the LanguageModel protocol (Vercel AI SDK v6).
   """
-  alias NexAI.Result.{Usage, Response, ToolCall}
+  alias NexAI.Result.Usage
   alias NexAI.LanguageModel.Protocol, as: ModelProtocol
+  alias NexAI.LanguageModel.{GenerateResult, StreamResult, StreamPart, ResponseMetadata}
 
   defstruct [:api_key, :base_url, model: "gpt-4o", config: %{}]
 
@@ -24,25 +25,24 @@ defmodule NexAI.Provider.OpenAI do
 
   defimpl ModelProtocol do
     alias NexAI.Provider.OpenAI
-    alias NexAI.Result.{Usage, Response, ToolCall}
-    alias NexAI.LanguageModel.V1, as: V1
+    alias NexAI.LanguageModel.{GenerateResult, StreamResult, StreamPart, ResponseMetadata}
 
     def provider(_model), do: "openai"
     def model_id(model), do: model.model
 
-    def do_generate(model, params) do
+    def do_generate(model, options) do
       url = model.base_url <> "/chat/completions"
-      messages = params.prompt |> NexAI.Message.normalize() |> OpenAI.format_messages()
+      messages = options.prompt |> NexAI.Message.normalize() |> OpenAI.format_messages()
+
       body = %{
         model: model.model,
         messages: messages,
         stream: false
       }
 
-      body = if params.tools && length(params.tools) > 0, do: Map.put(body, :tools, OpenAI.format_tools(params.tools)), else: body
-      body = if tc = params.tool_choice, do: Map.put(body, :tool_choice, tc), else: body
-      body = if rf = params.response_format, do: Map.put(body, :response_format, rf), else: body
-
+      body = if options.tools && length(options.tools) > 0, do: Map.put(body, :tools, OpenAI.format_tools(options.tools)), else: body
+      body = if tc = options.tool_choice, do: Map.put(body, :tool_choice, tc), else: body
+      body = if rf = options.response_format, do: Map.put(body, :response_format, rf), else: body
       body = Map.merge(body, model.config)
 
       metadata = %{model: model.model, provider: :openai}
@@ -55,24 +55,19 @@ defmodule NexAI.Provider.OpenAI do
         ) do
           {:ok, %{status: 200, body: body, headers: headers}} ->
             message = get_in(body, ["choices", Access.at(0), "message"])
+            content = build_content(message)
 
-            {:ok, %V1.GenerateResult{
-              text: message["content"],
-              reasoning: message["reasoning_content"],
-              tool_calls: OpenAI.extract_tool_calls(message["tool_calls"]),
+            {:ok, %GenerateResult{
+              content: content,
               finish_reason: OpenAI.map_finish_reason(get_in(body, ["choices", Access.at(0), "finish_reason"])),
               usage: OpenAI.format_usage(body["usage"]),
-              response: %V1.ResponseMetadata{
+              raw_call: %{model_id: model.model, provider: "openai", params: options},
+              raw_response: body,
+              response: %ResponseMetadata{
                 id: body["id"],
                 model_id: body["model"],
                 timestamp: body["created"],
                 headers: Map.new(headers)
-              },
-              raw_call: %V1.CallMetadata{
-                model_id: model.model,
-                provider: "openai",
-                params: params,
-                raw_request: body
               }
             }}
           {:ok, %{status: 401, body: body}} ->
@@ -90,9 +85,10 @@ defmodule NexAI.Provider.OpenAI do
       end)
     end
 
-    def do_stream(model, params) do
+    def do_stream(model, options) do
       url = model.base_url <> "/chat/completions"
-      messages = params.prompt |> NexAI.Message.normalize() |> OpenAI.format_messages()
+      messages = options.prompt |> NexAI.Message.normalize() |> OpenAI.format_messages()
+
       body = %{
         model: model.model,
         messages: messages,
@@ -100,15 +96,15 @@ defmodule NexAI.Provider.OpenAI do
         stream_options: %{include_usage: true}
       }
 
-      body = if params.tools && length(params.tools) > 0, do: Map.put(body, :tools, OpenAI.format_tools(params.tools)), else: body
-      body = if tc = params.tool_choice, do: Map.put(body, :tool_choice, tc), else: body
-      body = if rf = params.response_format, do: Map.put(body, :response_format, rf), else: body
+      body = if options.tools && length(options.tools) > 0, do: Map.put(body, :tools, OpenAI.format_tools(options.tools)), else: body
+      body = if tc = options.tool_choice, do: Map.put(body, :tool_choice, tc), else: body
+      body = if rf = options.response_format, do: Map.put(body, :response_format, rf), else: body
       body = Map.merge(body, model.config)
 
       parent = self()
-      receive_timeout = params.config[:receive_timeout] || 30_000
+      receive_timeout = options.config[:receive_timeout] || 30_000
 
-      Stream.resource(
+      stream = Stream.resource(
         fn ->
           task = Task.Supervisor.async_nolink(NexAI.TaskSupervisor, fn ->
             finch_name = model.config[:finch] || NexAI.Finch
@@ -135,25 +131,57 @@ defmodule NexAI.Provider.OpenAI do
                 raw_chunks = OpenAI.parse_lines(lines)
                 send(producer_pid, :ack)
 
-                {v1_chunks, state} = OpenAI.map_to_v1_chunks(raw_chunks, state)
-                {v1_chunks, %{state | buffer: new_buffer}}
+                {parts, state} = OpenAI.map_to_stream_parts(raw_chunks, state)
+                {parts, %{state | buffer: new_buffer}}
 
               :stream_done ->
                 {lines, _} = OpenAI.process_line_buffer(state.buffer, true)
                 raw_chunks = OpenAI.parse_lines(lines)
-                {v1_chunks, state} = OpenAI.map_to_v1_chunks(raw_chunks, state)
-                {v1_chunks, %{state | done: true, buffer: ""}}
+                {parts, state} = OpenAI.map_to_stream_parts(raw_chunks, state)
+                {parts, %{state | done: true, buffer: ""}}
 
             after
               receive_timeout ->
                 Task.shutdown(state.task)
                 err = %NexAI.Error.TimeoutError{message: "NexAI Streaming Timeout after #{receive_timeout}ms", timeout_ms: receive_timeout}
-                {[%V1.StreamChunk{type: :error, content: err}], %{state | done: true}}
+                {[%StreamPart{type: :error, error: err}], %{state | done: true}}
             end
         end,
         fn state -> Task.shutdown(state.task) end
       )
+
+      {:ok, %StreamResult{
+        stream: stream,
+        raw_call: %{model_id: model.model, provider: "openai", params: options}
+      }}
     end
+  end
+
+  # --- Internal Helpers ---
+
+  defp build_content(message) do
+    content = []
+
+    if text = message["content"] do
+      content = content ++ [%{type: "text", text: text}]
+    end
+
+    if reasoning = message["reasoning_content"] do
+      content = content ++ [%{type: "reasoning", reasoning: reasoning}]
+    end
+
+    if tool_calls = message["tool_calls"] do
+      content = content ++ Enum.map(tool_calls, fn tc ->
+        %{
+          type: "tool-call",
+          toolCallId: tc["id"],
+          toolName: tc["function"]["name"],
+          args: Jason.decode!(tc["function"]["arguments"])
+        }
+      end)
+    end
+
+    content
   end
 
   # --- Internal Helpers for Protocol Implementation ---
@@ -168,63 +196,63 @@ defmodule NexAI.Provider.OpenAI do
     end
   end
 
-  def map_to_v1_chunks(raw_chunks, state) do
+  def map_to_stream_parts(raw_chunks, state) do
     Enum.reduce(raw_chunks, {[], state}, fn chunk, {acc, st} ->
-      {new_chunks, st} = do_map_chunk(chunk, st)
-      {acc ++ new_chunks, st}
+      {new_parts, st} = do_map_chunk_to_part(chunk, st)
+      {acc ++ new_parts, st}
     end)
   end
 
-  defp do_map_chunk(chunk, state) do
-    chunks = []
+  defp do_map_chunk_to_part(chunk, state) do
+    parts = []
 
     # 1. First chunk with ID/created usually contains response metadata
-    {chunks, state} = if not state.response_sent and chunk["id"] do
-      meta = %V1.ResponseMetadata{
+    {parts, state} = if not state.response_sent and chunk["id"] do
+      meta = %ResponseMetadata{
         id: chunk["id"],
         model_id: chunk["model"],
         timestamp: chunk["created"]
       }
-      {chunks ++ [%V1.StreamChunk{type: :response_metadata, response: meta}], %{state | response_sent: true}}
+      {parts ++ [%StreamPart{type: :response_metadata, response: meta}], %{state | response_sent: true}}
     else
-      {chunks, state}
+      {parts, state}
     end
 
     # 2. Extract Delta
     delta = get_in(chunk, ["choices", Access.at(0), "delta"])
 
-    chunks = case delta && delta["content"] do
-      nil -> chunks
-      content -> chunks ++ [%V1.StreamChunk{type: :text_delta, content: content}]
+    parts = case delta && delta["content"] do
+      nil -> parts
+      content -> parts ++ [%StreamPart{type: :text_delta, text: content}]
     end
 
-    chunks = case delta && delta["reasoning_content"] do
-      nil -> chunks
-      reasoning -> chunks ++ [%V1.StreamChunk{type: :reasoning_delta, content: reasoning}]
+    parts = case delta && delta["reasoning_content"] do
+      nil -> parts
+      reasoning -> parts ++ [%StreamPart{type: :reasoning_delta, content: reasoning}]
     end
 
     # 3. Tool Calls
-    chunks = case delta && delta["tool_calls"] do
-      nil -> chunks
+    parts = case delta && delta["tool_calls"] do
+      nil -> parts
       tcs ->
-        Enum.reduce(tcs, chunks, fn tc, acc ->
+        Enum.reduce(tcs, parts, fn tc, acc ->
           id = tc["id"]
           name = get_in(tc, ["function", "name"])
           args = get_in(tc, ["function", "arguments"])
 
-          acc = if id, do: acc ++ [%V1.StreamChunk{type: :tool_call_start, tool_call_id: id, tool_name: name}], else: acc
-          if args, do: acc ++ [%V1.StreamChunk{type: :tool_call_delta, tool_call_id: id, args_delta: args}], else: acc
+          acc = if id, do: acc ++ [%StreamPart{type: :tool_call_start, tool_call_id: id, tool_name: name}], else: acc
+          if args, do: acc ++ [%StreamPart{type: :tool_call_delta, tool_call_id: id, args_delta: args}], else: acc
         end)
     end
 
     # 4. Finish Reason
     finish_reason = get_in(chunk, ["choices", Access.at(0), "finish_reason"])
-    chunks = if finish_reason, do: chunks ++ [%V1.StreamChunk{type: :finish, finish_reason: map_finish_reason(finish_reason)}], else: chunks
+    parts = if finish_reason, do: parts ++ [%StreamPart{type: :finish, finish_reason: map_finish_reason(finish_reason)}], else: parts
 
     # 5. Usage
-    chunks = if usage = chunk["usage"], do: chunks ++ [%V1.StreamChunk{type: :usage, usage: format_usage(usage)}], else: chunks
+    parts = if usage = chunk["usage"], do: parts ++ [%StreamPart{type: :usage, usage: format_usage(usage)}], else: parts
 
-    {chunks, state}
+    {parts, state}
   end
 
   def format_messages(messages) do
