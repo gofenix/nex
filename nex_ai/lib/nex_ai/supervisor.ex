@@ -10,7 +10,8 @@ defmodule NexAI.Supervisor do
   def init(_opts) do
     children = [
       {Finch, name: NexAI.Finch},
-      {Task.Supervisor, name: NexAI.TaskSupervisor}
+      {Task.Supervisor, name: NexAI.TaskSupervisor},
+      NexAI.Cache.ETS
     ]
     Supervisor.init(children, strategy: :one_for_one)
   end

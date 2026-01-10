@@ -1,6 +1,6 @@
 defmodule NexAI.Core do
   @moduledoc "Core logic for text generation and streaming loops."
-  
+
   alias NexAI.LanguageModel.Protocol, as: ModelProtocol
   alias NexAI.Result.{GenerateTextResult, Step, ToolCall, ToolResult}
   alias NexAI.Message
@@ -11,6 +11,7 @@ defmodule NexAI.Core do
     system: [type: :string],
     max_steps: [type: :integer, default: 1],
     maxSteps: [type: :integer], # CamelCase compatibility
+    experimental_continueSteps: [type: :boolean, default: false],
     temperature: [type: :float],
     top_p: [type: :float],
     presence_penalty: [type: :float],
@@ -20,10 +21,13 @@ defmodule NexAI.Core do
     tools: [type: {:list, :any}],
     tool_choice: [type: :any],
     output: [type: :map],
+    experimental_telemetry: [type: :map],
     on_finish: [type: {:custom, __MODULE__, :validate_fn, []}],
     onFinish: [type: {:custom, __MODULE__, :validate_fn, []}],
     on_token: [type: {:custom, __MODULE__, :validate_fn, []}],
-    onToken: [type: {:custom, __MODULE__, :validate_fn, []}]
+    onToken: [type: {:custom, __MODULE__, :validate_fn, []}],
+    on_step_finish: [type: {:custom, __MODULE__, :validate_fn, []}],
+    onStepFinish: [type: {:custom, __MODULE__, :validate_fn, []}]
   ]
 
   def validate_fn(val) when is_function(val), do: {:ok, val}
@@ -42,14 +46,19 @@ defmodule NexAI.Core do
           messages = build_messages(opts)
           model = opts[:model]
           max_steps = opts[:max_steps]
+          continue_steps = opts[:experimental_continueSteps]
 
-          result = case do_generate_loop(model, messages, opts, max_steps, 0, []) do
+          result = case do_generate_loop(model, messages, opts, max_steps, 0, [], continue_steps) do
             {:ok, result} ->
               result = if output_config, do: process_object_result(result, output_config), else: result
+
+              # Lifecycle: onFinish
+              if on_finish = opts[:on_finish] || opts[:onFinish], do: on_finish.(result)
+
               {:ok, result}
             error -> error
           end
-          {result, Map.put(metadata, :result, result)}
+          {result, Map.merge(metadata, %{result: result})}
         end)
       {:error, %NimbleOptions.ValidationError{message: msg}} ->
         {:error, %NexAI.Error.InvalidRequestError{message: msg}}
@@ -65,12 +74,12 @@ defmodule NexAI.Core do
       {:ok, opts} ->
         metadata = %{opts: opts, method: :stream_text}
         :telemetry.execute([:nex_ai, :stream, :start], %{system_time: System.system_time()}, metadata)
-        
+
         opts = normalize_opts(opts)
         {opts, output_config} = handle_output_config(opts)
         messages = build_messages(opts)
         model = opts[:model]
-        
+
         full_stream = build_lazy_stream(model, messages, opts, output_config)
         %{full_stream: full_stream, opts: opts}
       {:error, %NimbleOptions.ValidationError{message: msg}} ->
@@ -82,63 +91,139 @@ defmodule NexAI.Core do
 
   # --- Internal Helpers ---
 
-  defp do_generate_loop(model, messages, opts, max_steps, step, steps_acc) do
+  defp do_generate_loop(model, messages, opts, max_steps, step, steps_acc, continue_steps) do
     params = build_params(messages, opts)
-    tool_map = build_tool_map(opts[:tools])
-    
+
     case ModelProtocol.do_generate(model, params) do
       {:ok, res} ->
         current_step = %Step{
           stepType: if(step == 0, do: :initial, else: :tool_result),
           text: res.text,
-          reasoning: Map.get(res, :reasoning),
+          reasoning: res.reasoning,
           toolCalls: res.tool_calls,
           usage: res.usage,
-          finishReason: res.finish_reason
+          finishReason: res.finish_reason,
+          response: res.response
         }
-        
+
         new_steps = steps_acc ++ [current_step]
 
-        if step + 1 < max_steps and length(res.tool_calls) > 0 do
-          {_tool_results, tool_messages} = execute_tools_sync(res.tool_calls, tool_map)
-          
-          assistant_msg = %{
-            "role" => "assistant",
-            "content" => res.text,
-            "tool_calls" => Enum.map(res.tool_calls, fn tc -> 
-              %{"id" => tc.toolCallId, "type" => "function", "function" => %{"name" => tc.toolName, "arguments" => Jason.encode!(tc.args)}}
-            end)
-          }
-          
-          new_messages = messages ++ [assistant_msg] ++ tool_messages
-          do_generate_loop(model, new_messages, opts, max_steps, step + 1, new_steps)
-        else
-          {:ok, %GenerateTextResult{
-            text: res.text,
-            reasoning: Map.get(res, :reasoning),
-            toolCalls: res.tool_calls,
-            toolResults: List.last(steps_acc || []) |> Kernel.get_in([Access.key(:toolResults)]) || [],
-            finishReason: res.finish_reason,
-            usage: res.usage,
-            response: res.response,
-            steps: new_steps
-          }}
+        cond do
+          # 1. Handle continueSteps (finish_reason: :length)
+          continue_steps and res.finish_reason == :length and step + 1 < max_steps ->
+            assistant_msg = %NexAI.Message.Assistant{content: res.text}
+            new_messages = messages ++ [assistant_msg]
+            do_generate_loop(model, new_messages, opts, max_steps, step + 1, new_steps, continue_steps)
+
+          # 2. Handle Tool Calls
+          step + 1 < max_steps and length(res.tool_calls || []) > 0 ->
+            tool_map = build_tool_map(opts[:tools])
+            {_tool_results, tool_messages} = execute_tools_sync(res.tool_calls, tool_map)
+
+            assistant_msg = %NexAI.Message.Assistant{
+              content: res.text,
+              tool_calls:
+                Enum.map(res.tool_calls, fn tc ->
+                  %{
+                    "id" => tc.toolCallId,
+                    "type" => "function",
+                    "function" =>
+                      %{"name" => tc.toolName, "arguments" => Jason.encode!(tc.args)}
+                  }
+                end)
+            }
+
+            new_messages = messages ++ [assistant_msg] ++ tool_messages
+            do_generate_loop(model, new_messages, opts, max_steps, step + 1, new_steps, continue_steps)
+
+          # 3. Final Step
+          true ->
+            {:ok,
+             %GenerateTextResult{
+               text: combine_steps_text(new_steps),
+               reasoning: combine_steps_reasoning(new_steps),
+               toolCalls: res.tool_calls,
+               toolResults: List.last(new_steps).toolResults || [],
+               finishReason: res.finish_reason,
+               usage: calculate_total_usage(new_steps),
+               response: res.response,
+               steps: new_steps,
+               raw_call: res.raw_call
+             }}
         end
-      error -> error
+
+      error ->
+        error
     end
+  end
+
+  defp combine_steps_text(steps) do
+    steps |> Enum.map_join("", &(&1.text || ""))
+  end
+
+  defp combine_steps_reasoning(steps) do
+    steps |> Enum.map_join("", &(&1.reasoning || ""))
+  end
+
+  defp calculate_total_usage(steps) do
+    Enum.reduce(steps, %NexAI.Result.Usage{promptTokens: 0, completionTokens: 0, totalTokens: 0}, fn step, acc ->
+      if step.usage do
+        %NexAI.Result.Usage{
+          promptTokens: acc.promptTokens + (step.usage.promptTokens || 0),
+          completionTokens: acc.completionTokens + (step.usage.completionTokens || 0),
+          totalTokens: acc.totalTokens + (step.usage.totalTokens || 0)
+        }
+      else
+        acc
+      end
+    end)
   end
 
   defp build_lazy_stream(model, messages, opts, output_config, step \\ 0) do
     max_steps = opts[:max_steps] || 1
-    tool_map = build_tool_map(opts[:tools])
+    continue_steps = opts[:experimental_continueSteps]
 
     Stream.resource(
       fn ->
-        # Start the first step's stream and pull the first chunk
-        stream = ModelProtocol.do_stream(model, build_params(messages, opts))
-        case Enumerable.reduce(stream, {:cont, nil}, fn x, _ -> {:suspend, x} end) do
-          {:suspended, chunk, next} -> %{next: next, chunk: chunk, tool_calls: %{}, full_text: "", full_reasoning: "", step: step}
-          _ -> %{next: nil, chunk: nil, tool_calls: %{}, full_text: "", full_reasoning: "", step: step}
+        # Start the first step's stream
+        case ModelProtocol.do_stream(model, build_params(messages, opts)) do
+          {:ok, stream} ->
+            case Enumerable.reduce(stream, {:cont, nil}, fn x, _ -> {:suspend, x} end) do
+              {:suspended, chunk, next} ->
+                %{
+                  next: next,
+                  chunk: chunk,
+                  tool_calls: %{},
+                  full_text: "",
+                  full_reasoning: "",
+                  step: step,
+                  opts: opts,
+                  messages: messages,
+                  finish_reason: nil
+                }
+
+              _ ->
+                %{
+                  next: nil,
+                  chunk: nil,
+                  tool_calls: %{},
+                  full_text: "",
+                  full_reasoning: "",
+                  step: step,
+                  opts: opts,
+                  messages: messages,
+                  finish_reason: nil
+                }
+            end
+
+          {:error, err} ->
+            # Error during stream initialization
+            %{
+              next: nil,
+              chunk: %NexAI.LanguageModel.V1.StreamChunk{type: :error, content: err},
+              step: :error,
+              opts: opts
+            }
         end
       end,
       fn state ->
@@ -146,107 +231,189 @@ defmodule NexAI.Core do
           state.step == :done ->
             {:halt, state}
 
+          state.step == :error ->
+            {[state.chunk], %{state | step: :done}}
+
           is_nil(state.chunk) ->
-            # Current step is finished, check for tool calls
-            if state.step + 1 < max_steps and map_size(state.tool_calls) > 0 do
-              {tool_results, tool_messages} = execute_tools_sync(Map.values(state.tool_calls), tool_map)
-              result_events = Enum.map(tool_results, fn tr -> %{type: :tool_result, payload: tr} end)
-              
-              assistant_msg = %{
-                "role" => "assistant",
-                "content" => state.full_text,
-                "tool_calls" => Enum.map(state.tool_calls, fn {_, tc} -> 
-                  %{"id" => tc.toolCallId, "type" => "function", "function" => %{"name" => tc.toolName, "arguments" => Jason.encode!(tc.args)}}
-                end)
-              }
-              new_messages = messages ++ [assistant_msg] ++ tool_messages
-              
-              # Start the next step's stream
-              new_stream = ModelProtocol.do_stream(model, build_params(new_messages, opts))
-              case Enumerable.reduce(new_stream, {:cont, nil}, fn x, _ -> {:suspend, x} end) do
-                {:suspended, first_chunk, next} ->
-                  {result_events, %{state | next: next, chunk: first_chunk, step: state.step + 1, tool_calls: %{}, full_text: "", full_reasoning: ""}}
-                _ ->
-                  {result_events ++ [%{type: :stream_finish, payload: %{finishReason: "stop"}}], %{state | step: :done}}
-              end
-            else
-              {[%{type: :stream_finish, payload: %{finishReason: "stop"}}], %{state | step: :done}}
+            # Current step is finished, check for continuation or tool calls
+            cond do
+              # 1. Continue Steps (Truncated by length)
+              continue_steps and state.finish_reason == :length and state.step + 1 < max_steps ->
+                assistant_msg = %NexAI.Message.Assistant{content: state.full_text}
+                new_messages = state.messages ++ [assistant_msg]
+                start_next_step(model, new_messages, opts, state)
+
+              # 2. Tool Calls
+              state.step + 1 < max_steps and map_size(state.tool_calls) > 0 ->
+                tool_map = build_tool_map(opts[:tools])
+                tool_calls_list = Map.values(state.tool_calls)
+                {tool_results, tool_messages} = execute_tools_sync(tool_calls_list, tool_map)
+
+                # Lifecycle: onStepFinish
+                step_result = %{
+                  step: state.step,
+                  text: state.full_text,
+                  toolCalls: tool_calls_list,
+                  toolResults: tool_results
+                }
+
+                if on_step_finish = opts[:on_step_finish] || opts[:onStepFinish],
+                  do: on_step_finish.(step_result)
+
+                # Map tool results to stream events
+                result_events =
+                  Enum.map(tool_results, fn tr ->
+                    %NexAI.LanguageModel.V1.StreamChunk{
+                      type: :tool_call_finish,
+                      tool_call_id: tr.toolCallId,
+                      tool_name: tr.toolName,
+                      content: tr.result
+                    }
+                  end)
+
+                assistant_msg = %NexAI.Message.Assistant{
+                  content: state.full_text,
+                  tool_calls:
+                    Enum.map(tool_calls_list, fn tc ->
+                      %{
+                        "id" => tc.toolCallId,
+                        "type" => "function",
+                        "function" =>
+                          %{"name" => tc.toolName, "arguments" => Jason.encode!(tc.args)}
+                      }
+                    end)
+                }
+
+                new_messages = state.messages ++ [assistant_msg] ++ tool_messages
+                {new_events, next_state} = start_next_step(model, new_messages, opts, state)
+                {result_events ++ new_events, next_state}
+
+              # 3. Actually Done
+              true ->
+                {[], %{state | step: :done}}
             end
 
           true ->
-            # Process the current chunk
-            {events, new_acc} = process_chunk(state.chunk, state, output_config)
-            
+            # Process the current chunk (already a V1.StreamChunk from Provider)
+            {events, new_acc} = process_v1_chunk(state.chunk, state, output_config)
+
             # Pull the next chunk from the current stream
-            new_state = case state.next.({:cont, nil}) do
-              {:suspended, next_chunk, next_next} ->
-                %{state | next: next_next, chunk: next_chunk, tool_calls: new_acc.tool_calls, full_text: new_acc.full_text, full_reasoning: new_acc.full_reasoning}
-              _ ->
-                # Current stream is finished
-                %{state | next: nil, chunk: nil, tool_calls: new_acc.tool_calls, full_text: new_acc.full_text, full_reasoning: new_acc.full_reasoning}
-            end
+            new_state =
+              case state.next.({:cont, nil}) do
+                {:suspended, next_chunk, next_next} ->
+                  %{
+                    state
+                    | next: next_next,
+                      chunk: next_chunk,
+                      tool_calls: new_acc.tool_calls,
+                      full_text: new_acc.full_text,
+                      full_reasoning: new_acc.full_reasoning,
+                      finish_reason: new_acc.finish_reason
+                  }
+
+                _ ->
+                  # Current stream is finished
+                  %{
+                    state
+                    | next: nil,
+                      chunk: nil,
+                      tool_calls: new_acc.tool_calls,
+                      full_text: new_acc.full_text,
+                      full_reasoning: new_acc.full_reasoning,
+                      finish_reason: new_acc.finish_reason
+                  }
+              end
+
             {events, new_state}
         end
       end,
-      fn 
-        %{next: next} when is_function(next) -> 
-          :telemetry.execute([:nex_ai, :stream, :stop], %{system_time: System.system_time()}, %{step: step})
+      fn
+        %{next: next, step: step} when is_function(next) ->
+          :telemetry.execute([:nex_ai, :stream, :stop], %{system_time: System.system_time()}, %{
+            step: step,
+            status: :halted
+          })
+
           next.({:halt, nil})
-        _ -> 
-          :telemetry.execute([:nex_ai, :stream, :stop], %{system_time: System.system_time()}, %{step: step})
+
+        %{step: step} ->
+          :telemetry.execute([:nex_ai, :stream, :stop], %{system_time: System.system_time()}, %{
+            step: step,
+            status: :finished
+          })
+
           :ok
       end
     )
   end
 
-  defp process_chunk(chunk, state, output_config) do
-    if error = chunk["error"] do
-      message = if is_map(error), do: error["message"] || inspect(error), else: to_string(error)
-      {[%{type: :error, payload: message}], %{state | chunk: nil, next: nil}}
-    else
-      events = []
-      
-      # 1. Handle Usage/Metadata (Non-exclusive)
-      events = if usage = chunk["usage"], do: events ++ [%{type: :metadata, payload: %{usage: usage}}], else: events
+  defp start_next_step(model, new_messages, opts, state) do
+    case ModelProtocol.do_stream(model, build_params(new_messages, opts)) do
+      {:ok, next_stream} ->
+        case Enumerable.reduce(next_stream, {:cont, nil}, fn x, _ -> {:suspend, x} end) do
+          {:suspended, first_chunk, next_next} ->
+            {[],
+             %{
+               state
+               | next: next_next,
+                 chunk: first_chunk,
+                 step: state.step + 1,
+                 messages: new_messages,
+                 tool_calls: %{},
+                 full_text: "",
+                 full_reasoning: "",
+                 finish_reason: nil
+             }}
 
-      # 2. Handle Delta (Non-exclusive)
-      delta = get_in(chunk, ["choices", Access.at(0), "delta"])
-      
-      {events, full_text} = case delta && delta["content"] do
-        nil -> {events, state.full_text}
-        content ->
-          type = if output_config, do: :object_delta, else: :text
-          {events ++ [%{type: type, payload: content}], state.full_text <> content}
-      end
+          _ ->
+            {[], %{state | step: :done}}
+        end
 
-      # 3. Handle Native Reasoning Content (OpenAI style)
-      {events, full_reasoning} = case delta && delta["reasoning_content"] do
-        nil -> {events, state.full_reasoning}
-        reasoning ->
-          {events ++ [%{type: :reasoning, payload: reasoning}], state.full_reasoning <> reasoning}
-      end
+      {:error, err} ->
+        {[ %NexAI.LanguageModel.V1.StreamChunk{type: :error, content: err} ], %{state | step: :done}}
+    end
+  end
 
-      {events, tool_calls} = case delta && delta["tool_calls"] do
-        nil -> {events, state.tool_calls}
-        tcs ->
-          Enum.reduce(tcs, {events, state.tool_calls}, fn tc, {evs, st} ->
-            idx = tc["index"]
-            existing = st[idx] || %ToolCall{args: ""}
-            
-            evs = if is_nil(existing.toolCallId) and tc["id"], do: evs ++ [%{type: :tool_call_start, payload: %{toolCallId: tc["id"], toolName: tc["function"]["name"]}}], else: evs
-            arg_delta = get_in(tc, ["function", "arguments"])
-            evs = if arg_delta, do: evs ++ [%{type: :tool_call_delta, payload: %{toolCallId: tc["id"] || existing.toolCallId, inputTextDelta: arg_delta}}], else: evs
+  defp process_v1_chunk(chunk, state, output_config) do
+    opts = state.opts
 
-            updated = %ToolCall{
-              toolCallId: tc["id"] || existing.toolCallId,
-              toolName: get_in(tc, ["function", "name"]) || existing.toolName,
-              args: existing.args <> (arg_delta || "")
-            }
-            {evs, Map.put(st, idx, updated)}
-          end)
-      end
+    case chunk.type do
+      :text_delta ->
+        full_text = state.full_text <> chunk.content
+        events = if output_config do
+          case NexAI.PartialJSON.parse(full_text) do
+            {:ok, obj} ->
+              if on_token = opts[:on_token] || opts[:onToken], do: on_token.(obj)
+              [ %{chunk | type: :object_delta, payload: obj} ]
+            _ -> []
+          end
+        else
+          if on_token = opts[:on_token] || opts[:onToken], do: on_token.(chunk.content)
+          [ chunk ]
+        end
+        {events, %{state | full_text: full_text}}
 
-      {events, %{state | full_text: full_text, full_reasoning: full_reasoning, tool_calls: tool_calls}}
+      :reasoning_delta ->
+        full_reasoning = state.full_reasoning <> chunk.content
+        {[ chunk ], %{state | full_reasoning: full_reasoning}}
+
+      :tool_call_start ->
+        # Initialize tool call tracking in state
+        tc = %ToolCall{toolCallId: chunk.tool_call_id, toolName: chunk.tool_name, args: ""}
+        new_tool_calls = Map.put(state.tool_calls, chunk.tool_call_id, tc)
+        {[ chunk ], %{state | tool_calls: new_tool_calls}}
+
+      :tool_call_delta ->
+        tc = state.tool_calls[chunk.tool_call_id]
+        updated_tc = %{tc | args: tc.args <> (chunk.args_delta || "")}
+        new_tool_calls = Map.put(state.tool_calls, chunk.tool_call_id, updated_tc)
+        {[ chunk ], %{state | tool_calls: new_tool_calls}}
+
+      :finish ->
+        {[ chunk ], %{state | finish_reason: chunk.finish_reason}}
+
+      _ ->
+        {[ chunk ], state}
     end
   end
 
@@ -266,7 +433,7 @@ defmodule NexAI.Core do
   defp build_params(messages, opts), do: %{prompt: messages, mode: if(opts[:output], do: :object, else: :text), tools: opts[:tools], tool_choice: opts[:tool_choice], response_format: opts[:response_format], config: opts}
   defp build_messages(opts) do
     system = opts[:system]
-    messages = Message.normalize(opts[:messages] || [])
+    messages = opts[:messages] || []
     if system, do: [%{"role" => "system", "content" => system} | messages], else: messages
   end
   defp build_tool_map(nil), do: %{}

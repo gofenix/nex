@@ -29,31 +29,26 @@ defmodule NexAI.Message do
     Enum.map(messages, &normalize/1)
   end
 
-  def normalize(%System{content: c}), do: %{"role" => "system", "content" => c}
-  def normalize(%User{content: c}), do: %{"role" => "user", "content" => c}
-  def normalize(%Assistant{content: c, tool_calls: tc}) do
-    %{"role" => "assistant", "content" => c, "tool_calls" => tc} |> purge_nils()
-  end
-  def normalize(%Tool{content: c, tool_call_id: id}) do
-    %{"role" => "tool", "content" => c, "tool_call_id" => id}
-  end
+  def normalize(%System{} = msg), do: msg
+  def normalize(%User{} = msg), do: msg
+  def normalize(%Assistant{} = msg), do: msg
+  def normalize(%Tool{} = msg), do: msg
 
   # Handle maps with atom or string keys
   def normalize(msg) when is_map(msg) do
     role = to_string(msg[:role] || msg["role"])
     content = msg[:content] || msg["content"]
-    
+
     case role do
-      "system" -> %{"role" => "system", "content" => content}
-      "user" -> %{"role" => "user", "content" => content}
+      "system" -> %System{content: content}
+      "user" -> %User{content: content}
       "assistant" ->
-        %{"role" => "assistant", "content" => content, "tool_calls" => msg[:tool_calls] || msg["tool_calls"]}
-        |> purge_nils()
+        %Assistant{content: content, tool_calls: msg[:tool_calls] || msg["tool_calls"]}
       "tool" ->
-        %{"role" => "tool", "content" => content, "tool_call_id" => msg[:tool_call_id] || msg["tool_call_id"]}
+        %Tool{content: content, tool_call_id: msg[:tool_call_id] || msg["tool_call_id"]}
       _ ->
-        # Fallback for unknown roles
-        %{ "role" => role, "content" => content }
+        # Fallback to map if role is unknown, but normalize keys
+        %{"role" => role, "content" => content}
     end
   end
 

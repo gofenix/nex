@@ -3,8 +3,13 @@
 
 # 1. 加载环境变量
 require Dotenvy
-{:ok, env} = Dotenvy.source([".env", System.get_env()])
-env |> Enum.each(fn {k, v} -> System.put_env(k, v) end)
+env = Dotenvy.source!([".env", System.get_env()])
+# 显式同步到 System.put_env 确保当前进程可见
+Enum.each(env, fn {k, v} -> System.put_env(k, v) end)
+
+# 确保 nex_ai 能够读取到配置
+if key = System.get_env("OPENAI_API_KEY"), do: Application.put_env(:nex_ai, :openai_api_key, key)
+if url = System.get_env("OPENAI_BASE_URL"), do: Application.put_env(:nex_ai, :openai_base_url, url)
 
 IO.puts "🔧 已加载配置:"
 IO.puts "   - OpenAI Base URL: #{System.get_env("OPENAI_BASE_URL") || "默认"}"
@@ -33,13 +38,13 @@ case NexAI.stream_text(
   model: NexAI.openai("gpt-4o"),
   messages: [%User{content: "请写一段 50 字左右的诗。"}]
 ) do
-  {:error, err} -> 
+  {:error, err} ->
     IO.puts "❌ [流验证失败] #{inspect(err)}"
   result ->
     IO.write "AI 正在创作: "
     Enum.each(result.full_stream, fn event ->
       case event.type do
-        :text -> 
+        :text ->
           IO.write(event.payload)
         :error -> IO.puts "\n[流错误] #{inspect(event.payload)}"
         :stream_finish -> IO.puts "\n[流结束] 原因: #{event.payload.finishReason}"
@@ -77,46 +82,43 @@ IO.puts "执行中 (允许 AI 自动调用工具并获取结果)..."
 IO.puts "最终回答: #{res.text}"
 IO.puts "中间步骤: #{length(res.steps)} 步"
 
-IO.puts "\n🚀 [示例 4] 中间件 (Middleware) - 提取推理过程"
+IO.puts "\n🚀 [示例 4] 平滑流 (SmoothStream Middleware)"
 IO.puts "---------------------------------------------------"
 
-smart_model = NexAI.Middleware.wrap_model(
+smooth_model = NexAI.wrap_model(
   NexAI.openai("gpt-4o"),
-  [{NexAI.Middleware.ExtractReasoning, tag: "thought"}]
+  [{NexAI.Middleware.SmoothStream, delay: 50}]
 )
 
-{:ok, res} = NexAI.generate_text(
-  model: smart_model,
-  messages: [%User{content: "请解释一下什么是背压 (Backpressure)，并在回答前先在 <thought> 标签内思考。"}]
-)
+case NexAI.stream_text(
+  model: smooth_model,
+  messages: [%User{content: "用 20 字描述什么是平滑流。"}]
+) do
+  %{full_stream: stream} ->
+    IO.write "平滑输出中: "
+    Enum.each(stream, fn event ->
+      if event.type == :text, do: IO.write(event.payload)
+    end)
+    IO.puts ""
+  error -> IO.puts "错误: #{inspect(error)}"
+end
 
-IO.puts "AI 的思考过程: #{res.reasoning || "未捕获到"}"
-IO.puts "AI 的正式回答: #{res.text}"
-
-IO.puts "\n🚀 [示例 5] 流式推理提取 (Streaming Reasoning Extraction)"
+IO.puts "\n🚀 [示例 5] 结构化输出 (stream_object) + 生命周期钩子"
 IO.puts "---------------------------------------------------"
 
-smart_model = NexAI.Middleware.wrap_model(
-  NexAI.openai("gpt-4o"),
-  [{NexAI.Middleware.ExtractReasoning, tag: "thought"}]
-)
-
-result = NexAI.stream_text(
-  model: smart_model,
-  messages: [%User{content: "为什么天空是蓝色的？请在 <thought> 中先思考。"}]
-)
-
-IO.write "AI 正在思考并回答...\n"
-Enum.each(result.full_stream, fn event ->
-  case event.type do
-    :reasoning -> 
-      IO.write("\e[33m#{event.payload}\e[0m") # Yellow for reasoning
-    :text -> 
-      IO.write(event.payload)
-    :error ->
-      IO.puts "\n❌ [流错误] #{inspect(event.payload)}"
-    _ -> :ok
-  end
-end)
+case NexAI.stream_text(
+  model: NexAI.openai("gpt-4o"),
+  messages: [%User{content: "生成一个只有 name 和 age 的 JSON 对象，name 是张三，age 是 20。"}],
+  output: %{mode: :object, schema: %{type: "object", properties: %{name: %{type: "string"}, age: %{type: "integer"}}}},
+  on_token: fn obj -> IO.puts("\n[钩子] 收到增量对象: #{inspect(obj)}") end
+) do
+  %{full_stream: stream} ->
+    IO.write "最终解析中... "
+    Enum.each(stream, fn event ->
+      if event.type == :object_delta, do: IO.write(".")
+    end)
+    IO.puts "\n完成。"
+  error -> IO.puts "错误: #{inspect(error)}"
+end
 
 IO.puts "\n\n✅ 所有演示执行完毕。"

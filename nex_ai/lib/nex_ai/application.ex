@@ -4,6 +4,7 @@ defmodule NexAI.Application do
 
   @impl true
   def start(_type, _args) do
+    NexAI.Middleware.RateLimit.init_table()
     NexAI.Supervisor.start_link(name: NexAI.Supervisor)
   end
 end
