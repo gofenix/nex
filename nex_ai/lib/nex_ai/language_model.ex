@@ -90,13 +90,12 @@ defmodule NexAI.LanguageModel.StreamResult do
 end
 
 defmodule NexAI.LanguageModel.StreamPart do
-  @moduledoc "A single part in a language model stream."
+  @moduledoc "A single part of a streaming response."
 
   @type part_type ::
     :text_delta |
     :reasoning_delta |
-    :tool_call |
-    :tool_result |
+    :object_delta |
     :tool_call_start |
     :tool_call_delta |
     :tool_call_finish |
@@ -117,7 +116,8 @@ defmodule NexAI.LanguageModel.StreamPart do
     finish_reason: String.t() | nil,
     usage: NexAI.Result.Usage.t() | nil,
     response: NexAI.LanguageModel.ResponseMetadata.t() | nil,
-    error: Exception.t() | nil
+    error: Exception.t() | nil,
+    payload: map() | nil
   }
 
   defstruct [
@@ -130,20 +130,26 @@ defmodule NexAI.LanguageModel.StreamPart do
     :finish_reason,
     :usage,
     :response,
-    :error
+    :error,
+    :payload
   ]
 end
 
 defmodule NexAI.LanguageModel.Content do
   @moduledoc "Content types for language model output."
 
-  @type t ::
-    %{type: "text", text: String.t()} |
-    %{type: "reasoning", reasoning: String.t()} |
-    %{type: "tool-call", toolCallId: String.t(), toolName: String.t(), args: map()} |
-    %{type: "tool-result", toolCallId: String.t(), toolName: String.t(), result: map()} |
-    %{type: "file", data: String.t(), mimeType: String.t()} |
-    %{type: "source", source: map()}
+  @type t :: %{
+    type: String.t(),
+    text: String.t() | nil,
+    reasoning: String.t() | nil,
+    toolCallId: String.t() | nil,
+    toolName: String.t() | nil,
+    args: map() | nil,
+    result: map() | nil,
+    data: String.t() | nil,
+    mimeType: String.t() | nil,
+    source: map() | nil
+  }
 end
 
 defmodule NexAI.LanguageModel.Usage do
@@ -160,5 +166,5 @@ end
 defmodule NexAI.LanguageModel.FinishReason do
   @moduledoc "Reason why a language model finished generating."
 
-  @type t :: "stop" | "length" | "content-filter" | "tool-calls" | "error" | "other"
+  @type t :: :stop | :length | :content_filter | :tool_calls | :error | :other
 end

@@ -1,9 +1,10 @@
 defmodule NexAI.Provider.Anthropic do
   @moduledoc """
   Anthropic Provider for NexAI.
-  Implements the LanguageModel protocol (Vercel AI SDK v6).
+  Implements the LanguageModel protocol for Anthropic's Claude models.
   """
   alias NexAI.LanguageModel.Protocol, as: ModelProtocol
+  alias NexAI.Result.Usage
   alias NexAI.LanguageModel.{GenerateResult, StreamResult, StreamPart, ResponseMetadata}
 
   defstruct [:api_key, :base_url, model: "claude-3-5-sonnet-latest", config: %{}]
@@ -14,10 +15,12 @@ defmodule NexAI.Provider.Anthropic do
 
   @doc "Factory function to create an Anthropic model instance"
   def claude(model_id, opts \\ []) do
+    base_url = opts[:base_url] || Application.get_env(:nex_ai, :anthropic_base_url) || System.get_env("ANTHROPIC_BASE_URL") || @default_base_url
+
     %__MODULE__{
       model: model_id,
       api_key: opts[:api_key] || Application.get_env(:nex_ai, :anthropic_api_key) || System.get_env("ANTHROPIC_API_KEY"),
-      base_url: opts[:base_url] || Application.get_env(:nex_ai, :anthropic_base_url) || System.get_env("ANTHROPIC_BASE_URL") || @default_base_url,
+      base_url: base_url,
       config: Map.new(opts)
     }
   end
@@ -69,13 +72,41 @@ defmodule NexAI.Provider.Anthropic do
               }
             }}
           {:ok, %{status: 401, body: body}} ->
-            {:error, %NexAI.Error.AuthenticationError{message: get_in(body, ["error", "message"]) || "Invalid API Key", status: 401, raw: body}}
+            error_msg = case body do
+              %{"error" => %{"message" => msg}} -> msg
+              %{"message" => msg} -> msg
+              msg when is_binary(msg) -> msg
+              _ -> nil
+            end
+            {:error, %NexAI.Error.AuthenticationError{message: error_msg || "Invalid API Key", status: 401, raw: body}}
           {:ok, %{status: 429, body: body}} ->
-            {:error, %NexAI.Error.RateLimitError{message: get_in(body, ["error", "message"]) || "Rate limit reached"}}
+            error_msg = case body do
+              %{"error" => %{"message" => msg}} -> msg
+              %{"message" => msg} -> msg
+              msg when is_binary(msg) -> msg
+              _ -> nil
+            end
+            {:error, %NexAI.Error.RateLimitError{message: error_msg || "Rate limit reached"}}
           {:ok, %{status: 400, body: body}} ->
-            {:error, %NexAI.Error.InvalidRequestError{message: get_in(body, ["error", "message"]), status: 400, raw: body}}
+            error_msg = case body do
+              %{"error" => %{"message" => msg}} -> msg
+              %{"message" => msg} -> msg
+              msg when is_binary(msg) -> msg
+              _ -> nil
+            end
+            {:error, %NexAI.Error.InvalidRequestError{message: error_msg, status: 400, raw: body}}
           {:ok, %{status: status, body: body}} ->
-            {:error, %NexAI.Error.APIError{message: get_in(body, ["error", "message"]), status: status, type: get_in(body, ["error", "type"]), raw: body}}
+            error_msg = case body do
+              %{"error" => %{"message" => msg}} -> msg
+              %{"message" => msg} -> msg
+              msg when is_binary(msg) -> msg
+              _ -> nil
+            end
+            error_type = case body do
+              %{"error" => %{"type" => t}} -> t
+              _ -> nil
+            end
+            {:error, %NexAI.Error.APIError{message: error_msg, status: status, type: error_type, raw: body}}
           {:error, reason} ->
             {:error, reason}
         end
@@ -249,16 +280,16 @@ defmodule NexAI.Provider.Anthropic do
   end
 
   def extract_system(messages) do
-    system = messages |> Enum.filter(&(&1["role"] == "system")) |> Enum.map(& &1["content"]) |> Enum.join("\n")
-    messages = messages |> Enum.filter(&(&1["role"] != "system"))
+    system = messages |> Enum.filter(fn m -> m.role == "system" end) |> Enum.map(fn m -> m.content end) |> Enum.join("\n")
+    messages = messages |> Enum.filter(fn m -> m.role != "system" end)
     {if(system == "", do: nil, else: system), messages}
   end
 
   def format_messages(messages) do
     Enum.map(messages, fn msg ->
       %{
-        "role" => if(msg["role"] == "assistant", do: "assistant", else: "user"),
-        "content" => format_content(msg["content"], msg["tool_calls"])
+        "role" => if(Map.get(msg, :role) == "assistant", do: "assistant", else: "user"),
+        "content" => format_content(Map.get(msg, :content), Map.get(msg, :tool_calls))
       }
     end)
   end
@@ -281,9 +312,13 @@ defmodule NexAI.Provider.Anthropic do
     end)
   end
 
-  def extract_tool_calls(blocks) do
-    Enum.map(blocks, fn b ->
-      %ToolCall{toolCallId: b["id"], toolName: b["name"], args: b["input"]}
+  def extract_tool_calls(calls) do
+    Enum.map(calls, fn tc ->
+      %NexAI.Result.ToolCall{
+        toolCallId: tc["id"],
+        toolName: tc["name"],
+        args: tc["input"]
+      }
     end)
   end
 

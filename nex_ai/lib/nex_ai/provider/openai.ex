@@ -3,7 +3,7 @@ defmodule NexAI.Provider.OpenAI do
   OpenAI Provider for NexAI.
   Implements the LanguageModel protocol (Vercel AI SDK v6).
   """
-  alias NexAI.Result.Usage
+  alias NexAI.Result.{Usage, ToolCall}
   alias NexAI.LanguageModel.Protocol, as: ModelProtocol
   alias NexAI.LanguageModel.{GenerateResult, StreamResult, StreamPart, ResponseMetadata}
 
@@ -155,36 +155,31 @@ defmodule NexAI.Provider.OpenAI do
         raw_call: %{model_id: model.model, provider: "openai", params: options}
       }}
     end
+
+    defp build_content(message) do
+      content = message["content"] || ""
+      tool_calls = OpenAI.extract_tool_calls(message["tool_calls"])
+
+      result = [%{type: "text", text: content}]
+
+      result = if length(tool_calls) > 0 do
+        result ++ Enum.map(tool_calls, fn tc ->
+          %{
+            type: "tool-call",
+            toolCallId: tc.toolCallId,
+            toolName: tc.toolName,
+            args: tc.args
+          }
+        end)
+      else
+        result
+      end
+
+      result
+    end
   end
 
   # --- Internal Helpers ---
-
-  defp build_content(message) do
-    content = []
-
-    if text = message["content"] do
-      content = content ++ [%{type: "text", text: text}]
-    end
-
-    if reasoning = message["reasoning_content"] do
-      content = content ++ [%{type: "reasoning", reasoning: reasoning}]
-    end
-
-    if tool_calls = message["tool_calls"] do
-      content = content ++ Enum.map(tool_calls, fn tc ->
-        %{
-          type: "tool-call",
-          toolCallId: tc["id"],
-          toolName: tc["function"]["name"],
-          args: Jason.decode!(tc["function"]["arguments"])
-        }
-      end)
-    end
-
-    content
-  end
-
-  # --- Internal Helpers for Protocol Implementation ---
 
   def process_line_buffer(buffer, final \\ false) do
     if String.contains?(buffer, "\n") do
@@ -310,7 +305,7 @@ defmodule NexAI.Provider.OpenAI do
   def extract_tool_calls(nil), do: []
   def extract_tool_calls(calls) do
     Enum.map(calls, fn tc ->
-      %ToolCall{
+      %NexAI.Result.ToolCall{
         toolCallId: tc["id"],
         toolName: tc["function"]["name"],
         args: Jason.decode!(tc["function"]["arguments"])
@@ -414,7 +409,8 @@ defmodule NexAI.Provider.OpenAI do
       {:ok, %{status: 200, body: body}} ->
         images = Enum.map(body["data"], &(&1["b64_json"] || &1["url"]))
         {:ok, %{images: images, raw: body}}
-        {:ok, res} -> {:error, res.body}
+      {:ok, res} -> {:error, res.body}
+      {:error, reason} -> {:error, reason}
     end
   end
 end

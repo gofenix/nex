@@ -96,11 +96,14 @@ defmodule NexAI.Core do
 
     case ModelProtocol.do_generate(model, params) do
       {:ok, res} ->
+        text = extract_text_from_content(res.content)
+        reasoning = extract_reasoning_from_content(res.content)
+
         current_step = %Step{
           stepType: if(step == 0, do: :initial, else: :tool_result),
-          text: res.text,
-          reasoning: res.reasoning,
-          toolCalls: res.tool_calls,
+          text: text,
+          reasoning: reasoning,
+          toolCalls: extract_tool_calls_from_content(res.content),
           usage: res.usage,
           finishReason: res.finish_reason,
           response: res.response
@@ -111,19 +114,19 @@ defmodule NexAI.Core do
         cond do
           # 1. Handle continueSteps (finish_reason: :length)
           continue_steps and res.finish_reason == :length and step + 1 < max_steps ->
-            assistant_msg = %NexAI.Message.Assistant{content: res.text}
+            assistant_msg = %NexAI.Message.Assistant{content: text}
             new_messages = messages ++ [assistant_msg]
             do_generate_loop(model, new_messages, opts, max_steps, step + 1, new_steps, continue_steps)
 
           # 2. Handle Tool Calls
-          step + 1 < max_steps and length(res.tool_calls || []) > 0 ->
+          step + 1 < max_steps and length(current_step.toolCalls || []) > 0 ->
             tool_map = build_tool_map(opts[:tools])
-            {_tool_results, tool_messages} = execute_tools_sync(res.tool_calls, tool_map)
+            {_tool_results, tool_messages} = execute_tools_sync(current_step.toolCalls, tool_map)
 
             assistant_msg = %NexAI.Message.Assistant{
-              content: res.text,
+              content: text,
               tool_calls:
-                Enum.map(res.tool_calls, fn tc ->
+                Enum.map(current_step.toolCalls, fn tc ->
                   %{
                     "id" => tc.toolCallId,
                     "type" => "function",
@@ -142,7 +145,7 @@ defmodule NexAI.Core do
              %GenerateTextResult{
                text: combine_steps_text(new_steps),
                reasoning: combine_steps_reasoning(new_steps),
-               toolCalls: res.tool_calls,
+               toolCalls: current_step.toolCalls,
                toolResults: List.last(new_steps).toolResults || [],
                finishReason: res.finish_reason,
                usage: calculate_total_usage(new_steps),
@@ -187,7 +190,7 @@ defmodule NexAI.Core do
       fn ->
         # Start the first step's stream
         case ModelProtocol.do_stream(model, build_params(messages, opts)) do
-          {:ok, stream} ->
+          {:ok, %{stream: stream}} ->
             case Enumerable.reduce(stream, {:cont, nil}, fn x, _ -> {:suspend, x} end) do
               {:suspended, chunk, next} ->
                 %{
@@ -379,16 +382,16 @@ defmodule NexAI.Core do
 
     case chunk.type do
       :text_delta ->
-        full_text = state.full_text <> chunk.content
+        full_text = state.full_text <> chunk.text
         events = if output_config do
           case NexAI.PartialJSON.parse(full_text) do
             {:ok, obj} ->
               if on_token = opts[:on_token] || opts[:onToken], do: on_token.(obj)
-              [ %{chunk | type: :object_delta, payload: obj} ]
+              [ %{chunk | type: :object_delta} |> Map.put(:payload, obj) ]
             _ -> []
           end
         else
-          if on_token = opts[:on_token] || opts[:onToken], do: on_token.(chunk.content)
+          if on_token = opts[:on_token] || opts[:onToken], do: on_token.(chunk.text)
           [ chunk ]
         end
         {events, %{state | full_text: full_text}}
@@ -455,10 +458,43 @@ defmodule NexAI.Core do
   end
 
   defp process_object_result(res, %{mode: _}) do
-    clean_text = res.text |> String.replace(~r/^```json\s*/, "") |> String.replace(~r/\s*```$/, "") |> String.trim()
+    # res is a GenerateTextResult, not GenerateResult
+    # Extract text from the text field
+    text = res.text || ""
+    clean_text = text |> String.replace(~r/^```json\s*/, "") |> String.replace(~r/\s*```$/, "") |> String.trim()
     case Jason.decode(clean_text) do
       {:ok, obj} -> %{res | object: obj}
       _ -> res
     end
   end
+
+  defp extract_text_from_content(content) when is_list(content) do
+    Enum.filter_map(content, fn
+      %{type: "text", text: t} -> true
+      _ -> false
+    end, fn
+      %{type: "text", text: t} -> t
+    end)
+    |> Enum.join("")
+  end
+  defp extract_text_from_content(_), do: ""
+
+  defp extract_reasoning_from_content(content) when is_list(content) do
+    Enum.find_value(content, fn
+      %{type: "reasoning", reasoning: r} -> r
+      _ -> nil
+    end) || ""
+  end
+  defp extract_reasoning_from_content(_), do: ""
+
+  defp extract_tool_calls_from_content(content) when is_list(content) do
+    Enum.filter_map(content, fn
+      %{type: "tool-call"} -> true
+      _ -> false
+    end, fn
+      %{type: "tool-call", toolCallId: id, toolName: name, args: args} ->
+        %ToolCall{toolCallId: id, toolName: name, args: args}
+    end)
+  end
+  defp extract_tool_calls_from_content(_), do: []
 end

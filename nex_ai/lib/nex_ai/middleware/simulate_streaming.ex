@@ -1,6 +1,7 @@
 defmodule NexAI.Middleware.SimulateStreaming do
   @moduledoc """
-  Middleware that simulates streaming for models that only support generate.
+  Middleware that simulates streaming by converting a non-streaming response
+  into a stream of text chunks.
   """
   alias NexAI.LanguageModel.Protocol, as: ModelProtocol
 
@@ -11,8 +12,11 @@ defmodule NexAI.Middleware.SimulateStreaming do
     Stream.resource(
       fn ->
         case ModelProtocol.do_generate(model, params) do
-          {:ok, res} -> {String.graphemes(res.text || ""), res}
-          {:error, _} = err -> err
+          {:ok, res} ->
+            text = extract_text_from_content(res.content)
+            {String.graphemes(text || ""), res}
+          {:error, _} = err ->
+            err
         end
       end,
       fn
@@ -21,17 +25,25 @@ defmodule NexAI.Middleware.SimulateStreaming do
         {chars, res} ->
           {chunk, rest} = Enum.split(chars, chunk_size)
           Process.sleep(delay)
-          
-          events = if rest == [] do
-            # Final chunk: include usage/metadata
-            [%{"choices" => [%{"delta" => %{"content" => Enum.join(chunk)}}]}, %{"usage" => res.usage}]
-          else
-            [%{"choices" => [%{"delta" => %{"content" => Enum.join(chunk)}}]}]
-          end
 
-          {events, if(rest == [], do: :done, else: {rest, res})}
+          if chunk == [] do
+            {[{:finish, res.finish_reason}], :done}
+          else
+            {[%NexAI.LanguageModel.StreamPart{type: :text_delta, text: Enum.join(chunk)}], {rest, res}}
+          end
       end,
       fn _ -> :ok end
     )
   end
+
+  defp extract_text_from_content(content) when is_list(content) do
+    Enum.filter_map(content, fn
+      %{type: "text", text: t} -> true
+      _ -> false
+    end, fn
+      %{type: "text", text: t} -> t
+    end)
+    |> Enum.join("")
+  end
+  defp extract_text_from_content(_), do: ""
 end

@@ -48,8 +48,7 @@ defmodule NexAI.Provider.Mistral do
           message = get_in(body, ["choices", Access.at(0), "message"])
 
           {:ok, %GenerateResult{
-            content: [%{type: "text", text: message["content"]}],
-            tool_calls: OpenAI.extract_tool_calls(message["tool_calls"]),
+            content: build_content(message),
             finish_reason: OpenAI.map_finish_reason(get_in(body, ["choices", Access.at(0), "finish_reason"])),
             usage: OpenAI.format_usage(body["usage"]),
             response: %ResponseMetadata{
@@ -58,7 +57,7 @@ defmodule NexAI.Provider.Mistral do
               timestamp: body["created"],
               headers: Map.new(headers)
             },
-            raw_call: %{model_id: model.model, provider: "mistral", params: options},
+            raw_call: %{model_id: model.model, provider: "mistral", params: params},
             raw_response: body
           }}
 
@@ -144,6 +143,28 @@ defmodule NexAI.Provider.Mistral do
         end,
         fn state -> Task.shutdown(state.task) end
       )
+    end
+
+    defp build_content(message) do
+      content = message["content"] || ""
+      tool_calls = OpenAI.extract_tool_calls(message["tool_calls"])
+
+      result = [%{type: "text", text: content}]
+
+      result = if length(tool_calls) > 0 do
+        result ++ Enum.map(tool_calls, fn tc ->
+          %{
+            type: "tool-call",
+            toolCallId: tc.toolCallId,
+            toolName: tc.toolName,
+            args: tc.args
+          }
+        end)
+      else
+        result
+      end
+
+      result
     end
   end
 end

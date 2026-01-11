@@ -10,10 +10,23 @@ defmodule NexAI.Middleware.ExtractReasoning do
 
     case ModelProtocol.do_generate(model, params) do
       {:ok, res} ->
-        {text, reasoning} = extract(res.text, tag)
+        # Extract text from content array
+        text_content = Enum.find_value(res.content, fn
+          %{type: "text", text: t} -> t
+          _ -> nil
+        end) || ""
+
+        # Extract reasoning from content array
+        reasoning_content = Enum.find_value(res.content, fn
+          %{type: "reasoning", reasoning: r} -> r
+          _ -> nil
+        end)
+
+        # Extract from tags if not already present
+        {text, reasoning} = extract(text_content, tag)
         # Ensure we don't overwrite if provider already gave us reasoning
-        reasoning = reasoning || Map.get(res, :reasoning)
-        {:ok, Map.merge(res, %{text: text, reasoning: reasoning})}
+        reasoning = reasoning || reasoning_content
+        {:ok, Map.merge(res, %{content: [%{type: "text", text: text}] ++ (if reasoning, do: [%{type: "reasoning", reasoning: reasoning}], else: [])})}
       error -> error
     end
   end
@@ -28,16 +41,21 @@ defmodule NexAI.Middleware.ExtractReasoning do
     |> Stream.transform(
       fn -> %{in_reasoning: false, buffer: ""} end,
       fn chunk, state ->
-        # Providers output maps. Try to find content in choices[0].delta.content
-        content = get_in(chunk, ["choices", Access.at(0), "delta", "content"])
-        
-        if is_binary(content) do
-          full_content = state.buffer <> content
-          {modified_chunks, new_state} = process_delta_raw(full_content, start_tag, end_tag, state.in_reasoning)
-          {modified_chunks, new_state}
-        else
-          # Pass through other chunks (metadata, tool calls, etc)
-          {[chunk], state}
+        # StreamPart has type field to distinguish different chunk types
+        case chunk.type do
+          :text_delta ->
+            content = chunk.text || ""
+            full_content = state.buffer <> content
+            {modified_chunks, new_state} = process_delta_raw(full_content, start_tag, end_tag, state.in_reasoning)
+            {modified_chunks, new_state}
+
+          :reasoning_delta ->
+            # Pass through reasoning chunks directly
+            {[chunk], state}
+
+          _ ->
+            # Pass through other chunks (metadata, tool calls, etc)
+            {[chunk], state}
         end
       end,
       fn state ->
@@ -46,9 +64,9 @@ defmodule NexAI.Middleware.ExtractReasoning do
           clean_buf = state.buffer
             |> String.replace(start_tag, "")
             |> String.replace(end_tag, "")
-          
+
           if clean_buf != "" do
-            field = if state.in_reasoning, do: "reasoning_content", else: "content"
+            field = if state.in_reasoning, do: :reasoning_delta, else: :text_delta
             {[wrap_chunk(field, clean_buf)], state}
           else
             {[], state}
@@ -62,13 +80,13 @@ defmodule NexAI.Middleware.ExtractReasoning do
 
   defp process_delta_raw(delta, start_tag, end_tag, in_reasoning) do
     target = if in_reasoning, do: end_tag, else: start_tag
-    
+
     case String.split(delta, target, parts: 2) do
       [pre, post] ->
         # Found the tag! Consume it and switch state
-        field = if in_reasoning, do: "reasoning_content", else: "content"
+        field = if in_reasoning, do: :reasoning_delta, else: :text_delta
         chunks = if pre != "", do: [wrap_chunk(field, pre)], else: []
-        
+
         # Recursively process the remainder with the flipped state
         {more_chunks, final_state} = process_delta_raw(post, start_tag, end_tag, !in_reasoning)
         {chunks ++ more_chunks, final_state}
@@ -78,22 +96,26 @@ defmodule NexAI.Middleware.ExtractReasoning do
         match_len = find_partial_match_len(content, target)
         split_pos = String.length(content) - match_len
         {to_emit, new_buffer} = String.split_at(content, split_pos)
-        
-        field = if in_reasoning, do: "reasoning_content", else: "content"
+
+        field = if in_reasoning, do: :reasoning_delta, else: :text_delta
         chunks = if to_emit != "", do: [wrap_chunk(field, to_emit)], else: []
         {chunks, %{in_reasoning: in_reasoning, buffer: new_buffer}}
     end
   end
 
-  defp wrap_chunk(field, value) do
-    %{"choices" => [%{"index" => 0, "delta" => %{field => value}}]}
+  defp wrap_chunk(type, value) do
+    %NexAI.LanguageModel.StreamPart{
+      type: type,
+      text: if(type == :text_delta, do: value, else: nil),
+      content: if(type == :reasoning_delta, do: value, else: nil)
+    }
   end
 
   defp find_partial_match_len(content, target) do
     content_len = String.length(content)
     target_len = String.length(target)
     max_prefix_len = min(content_len, target_len - 1)
-    
+
     Enum.find(max_prefix_len..1//-1, 0, fn len ->
       suffix = String.slice(content, (content_len - len)..-1//1)
       String.starts_with?(target, suffix)
@@ -118,7 +140,7 @@ defmodule NexAI.Middleware.ExtractReasoning do
   defp extract(text, tag) do
     start_tag = "<#{tag}>"
     end_tag = "</#{tag}>"
-    
+
     case String.split(text, start_tag, parts: 2) do
       [pre, rest] ->
         case String.split(rest, end_tag, parts: 2) do

@@ -48,8 +48,7 @@ defmodule NexAI.Provider.Cohere do
       case Req.post(url, json: body, auth: {:bearer, model.api_key}, finch: finch_name) do
         {:ok, %{status: 200, body: body, headers: headers}} ->
           {:ok, %GenerateResult{
-            content: [%{type: "text", text: body["text"]}],
-            tool_calls: Cohere.extract_tool_calls(body["tool_calls"]),
+            content: build_content(body),
             finish_reason: Cohere.map_finish_reason(body["finish_reason"]),
             usage: Cohere.format_usage(body["meta"]),
             response: %ResponseMetadata{
@@ -58,7 +57,7 @@ defmodule NexAI.Provider.Cohere do
               timestamp: System.system_time(:second),
               headers: Map.new(headers)
             },
-            raw_call: %{model_id: model.model, provider: "cohere", params: options},
+            raw_call: %{model_id: model.model, provider: "cohere", params: params},
             raw_response: body
           }}
 
@@ -95,7 +94,7 @@ defmodule NexAI.Provider.Cohere do
       parent = self()
       receive_timeout = params.config[:receive_timeout] || 30_000
 
-      Stream.resource(
+      stream = Stream.resource(
         fn ->
           task = Task.Supervisor.async_nolink(NexAI.TaskSupervisor, fn ->
             finch_name = model.config[:finch] || NexAI.Finch
@@ -142,6 +141,33 @@ defmodule NexAI.Provider.Cohere do
         end,
         fn state -> Task.shutdown(state.task) end
       )
+
+      {:ok, %StreamResult{
+        stream: stream,
+        raw_call: %{model_id: model.model, provider: "cohere", params: params}
+      }}
+    end
+
+    defp build_content(body) do
+      text = body["text"] || ""
+      tool_calls = Cohere.extract_tool_calls(body["tool_calls"])
+
+      result = [%{type: "text", text: text}]
+
+      result = if length(tool_calls) > 0 do
+        result ++ Enum.map(tool_calls, fn tc ->
+          %{
+            type: "tool-call",
+            toolCallId: tc.toolCallId,
+            toolName: tc.toolName,
+            args: tc.args
+          }
+        end)
+      else
+        result
+      end
+
+      result
     end
   end
 

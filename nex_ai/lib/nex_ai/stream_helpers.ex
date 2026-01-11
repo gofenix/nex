@@ -11,7 +11,7 @@ defmodule NexAI.StreamHelpers do
     stream
     |> Enum.reduce("", fn chunk, acc ->
       if chunk.type == :text_delta do
-        acc <> chunk.content
+        acc <> chunk.text
       else
         acc
       end
@@ -162,7 +162,7 @@ defmodule NexAI.StreamHelpers do
 
     text = chunks
     |> Enum.filter(&(&1.type == :text_delta))
-    |> Enum.map(&(&1.content))
+    |> Enum.map(&(&1.text))
     |> Enum.join("")
 
     usage = chunks

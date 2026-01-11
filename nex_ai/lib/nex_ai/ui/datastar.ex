@@ -2,7 +2,7 @@ defmodule NexAI.UI.Datastar do
   @moduledoc """
   UI Helper for converting NexAI streams to Datastar SSE responses.
   """
-  
+
   alias NexAI.Core
 
   def to_datastar(result, opts \\ [])
@@ -10,7 +10,7 @@ defmodule NexAI.UI.Datastar do
   def to_datastar({:error, reason}, opts) do
     opts = Core.normalize_opts(opts)
     loading_signal = to_string(opts[:loading_signal] || "isLoading")
-    
+
     body_fn = fn send ->
       json = Jason.encode!(%{loading_signal => false, "error" => inspect(reason)})
       send.(~s"""
@@ -29,7 +29,7 @@ defmodule NexAI.UI.Datastar do
     status_signal = to_string(opts[:status_signal] || "aiStatus")
     loading_signal = to_string(opts[:loading_signal] || "isLoading")
     messages_signal = to_string(opts[:messages_signal] || "messages")
-    
+
     body_fn = fn send ->
       # Helper to send Datastar signal patch
       send_signals = fn signals_map ->
@@ -44,7 +44,7 @@ defmodule NexAI.UI.Datastar do
           case f do
             {selector, html, mode} ->
               send.(%{event: "datastar-patch-elements", data: "selector #{selector}\nmode #{mode}\nelements #{html}"})
-            {selector, html} -> 
+            {selector, html} ->
               send.(%{event: "datastar-patch-elements", data: "selector #{selector}\nelements #{html}"})
             html when is_binary(html) ->
               send.(%{event: "datastar-patch-elements", data: "elements #{html}"})
@@ -54,37 +54,37 @@ defmodule NexAI.UI.Datastar do
 
       # 1. Initial State: Set loading and clear current response
       initial_signals = opts[:initial_signals] || %{}
-      
+
       base_signals = %{
-        loading_signal => true, 
-        status_signal => "Thinking...", 
-        text_signal => "", 
+        loading_signal => true,
+        status_signal => "Thinking...",
+        text_signal => "",
         reasoning_signal => ""
       }
-      
+
       send_signals.(Map.merge(base_signals, initial_signals))
 
       # 2. Stream Loop
       final_acc = Enum.reduce(stream, %{text: "", reasoning: ""}, fn event, acc ->
         # IO.inspect(event, label: "DATASTAR STREAM EVENT")
         case event.type do
-          :text ->
-            new_text = acc.text <> event.payload
+          :text_delta ->
+            new_text = acc.text <> (event.text || "")
             send_signals.(%{text_signal => new_text})
             %{acc | text: new_text}
-            
-          :reasoning ->
-            new_reasoning = acc.reasoning <> event.payload
+
+          :reasoning_delta ->
+            new_reasoning = acc.reasoning <> (event.content || "")
             send_signals.(%{reasoning_signal => new_reasoning})
             %{acc | reasoning: new_reasoning}
 
           :tool_call_start ->
-            status = "Calling #{event.payload.toolName}..."
+            status = "Calling #{event.tool_name}..."
             send_signals.(%{status_signal => status})
             acc
 
-          :tool_result ->
-            status = "Tool #{event.payload.toolName} executed"
+          :tool_call_finish ->
+            status = "Tool #{event.tool_name} executed"
             send_signals.(%{status_signal => status})
             acc
 
@@ -96,7 +96,7 @@ defmodule NexAI.UI.Datastar do
       if original_messages = original_opts[:messages] do
         assistant_msg = %{role: "assistant", content: final_acc.text}
         new_messages = original_messages ++ [assistant_msg]
-        
+
         # Check if caller provided a function to generate final fragments based on result
         if final_fragments_fn = opts[:final_fragments_fn] do
           final_fragments = final_fragments_fn.(final_acc.text)
@@ -104,7 +104,7 @@ defmodule NexAI.UI.Datastar do
             case f do
               {selector, html, mode} ->
                 send.(%{event: "datastar-patch-elements", data: "selector #{selector}\nmode #{mode}\nelements #{html}"})
-              {selector, html} -> 
+              {selector, html} ->
                 send.(%{event: "datastar-patch-elements", data: "selector #{selector}\nelements #{html}"})
               html when is_binary(html) ->
                 send.(%{event: "datastar-patch-elements", data: "elements #{html}"})
@@ -113,17 +113,17 @@ defmodule NexAI.UI.Datastar do
         end
 
         send_signals.(%{
-          loading_signal => false, 
-          status_signal => "Ready", 
-          text_signal => "", 
-          reasoning_signal => "", 
+          loading_signal => false,
+          status_signal => "Ready",
+          text_signal => "",
+          reasoning_signal => "",
           messages_signal => new_messages
         })
       else
         send_signals.(%{
-          loading_signal => false, 
-          status_signal => "Ready", 
-          text_signal => "", 
+          loading_signal => false,
+          status_signal => "Ready",
+          text_signal => "",
           reasoning_signal => ""
         })
       end
