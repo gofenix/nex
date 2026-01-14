@@ -191,14 +191,13 @@ defmodule NexAI.Provider.Anthropic do
   def api_version, do: "2023-06-01"
 
   def build_content(body) do
-    content = []
-
-    if text = extract_text(body) do
-      content = content ++ [%{type: "text", text: text}]
+    text_content = case extract_text(body) do
+      nil -> []
+      text -> [%{type: "text", text: text}]
     end
 
-    if tool_calls = extract_tool_calls(body["content"] || []) do
-      content = content ++ Enum.map(tool_calls, fn tc ->
+    tool_content = if tool_calls = extract_tool_calls(body["content"] || []) do
+      Enum.map(tool_calls, fn tc ->
         %{
           type: "tool-call",
           toolCallId: tc.toolCallId,
@@ -206,9 +205,11 @@ defmodule NexAI.Provider.Anthropic do
           args: tc.args
         }
       end)
+    else
+      []
     end
 
-    content
+    text_content ++ tool_content
   end
 
   def extract_text(body) do
@@ -223,7 +224,7 @@ defmodule NexAI.Provider.Anthropic do
     end
   end
 
-  def extract_reasoning(body), do: nil
+  def extract_reasoning(_body), do: nil
 
   def map_to_stream_parts(raw_chunks, state) do
     Enum.reduce(raw_chunks, {[], state}, fn chunk, {acc, st} ->

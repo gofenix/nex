@@ -2,48 +2,58 @@
 
 基于 Vercel AI SDK v6 规范的 Elixir AI SDK 演示项目。
 
-## 示例列表
-
-### 核心功能示例
-
-| 示例文件 | 功能 | 对应 vendor/ai 示例 |
-|---------|------|-------------------|
-| `01_generate_text.exs` | 基础文本生成 | `generate-text/openai.ts` |
-| `02_stream_text.exs` | 流式文本生成 | `stream-text/openai.ts` |
-| `03_generate_object.exs` | 结构化输出 | `generate-object/openai.ts` |
-| `04_stream_object.exs` | 流式结构化输出 | `stream-object/openai.ts` |
-| `05_tool_calling.exs` | 工具调用 | `generate-text/openai-tool-call.ts` |
-| `06_multi_step.exs` | 多步生成（工具链） | `generate-text/openai-multi-step.ts` |
-| `07_chatbot.exs` | 多轮对话聊天机器人 | `stream-text/openai-chatbot.ts` |
-
-### Provider 示例
-
-| 示例文件 | 功能 | 对应 vendor/ai 示例 |
-|---------|------|-------------------|
-| `10_anthropic.exs` | Anthropic Claude | `generate-text/anthropic.ts` |
-
-> 注：NexAI 主要支持 OpenAI 和 Anthropic 两个核心 provider。其他 provider（Google、Mistral、Cohere）可根据需要添加。
-
-### 高级功能示例
-
-| 示例文件 | 功能 | 对应 vendor/ai 示例 |
-|---------|------|-------------------|
-| `20_middleware_smooth.exs` | 平滑流中间件 | `middleware/simulate-streaming-example.ts` |
-| `21_middleware_log.exs` | 日志中间件 | `middleware/generate-text-log-middleware-example.ts` |
-| `22_middleware_rate_limit.exs` | 限流中间件 | `middleware/your-cache-middleware.ts` |
-| `23_reasoning.exs` | 推理内容 | `generate-text/openai-reasoning.ts` |
-| `24_images.exs` | 图像生成 | `generate-image/` |
-| `25_embed.exs` | 文本嵌入 | `embed/` |
-
 ## 运行方式
 
 ```bash
 # 运行单个示例
 mix run examples/01_generate_text.exs
 
-# 运行所有示例（使用脚本）
+# 运行所有示例
 bash run_all_examples.sh
+
+# 查看示例概览
+mix run demo.exs
 ```
+
+## 示例列表
+
+### 核心功能
+
+| 文件 | 功能 | API |
+|-----|------|-----|
+| `01_generate_text.exs` | 基础文本生成 | `NexAI.generate_text/1` |
+| `02_stream_text.exs` | 流式文本生成 | `NexAI.stream_text/1` |
+| `03_generate_object.exs` | 非流式结构化输出 | `NexAI.generate_object/1` |
+| `04_stream_object.exs` | 流式结构化输出 | `NexAI.stream_text/1` + `output` |
+
+### 工具调用
+
+| 文件 | 功能 | API |
+|-----|------|-----|
+| `05_tool_calling.exs` | 自动工具调用 | `NexAI.tool/1` |
+| `06_multi_step.exs` | 多步生成（工具链） | `max_steps` |
+
+### 中间件
+
+| 文件 | 功能 | API |
+|-----|------|-----|
+| `07_smoothing.exs` | 平滑流中间件 | `NexAI.Middleware.SmoothStream` |
+| `08_logging.exs` | 日志中间件 | `NexAI.Middleware.Logging` |
+| `09_rate_limit.exs` | 速率限制中间件 | `NexAI.Middleware.RateLimit` |
+| `18_retry.exs` | 重试中间件 | `NexAI.Middleware.Retry` |
+
+### 高级功能
+
+| 文件 | 功能 | API |
+|-----|------|-----|
+| `10_provider.exs` | 多 Provider 对比 | `NexAI.openai/1`, `NexAI.anthropic/1` |
+| `11_advanced_params.exs` | 高级参数 | `temperature`, `max_tokens`, `stop` |
+| `12_lifecycle.exs` | 生命周期钩子 | `on_finish`, `on_step_finish` |
+| `13_system_prompt.exs` | 系统提示词 | `system` 参数 |
+| `14_images.exs` | 图像生成 | `NexAI.generate_image/1` |
+| `15_embed.exs` | 文本嵌入 | `NexAI.embed/1`, `NexAI.cosine_similarity/2` |
+| `16_reasoning.exs` | 推理内容提取 | `NexAI.Middleware.ExtractReasoning` |
+| `17_ui_protocols.exs` | UI 协议适配 | `NexAI.to_data_stream/1`, `NexAI.to_datastar/2` |
 
 ## 环境变量
 

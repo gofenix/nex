@@ -51,8 +51,4 @@ defmodule NexAI.Message do
         %{"role" => role, "content" => content}
     end
   end
-
-  defp purge_nils(map) do
-    map |> Enum.reject(fn {_, v} -> is_nil(v) end) |> Map.new()
-  end
 end

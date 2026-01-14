@@ -144,6 +144,45 @@ defmodule Nex.Handler do
     end
   end
 
+  defp send_api_response(conn, :method_not_allowed) do
+    send_json_error(conn, 405, "Method Not Allowed")
+  end
+
+  defp send_api_response(conn, other) do
+    # JSON API: Enforce Nex.Response
+    # We do NOT implicitly convert Maps/Lists to JSON anymore to ensure strict DX.
+    error_msg = """
+    [Nex] API Response Error!
+    Your API handler returned an invalid response type.
+    It must return a `%Nex.Response{}` struct using one of the helper functions:
+
+    * `Nex.json(data, opts \\\\ [])`
+    * `Nex.text(string, opts \\\\ [])`
+    * `Nex.html(content, opts \\\\ [])`
+    * `Nex.redirect(to, opts \\\\ [])`
+    * `Nex.status(code)`
+
+    Received: #{inspect(other)}
+    """
+
+    Logger.error(error_msg)
+
+    # Development: return detailed error in response
+    # Production: return generic error
+    if Mix.env() == :dev do
+      send_json(conn, 500, %{
+        error: "Internal Server Error: Invalid Response Type",
+        details: %{
+          message: "Your API handler returned an invalid response type",
+          received_type: other.__struct__ || "unknown",
+          hint: "Return a `%Nex.Response{}` struct using helper functions like `Nex.json/2`"
+        }
+      })
+    else
+      send_json_error(conn, 500, "Internal Server Error")
+    end
+  end
+
   defp handle_sse_response(conn, response) do
     # Handle SSE streaming response
     conn =
@@ -201,51 +240,6 @@ defmodule Nex.Handler do
     conn
     |> put_resp_content_type(response.content_type)
     |> send_resp(response.status, body)
-  end
-
-  defp send_api_response(conn, :method_not_allowed) do
-    send_json_error(conn, 405, "Method Not Allowed")
-  end
-
-  defp send_api_response(conn, other) do
-    # JSON API: Enforce Nex.Response
-    # We do NOT implicitly convert Maps/Lists to JSON anymore to ensure strict DX.
-    error_msg = """
-    [Nex] API Response Error!
-    Your API handler returned an invalid response type.
-    It must return a `%Nex.Response{}` struct using one of the helper functions:
-
-    * `Nex.json(data, opts \\\\ [])`
-    * `Nex.text(string, opts \\\\ [])`
-    * `Nex.html(content, opts \\\\ [])`
-    * `Nex.redirect(to, opts \\\\ [])`
-    * `Nex.status(code)`
-
-    Received: #{inspect(other)}
-    """
-
-    Logger.error(error_msg)
-
-    # Development: return detailed error in response
-    # Production: return generic error
-    if Mix.env() == :dev do
-      send_json(conn, 500, %{
-        error: "Internal Server Error: Invalid Response Type",
-        details: %{
-          received: inspect(other),
-          expected: "Nex.Response struct",
-          available_helpers: [
-            "Nex.json(data, opts \\\\ [])",
-            "Nex.text(string, opts \\\\ [])",
-            "Nex.html(content, opts \\\\ [])",
-            "Nex.redirect(to, opts \\\\ [])",
-            "Nex.status(code)"
-          ]
-        }
-      })
-    else
-      send_json_error(conn, 500, "Internal Server Error")
-    end
   end
 
   defp send_json(conn, status, data) do

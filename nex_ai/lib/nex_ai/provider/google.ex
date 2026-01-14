@@ -4,7 +4,7 @@ defmodule NexAI.Provider.Google do
   Implements the LanguageModel protocol (Vercel AI SDK v6).
   """
   alias NexAI.LanguageModel.Protocol, as: ModelProtocol
-  alias NexAI.Result.{Usage, ToolCall}
+  alias NexAI.Result.Usage
   alias NexAI.LanguageModel.{GenerateResult, StreamResult, StreamPart, ResponseMetadata}
 
   defstruct [:api_key, :base_url, model: "gemini-1.5-flash", config: %{}]
@@ -43,11 +43,11 @@ defmodule NexAI.Provider.Google do
 
       finch_name = model.config[:finch] || NexAI.Finch
       case Req.post(url, json: body, finch: finch_name) do
-        {:ok, %{status: 200, body: body, headers: headers}} ->
-          content = Google.build_content(body)
+        {:ok, %{status: 200, body: body, headers: _headers}} ->
+          content = Google.extract_content(body)
           {:ok, %GenerateResult{
             content: content,
-            finish_reason: Google.map_finish_reason(body["candidates"][0]["finishReason"]),
+            finish_reason: Google.map_finish_reason(body["candidates"] && body["candidates"][0] && body["candidates"][0]["finishReason"]),
             usage: Google.format_usage(body["usageMetadata"]),
             raw_call: %{model_id: model.model, provider: "google", params: options},
             raw_response: body,
@@ -198,10 +198,22 @@ defmodule NexAI.Provider.Google do
     end)
   end
 
+  def extract_content(body) do
+    # Extract text content from Gemini response
+    candidate = get_in(body, ["candidates", Access.at(0)])
+    parts = get_in(candidate, ["content", "parts"]) || []
+
+    text_parts = Enum.flat_map(parts, fn part ->
+      if text = part["text"], do: [%{type: "text", text: text}], else: []
+    end)
+
+    if text_parts == [], do: [%{type: "text", text: ""}], else: text_parts
+  end
+
   def extract_tool_calls(parts) do
     Enum.map(parts, fn p ->
       fc = p["functionCall"]
-      %ToolCall{
+      %NexAI.Result.ToolCall{
         toolCallId: :crypto.strong_rand_bytes(8) |> Base.encode16(case: :lower),
         toolName: fc["name"],
         args: fc["args"] || %{}

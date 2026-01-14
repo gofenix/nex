@@ -1,6 +1,7 @@
 #!/bin/bash
 
-# 运行所有 NexAI 示例脚本
+# 运行所有 NexAI 示例
+# 按类别分组运行，便于查看
 
 echo "========================================"
 echo "NexAI 示例集合"
@@ -26,7 +27,7 @@ echo "2. 流式文本生成..."
 mix run examples/02_stream_text.exs
 echo ""
 
-echo "3. 结构化输出..."
+echo "3. 非流式结构化输出..."
 mix run examples/03_generate_object.exs
 echo ""
 
@@ -34,7 +35,12 @@ echo "4. 流式结构化输出..."
 mix run examples/04_stream_object.exs
 echo ""
 
-echo "5. 工具调用..."
+# 工具调用示例
+echo ""
+echo "📦 工具调用示例"
+echo "----------------------------------------"
+
+echo "5. 自动工具调用..."
 mix run examples/05_tool_calling.exs
 echo ""
 
@@ -42,13 +48,25 @@ echo "6. 多步生成..."
 mix run examples/06_multi_step.exs
 echo ""
 
-# Provider 示例
+# 中间件示例
 echo ""
-echo "📦 Provider 示例"
+echo "📦 中间件示例"
 echo "----------------------------------------"
 
-echo "10. Anthropic Claude..."
-mix run examples/10_anthropic.exs 2>/dev/null || echo "  (跳过 - 需要配置 ANTHROPIC_API_KEY)"
+echo "7. 平滑流中间件..."
+mix run examples/07_smoothing.exs
+echo ""
+
+echo "8. 日志中间件..."
+mix run examples/08_logging.exs
+echo ""
+
+echo "9. 速率限制中间件..."
+mix run examples/09_rate_limit.exs
+echo ""
+
+echo "18. 重试中间件..."
+mix run examples/18_retry.exs
 echo ""
 
 # 高级功能示例
@@ -56,28 +74,36 @@ echo ""
 echo "📦 高级功能示例"
 echo "----------------------------------------"
 
-echo "20. 平滑流中间件..."
-mix run examples/20_middleware_smooth.exs
+echo "10. 多 Provider 对比..."
+mix run examples/10_provider.exs
 echo ""
 
-echo "21. 日志中间件..."
-mix run examples/21_middleware_log.exs
+echo "11. 高级参数..."
+mix run examples/11_advanced_params.exs
 echo ""
 
-echo "22. 限流中间件..."
-mix run examples/22_middleware_rate_limit.exs
+echo "12. 生命周期钩子..."
+mix run examples/12_lifecycle.exs
 echo ""
 
-echo "23. 推理内容..."
-mix run examples/23_reasoning.exs 2>/dev/null || echo "  (跳过 - 需要 o1 模型访问权限)"
+echo "13. 系统提示词..."
+mix run examples/13_system_prompt.exs
 echo ""
 
-echo "24. 图像生成..."
-mix run examples/24_images.exs
+echo "14. 图像生成..."
+mix run examples/14_images.exs
 echo ""
 
-echo "25. 文本嵌入..."
-mix run examples/25_embed.exs
+echo "15. 文本嵌入..."
+mix run examples/15_embed.exs
+echo ""
+
+echo "16. 推理内容提取..."
+mix run examples/16_reasoning.exs
+echo ""
+
+echo "17. UI 协议适配..."
+mix run examples/17_ui_protocols.exs
 echo ""
 
 echo "========================================"

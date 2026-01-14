@@ -37,10 +37,12 @@ defmodule NexAI.Middleware.SimulateStreaming do
   end
 
   defp extract_text_from_content(content) when is_list(content) do
-    Enum.filter_map(content, fn
-      %{type: "text", text: t} -> true
+    content
+    |> Enum.filter(fn
+      %{type: "text", text: _} -> true
       _ -> false
-    end, fn
+    end)
+    |> Enum.map(fn
       %{type: "text", text: t} -> t
     end)
     |> Enum.join("")

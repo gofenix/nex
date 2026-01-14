@@ -34,7 +34,7 @@ defmodule NexAI.Middleware.Retry do
                 {:halt, {attempt, nil}}
             end
           rescue
-            e ->
+            _e ->
               delay = calculate_delay(attempt, initial_delay, max_delay)
               Process.sleep(delay)
               {[], {attempt + 1, nil}}

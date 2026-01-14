@@ -1,64 +1,60 @@
-# 示例 3: 结构化输出 (generateObject)
-# 对应 vendor/ai/examples/ai-core/src/generate-object/openai.ts
+# 示例 3: 非流式结构化对象生成 (generate_object)
+# 运行方式: mix run examples/03_generate_object.exs
 
 require Dotenvy
 env = Dotenvy.source!([".env", System.get_env()])
 Enum.each(env, fn {k, v} -> System.put_env(k, v) end)
-
 if key = System.get_env("OPENAI_API_KEY"), do: Application.put_env(:nex_ai, :openai_api_key, key)
 
 alias NexAI.Message.User
 
-IO.puts "🚀 示例 3: 结构化输出 (generateObject)"
-IO.puts "----------------------------------------"
+IO.puts "\n#{String.duplicate("=", 60)}"
+IO.puts "示例 3: 非流式结构化对象生成 (generate_object)"
+IO.puts "#{String.duplicate("=", 60)}\n"
 
-schema = %{
-  type: "object",
-  properties: %{
-    recipe: %{
+IO.puts "使用 NexAI.generate_object/1 生成符合 JSON Schema 的结构化数据:\n"
+
+case NexAI.generate_object(
+  model: NexAI.openai("gpt-4o"),
+  messages: [%User{content: "从以下文本提取信息: 张明，25岁，软件工程师，邮箱 zhangming@email.com"}],
+  output: %{
+    mode: :object,
+    schema: %{
       type: "object",
       properties: %{
-        name: %{type: "string"},
-        ingredients: %{
-          type: "array",
-          items: %{
-            type: "object",
-            properties: %{
-              name: %{type: "string"},
-              amount: %{type: "string"}
-            },
-            required: ["name", "amount"]
-          }
-        },
-        steps: %{
-          type: "array",
-          items: %{type: "string"}
-        }
+        name: %{type: "string", description: "人名"},
+        age: %{type: "integer", description: "年龄"},
+        profession: %{type: "string", description: "职业"},
+        email: %{type: "string", description: "邮箱"}
       },
-      required: ["name", "ingredients", "steps"]
+      required: ["name", "age", "profession", "email"]
     }
   }
-}
-
-case NexAI.generate_text(
-  model: NexAI.openai("gpt-4o"),
-  messages: [%User{content: "Generate a lasagna recipe."}],
-  output: %{mode: :object, schema: schema}
 ) do
   {:ok, result} ->
-    # result.object is set by process_object_result
-    IO.puts "\n📝 Recipe object:"
-    if result.object do
-      IO.puts Jason.encode!(result.object, pretty: true)
-    else
-      IO.puts "No object found in response"
-      IO.puts "Raw text: #{String.slice(result.text || "", 0, 200)}..."
-    end
-    IO.puts "\n📊 Token usage:"
-    IO.inspect(result.usage)
-    IO.puts "\n🏁 Finish reason:"
-    IO.puts result.finishReason
-
+    IO.puts "提取结果:"
+    IO.puts "  #{Jason.encode!(result.object, pretty: true)}"
   {:error, reason} ->
-    IO.puts "❌ Error: #{inspect(reason)}"
+    IO.puts "错误: #{inspect(reason)}"
 end
+
+IO.puts "\n代码示例:"
+IO.puts """
+  {:ok, result} = NexAI.generate_object(
+    model: NexAI.openai("gpt-4o"),
+    messages: [%User{content: "提取用户信息"}],
+    output: %{
+      mode: :object,
+      schema: %{
+        type: "object",
+        properties: %{
+          name: %{type: "string"},
+          age: %{type: "integer"}
+        },
+        required: ["name", "age"]
+      }
+    }
+  )
+
+  IO.puts Jason.encode!(result.object, pretty: true)
+"""

@@ -4,8 +4,7 @@ defmodule NexAI.Provider.Mistral do
   Implements the LanguageModel protocol for Mistral's models.
   """
   alias NexAI.LanguageModel.Protocol, as: ModelProtocol
-  alias NexAI.Result.{Usage, ToolCall}
-  alias NexAI.LanguageModel.{GenerateResult, StreamResult, StreamPart, ResponseMetadata}
+  alias NexAI.LanguageModel.{GenerateResult, StreamPart, ResponseMetadata}
 
   defstruct [:api_key, :base_url, model: "mistral-small-latest", config: %{}]
 
@@ -21,7 +20,6 @@ defmodule NexAI.Provider.Mistral do
   end
 
   defimpl ModelProtocol do
-    alias NexAI.Provider.Mistral
     alias NexAI.Provider.OpenAI
 
     def provider(_model), do: "mistral"
@@ -44,7 +42,7 @@ defmodule NexAI.Provider.Mistral do
 
       finch_name = model.config[:finch] || NexAI.Finch
       case Req.post(url, json: body, auth: {:bearer, model.api_key}, finch: finch_name) do
-        {:ok, %{status: 200, body: body, headers: headers}} ->
+        {:ok, %{status: 200, body: body, headers: _headers}} ->
           message = get_in(body, ["choices", Access.at(0), "message"])
 
           {:ok, %GenerateResult{
@@ -55,7 +53,7 @@ defmodule NexAI.Provider.Mistral do
               id: body["id"],
               model_id: body["model"],
               timestamp: body["created"],
-              headers: Map.new(headers)
+              headers: %{}
             },
             raw_call: %{model_id: model.model, provider: "mistral", params: params},
             raw_response: body

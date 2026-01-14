@@ -15,12 +15,12 @@ defmodule NexAI.Middleware.SmoothStream do
     |> Stream.flat_map(fn event ->
       if event.type == :text_delta do
         # Split text into small chunks/tokens and add delay
-        # This is a simplified version of smoothing
         text = event.text || ""
         tokens = String.split(text, ~r/(?<=\s)|(?=\s)/, include_captures: true)
         Enum.map(tokens, fn token ->
           Process.sleep(delay)
-          %{event | text: token}
+          # Use struct/2 to preserve StreamPart type instead of creating plain map
+          struct(event, text: token)
         end)
       else
         [event]

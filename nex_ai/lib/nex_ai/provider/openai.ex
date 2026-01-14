@@ -3,7 +3,7 @@ defmodule NexAI.Provider.OpenAI do
   OpenAI Provider for NexAI.
   Implements the LanguageModel protocol (Vercel AI SDK v6).
   """
-  alias NexAI.Result.{Usage, ToolCall}
+  alias NexAI.Result.Usage
   alias NexAI.LanguageModel.Protocol, as: ModelProtocol
   alias NexAI.LanguageModel.{GenerateResult, StreamResult, StreamPart, ResponseMetadata}
 

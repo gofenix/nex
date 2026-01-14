@@ -3,7 +3,6 @@ defmodule NexAI.Core do
 
   alias NexAI.LanguageModel.Protocol, as: ModelProtocol
   alias NexAI.Result.{GenerateTextResult, Step, ToolCall, ToolResult}
-  alias NexAI.Message
 
   @common_schema [
     model: [type: :any, required: true],
@@ -191,11 +190,15 @@ defmodule NexAI.Core do
         # Start the first step's stream
         case ModelProtocol.do_stream(model, build_params(messages, opts)) do
           {:ok, %{stream: stream}} ->
-            case Enumerable.reduce(stream, {:cont, nil}, fn x, _ -> {:suspend, x} end) do
-              {:suspended, chunk, next} ->
+            # Use Enum.to_list to get all elements, then create a producer
+            # This is more reliable with middleware-transformed streams
+            elements = Enum.to_list(stream)
+
+            case elements do
+              [first | rest] ->
                 %{
-                  next: next,
-                  chunk: chunk,
+                  producer: {:list, rest},
+                  chunk: first,
                   tool_calls: %{},
                   full_text: "",
                   full_reasoning: "",
@@ -205,9 +208,9 @@ defmodule NexAI.Core do
                   finish_reason: nil
                 }
 
-              _ ->
+              [] ->
                 %{
-                  next: nil,
+                  producer: nil,
                   chunk: nil,
                   tool_calls: %{},
                   full_text: "",
@@ -222,7 +225,7 @@ defmodule NexAI.Core do
           {:error, err} ->
             # Error during stream initialization
             %{
-              next: nil,
+              producer: nil,
               chunk: %NexAI.LanguageModel.StreamPart{type: :error, error: err},
               step: :error,
               opts: opts
@@ -296,55 +299,50 @@ defmodule NexAI.Core do
                 {[], %{state | step: :done}}
             end
 
+          is_nil(state.producer) ->
+            # No more elements to process
+            {[state.chunk], %{state | chunk: nil}}
+
           true ->
-            # Process the current chunk (already a StreamPart from Provider)
+            # Process the current chunk
             {events, new_acc} = process_v1_chunk(state.chunk, state, output_config)
 
-            # Pull the next chunk from the current stream
-            new_state =
-              case state.next.({:cont, nil}) do
-                {:suspended, next_chunk, next_next} ->
-                  %{
-                    state
-                    | next: next_next,
-                      chunk: next_chunk,
-                      tool_calls: new_acc.tool_calls,
-                      full_text: new_acc.full_text,
-                      full_reasoning: new_acc.full_reasoning,
-                      finish_reason: new_acc.finish_reason
-                  }
+            # Get next element from producer
+            case state.producer do
+              {:list, [next_chunk | rest]} ->
+                {events,
+                 %{
+                   state
+                   | producer: {:list, rest},
+                     chunk: next_chunk,
+                     tool_calls: new_acc.tool_calls,
+                     full_text: new_acc.full_text,
+                     full_reasoning: new_acc.full_reasoning,
+                     finish_reason: new_acc.finish_reason
+                 }}
 
-                _ ->
-                  # Current stream is finished
-                  %{
-                    state
-                    | next: nil,
-                      chunk: nil,
-                      tool_calls: new_acc.tool_calls,
-                      full_text: new_acc.full_text,
-                      full_reasoning: new_acc.full_reasoning,
-                      finish_reason: new_acc.finish_reason
-                  }
-              end
+              {:list, []} ->
+                # List exhausted, process last chunk
+                {events ++ [state.chunk], %{state | producer: nil, chunk: nil}}
 
-            {events, new_state}
+              _ ->
+                {events, %{state | producer: nil, chunk: nil}}
+            end
         end
       end,
       fn
-        %{next: next, step: step} when is_function(next) ->
+        %{producer: {:list, _}, step: step} ->
           :telemetry.execute([:nex_ai, :stream, :stop], %{system_time: System.system_time()}, %{
             step: step,
             status: :halted
           })
-
-          next.({:halt, nil})
+          :ok
 
         %{step: step} ->
           :telemetry.execute([:nex_ai, :stream, :stop], %{system_time: System.system_time()}, %{
             step: step,
             status: :finished
           })
-
           :ok
       end
     )
@@ -352,14 +350,15 @@ defmodule NexAI.Core do
 
   defp start_next_step(model, new_messages, opts, state) do
     case ModelProtocol.do_stream(model, build_params(new_messages, opts)) do
-      {:ok, next_stream} ->
-        case Enumerable.reduce(next_stream, {:cont, nil}, fn x, _ -> {:suspend, x} end) do
-          {:suspended, first_chunk, next_next} ->
+      {:ok, %{stream: stream}} ->
+        elements = Enum.to_list(stream)
+        case elements do
+          [first | rest] ->
             {[],
              %{
                state
-               | next: next_next,
-                 chunk: first_chunk,
+               | producer: {:list, rest},
+                 chunk: first,
                  step: state.step + 1,
                  messages: new_messages,
                  tool_calls: %{},
@@ -368,7 +367,7 @@ defmodule NexAI.Core do
                  finish_reason: nil
              }}
 
-          _ ->
+          [] ->
             {[], %{state | step: :done}}
         end
 
@@ -469,10 +468,12 @@ defmodule NexAI.Core do
   end
 
   defp extract_text_from_content(content) when is_list(content) do
-    Enum.filter_map(content, fn
-      %{type: "text", text: t} -> true
+    content
+    |> Enum.filter(fn
+      %{type: "text", text: _} -> true
       _ -> false
-    end, fn
+    end)
+    |> Enum.map(fn
       %{type: "text", text: t} -> t
     end)
     |> Enum.join("")
@@ -488,10 +489,12 @@ defmodule NexAI.Core do
   defp extract_reasoning_from_content(_), do: ""
 
   defp extract_tool_calls_from_content(content) when is_list(content) do
-    Enum.filter_map(content, fn
+    content
+    |> Enum.filter(fn
       %{type: "tool-call"} -> true
       _ -> false
-    end, fn
+    end)
+    |> Enum.map(fn
       %{type: "tool-call", toolCallId: id, toolName: name, args: args} ->
         %ToolCall{toolCallId: id, toolName: name, args: args}
     end)

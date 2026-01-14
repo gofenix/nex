@@ -134,7 +134,7 @@ defmodule Mix.Tasks.Nex.New do
 
       defp deps do
         [
-          {:nex_core, "~> 0.3.2"}
+          {:nex_core, "~> 0.3.3"}
         ]
       end
     end
@@ -487,7 +487,7 @@ defmodule Mix.Tasks.Nex.New do
 
   defp agents_md(_a) do
     """
-    # Nex Framework: Architect's Manifesto (v0.3.2)
+    # Nex Framework: Architect's Manifesto (v0.3.3)
 
     You are a Master Nex Architect. Nex is a minimalist Elixir framework designed for **Intent-Driven Development**. Your mission: deliver code that is clean, performant, and "Nex-idiomatic".
 

@@ -3,16 +3,20 @@ defmodule NexAI.Embed do
   alias NexAI.Provider.OpenAI
 
   def embed(opts) do
-    model = opts[:model] || OpenAI
-    case model.embed_many([opts[:value]], opts) do
+    model = opts[:model] || OpenAI.chat("text-embedding-3-small")
+    # Get the provider module from the model
+    provider = get_provider_module(model)
+    case provider.embed_many([opts[:value]], opts) do
       {:ok, [embedding]} -> {:ok, %{embedding: embedding}}
       error -> error
     end
   end
 
   def embed_many(opts) do
-    model = opts[:model] || OpenAI
-    case model.embed_many(opts[:values], opts) do
+    model = opts[:model] || OpenAI.chat("text-embedding-3-small")
+    # Get the provider module from the model
+    provider = get_provider_module(model)
+    case provider.embed_many(opts[:values], opts) do
       {:ok, embeddings} -> {:ok, %{embeddings: embeddings}}
       error -> error
     end
@@ -25,4 +29,11 @@ defmodule NexAI.Embed do
     m2 = :math.sqrt(Enum.map(v2, &(&1 * &1)) |> Enum.sum())
     if m1 == 0 or m2 == 0, do: 0.0, else: dot / (m1 * m2)
   end
+
+  # If model is already a module, use it directly
+  defp get_provider_module(model) when is_atom(model), do: model
+  # If model is a struct, extract the provider module from struct name
+  defp get_provider_module(%{__struct__: struct}), do: struct
+  # If model is a map with provider info
+  defp get_provider_module(_), do: OpenAI
 end

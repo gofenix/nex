@@ -1,90 +1,87 @@
 # 示例 5: 工具调用 (Tool Calling)
-# 对应 vendor/ai/examples/ai-core/src/generate-text/openai-tool-call.ts
+# 运行方式: mix run examples/05_tool_calling.exs
 
 require Dotenvy
 env = Dotenvy.source!([".env", System.get_env()])
 Enum.each(env, fn {k, v} -> System.put_env(k, v) end)
-
 if key = System.get_env("OPENAI_API_KEY"), do: Application.put_env(:nex_ai, :openai_api_key, key)
 
 alias NexAI.Message.User
 
-IO.puts "🚀 示例 5: 工具调用 (Tool Calling)"
-IO.puts "----------------------------------------"
+IO.puts "\n#{String.duplicate("=", 60)}"
+IO.puts "示例 5: 工具调用 (Tool Calling)"
+IO.puts "#{String.duplicate("=", 60)}\n"
 
-# 定义天气工具
+# 定义天气查询工具
 weather_tool = NexAI.tool(%{
-  name: "weather",
-  description: "Get the weather in a location",
+  name: "get_current_weather",
+  description: "获取指定地点的天气",
   parameters: %{
     type: "object",
     properties: %{
-      location: %{
-        type: "string",
-        description: "The location to get the weather for"
-      }
+      location: %{type: "string", description: "城市名"}
     },
     required: ["location"]
   },
   execute: fn %{"location" => location} ->
-    conditions = [
-      %{name: "sunny", min_temp: -5, max_temp: 35},
-      %{name: "snowy", min_temp: -10, max_temp: 0},
-      %{name: "rainy", min_temp: 0, max_temp: 15},
-      %{name: "cloudy", min_temp: 5, max_temp: 25}
-    ]
-    condition = Enum.random(conditions)
-    temp = condition.min_temp + :rand.uniform(condition.max_temp - condition.min_temp + 1) - 1
-    %{
-      location: location,
-      condition: condition.name,
-      temperature: temp
-    }
+    "#{location}目前天气晴朗，气温 22°C，湿度 60%。"
   end
 })
 
-# 定义城市景点工具
-city_attractions_tool = NexAI.tool(%{
-  name: "cityAttractions",
-  description: "Get attractions in a city",
+# 定义计算器工具
+calculator_tool = NexAI.tool(%{
+  name: "calculate",
+  description: "执行数学计算",
   parameters: %{
     type: "object",
     properties: %{
-      city: %{type: "string"}
+      expression: %{type: "string", description: "数学表达式，如 2 + 3 * 4"}
     },
-    required: ["city"]
+    required: ["expression"]
   },
-  execute: fn %{"city" => city} ->
-    attractions = ["Museum", "Park", "Historic Center", "Shopping District"]
-    %{
-      city: city,
-      attractions: Enum.take_random(attractions, 3)
-    }
+  execute: fn %{"expression" => expr} ->
+    case Code.eval_string(expr) do
+      {result, _} -> "计算结果: #{result}"
+      _ -> "无法计算该表达式"
+    end
   end
 })
 
-case NexAI.generate_text(
-  model: NexAI.openai("gpt-3.5-turbo"),
-  max_tokens: 512,
-  tools: [weather_tool, city_attractions_tool],
-  messages: [%User{content: "What is the weather in San Francisco and what attractions should I visit?"}]
-) do
-  {:ok, result} ->
-    IO.puts "\n📝 Final response:"
-    IO.puts result.text
-    IO.puts "\n🔧 Tool calls:"
-    Enum.each(result.toolCalls, fn tc ->
-      IO.puts "  - #{tc.toolName}: #{inspect(tc.args)}"
-    end)
-    IO.puts "\n📊 Tool results:"
-    Enum.each(result.toolResults, fn tr ->
-      IO.puts "  - #{tr.toolName}: #{inspect(tr.result)}"
-    end)
-    IO.puts "\n📊 Usage:"
-    IO.inspect(result.usage)
-    IO.puts "\n🏁 Finish reason:"
-    IO.puts result.finishReason
+IO.puts "定义了两个工具: get_current_weather, calculate\n"
+IO.puts "执行中 (AI 会自动判断何时调用工具)...\n"
 
-  {:error, reason} ->
-    IO.puts "❌ Error: #{inspect(reason)}"
-end
+{:ok, res} = NexAI.generate_text(
+  model: NexAI.openai("gpt-4o"),
+  tools: [weather_tool, calculator_tool],
+  max_steps: 5,
+  messages: [%User{content: "深圳天气怎么样？另外帮我算一下 100 - 25 * 3 等于多少？"}]
+)
+
+IO.puts "\n最终回答: #{res.text}"
+IO.puts "工具调用步骤: #{length(res.steps)} 步"
+
+IO.puts "\n代码示例:"
+IO.puts ~S"""
+  weather_tool = NexAI.tool(%{
+    name: "get_current_weather",
+    description: "获取指定地点的天气",
+    parameters: %{
+      type: "object",
+      properties: %{
+        location: %{type: "string", description: "城市名"}
+      },
+      required: ["location"]
+    },
+    execute: fn %{"location" => location} ->
+      "#{location}天气晴朗，气温 22°C"
+    end
+  })
+
+  {:ok, result} = NexAI.generate_text(
+    model: NexAI.openai("gpt-4o"),
+    tools: [weather_tool],
+    messages: [%User{content: "北京的天气"}]
+  )
+
+  IO.puts result.text
+"""

@@ -1,124 +1,60 @@
-# NexAI 独立脚本演示
+# NexAI 完整功能演示脚本
 # 运行方式: mix run demo.exs
+#
+# 此文件包含所有示例的概览，运行单个示例使用:
+#   mix run examples/01_generate_text.exs
+#   bash run_all_examples.sh  # 运行所有示例
 
 # 1. 加载环境变量
 require Dotenvy
 env = Dotenvy.source!([".env", System.get_env()])
-# 显式同步到 System.put_env 确保当前进程可见
 Enum.each(env, fn {k, v} -> System.put_env(k, v) end)
 
 # 确保 nex_ai 能够读取到配置
 if key = System.get_env("OPENAI_API_KEY"), do: Application.put_env(:nex_ai, :openai_api_key, key)
 if url = System.get_env("OPENAI_BASE_URL"), do: Application.put_env(:nex_ai, :openai_base_url, url)
+if anthropic_key = System.get_env("ANTHROPIC_API_KEY"), do: Application.put_env(:nex_ai, :anthropic_api_key, anthropic_key)
 
 IO.puts "🔧 已加载配置:"
-IO.puts "   - OpenAI Base URL: #{System.get_env("OPENAI_BASE_URL") || "默认"}"
-IO.puts "   - Anthropic Base URL: #{System.get_env("ANTHROPIC_BASE_URL") || "默认"}"
+IO.puts "   - OpenAI: #{System.get_env("OPENAI_BASE_URL") || "默认 endpoint"}"
+IO.puts "   - Anthropic: #{System.get_env("ANTHROPIC_BASE_URL") || "默认 endpoint"}"
 
-alias NexAI.Message.User
+IO.puts "\n#{String.duplicate("=", 60)}"
+IO.puts "                    NexAI 完整功能演示"
+IO.puts "#{String.duplicate("=", 60)}\n"
 
-IO.puts "\n🚀 [示例 1] 基础生成 (generate_text) - 使用 OpenAI"
-IO.puts "---------------------------------------------------"
+IO.puts "📚 可用的独立示例 (examples/ 目录下):\n"
 
-case NexAI.generate_text(
-  model: NexAI.openai("gpt-4o"),
-  messages: [%User{content: "用一句话描述 Elixir 语言。"}]
-) do
-  {:ok, result} ->
-    IO.puts "AI 回答: #{result.text}"
-    IO.puts "Token 统计: #{inspect(result.usage)}"
-  {:error, reason} ->
-    IO.puts "错误: #{inspect(reason)}"
-end
+IO.puts "  核心功能:"
+IO.puts "    01_generate_text.exs   - 基础文本生成"
+IO.puts "    02_stream_text.exs     - 流式文本生成"
+IO.puts "    03_generate_object.exs - 非流式结构化输出"
+IO.puts "    04_stream_object.exs   - 流式结构化输出"
+IO.puts ""
+IO.puts "  工具调用:"
+IO.puts "    05_tool_calling.exs    - 自动工具调用"
+IO.puts "    06_multi_step.exs      - 多步生成（工具链）"
+IO.puts ""
+IO.puts "  中间件:"
+IO.puts "    07_smoothing.exs       - 平滑流中间件"
+IO.puts "    08_logging.exs         - 日志中间件"
+IO.puts "    09_rate_limit.exs      - 速率限制中间件"
+IO.puts "    18_retry.exs           - 重试中间件"
+IO.puts ""
+IO.puts "  高级功能:"
+IO.puts "    10_provider.exs        - 多 Provider 对比"
+IO.puts "    11_advanced_params.exs - 高级参数"
+IO.puts "    12_lifecycle.exs       - 生命周期钩子"
+IO.puts "    13_system_prompt.exs   - 系统提示词"
+IO.puts "    14_images.exs          - 图像生成"
+IO.puts "    15_embed.exs           - 文本嵌入"
+IO.puts "    16_reasoning.exs       - 推理内容提取"
+IO.puts "    17_ui_protocols.exs    - UI 协议适配"
 
-IO.puts "\n🚀 [示例 2] 流式生成 (stream_text) - 实时打印 Token"
-IO.puts "---------------------------------------------------"
-
-case NexAI.stream_text(
-  model: NexAI.openai("gpt-4o"),
-  messages: [%User{content: "请写一段 50 字左右的诗。"}]
-) do
-  {:error, err} ->
-    IO.puts "❌ [流验证失败] #{inspect(err)}"
-  result ->
-    IO.write "AI 正在创作: "
-    Enum.each(result.full_stream, fn event ->
-      case event.type do
-        :text ->
-          IO.write(event.payload)
-        :error -> IO.puts "\n[流错误] #{inspect(event.payload)}"
-        :stream_finish -> IO.puts "\n[流结束] 原因: #{event.payload.finishReason}"
-        _ -> :ok
-      end
-    end)
-end
-
-IO.puts "\n🚀 [示例 3] 自动工具调用 (Multi-step Tool Use)"
-IO.puts "---------------------------------------------------"
-
-weather_tool = NexAI.tool(%{
-  name: "get_current_weather",
-  description: "获取指定地点的天气",
-  parameters: %{
-    type: "object",
-    properties: %{
-      location: %{type: "string", description: "城市名，如北京"}
-    },
-    required: ["location"]
-  },
-  execute: fn %{"location" => loc} ->
-    "#{loc}目前天气晴朗，气温 22°C。"
-  end
-})
-
-IO.puts "执行中 (允许 AI 自动调用工具并获取结果)..."
-{:ok, res} = NexAI.generate_text(
-  model: NexAI.openai("gpt-4o"),
-  tools: [weather_tool],
-  max_steps: 5,
-  messages: [%User{content: "深圳的天气怎么样？适合穿什么？"}]
-)
-
-IO.puts "最终回答: #{res.text}"
-IO.puts "中间步骤: #{length(res.steps)} 步"
-
-IO.puts "\n🚀 [示例 4] 平滑流 (SmoothStream Middleware)"
-IO.puts "---------------------------------------------------"
-
-smooth_model = NexAI.wrap_model(
-  NexAI.openai("gpt-4o"),
-  [{NexAI.Middleware.SmoothStream, delay: 50}]
-)
-
-case NexAI.stream_text(
-  model: smooth_model,
-  messages: [%User{content: "用 20 字描述什么是平滑流。"}]
-) do
-  %{full_stream: stream} ->
-    IO.write "平滑输出中: "
-    Enum.each(stream, fn event ->
-      if event.type == :text, do: IO.write(event.payload)
-    end)
-    IO.puts ""
-  error -> IO.puts "错误: #{inspect(error)}"
-end
-
-IO.puts "\n🚀 [示例 5] 结构化输出 (stream_object) + 生命周期钩子"
-IO.puts "---------------------------------------------------"
-
-case NexAI.stream_text(
-  model: NexAI.openai("gpt-4o"),
-  messages: [%User{content: "生成一个只有 name 和 age 的 JSON 对象，name 是张三，age 是 20。"}],
-  output: %{mode: :object, schema: %{type: "object", properties: %{name: %{type: "string"}, age: %{type: "integer"}}}},
-  on_token: fn obj -> IO.puts("\n[钩子] 收到增量对象: #{inspect(obj)}") end
-) do
-  %{full_stream: stream} ->
-    IO.write "最终解析中... "
-    Enum.each(stream, fn event ->
-      if event.type == :object_delta, do: IO.write(".")
-    end)
-    IO.puts "\n完成。"
-  error -> IO.puts "错误: #{inspect(error)}"
-end
-
-IO.puts "\n\n✅ 所有演示执行完毕。"
+IO.puts "\n#{String.duplicate("=", 60)}"
+IO.puts "要运行特定示例，请执行:"
+IO.puts "  mix run examples/01_generate_text.exs"
+IO.puts ""
+IO.puts "要运行所有示例，请执行:"
+IO.puts "  bash run_all_examples.sh"
+IO.puts "#{String.duplicate("=", 60)}\n"
