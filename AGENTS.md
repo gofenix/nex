@@ -34,3 +34,13 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/):
 ### Developer Experience (DX)
 - **Zero Boilerplate**: Nex handles CSRF automatically. Do NOT manually add CSRF input tags or headers unless specifically requested.
 - **Convention over Configuration**: File paths are routes. Modules use a unified `use Nex` interface.
+
+## 3. Browser Automation
+
+Use `agent-browser` for web automation. Run `agent-browser --help` for all commands.
+
+Core workflow:
+1. `agent-browser open <url>` - Navigate to page
+2. `agent-browser snapshot -i` - Get interactive elements with refs (@e1, @e2)
+3. `agent-browser click @e1` / `fill @e2 "text"` - Interact using refs
+4. Re-snapshot after page changes
