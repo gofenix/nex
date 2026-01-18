@@ -37,38 +37,46 @@ defmodule MyApp.Repo do
 end
 ```
 
-Then use NexBase to build queries:
+Then initialize a client and use NexBase to build queries:
 
 ```elixir
+# Initialize client (similar to Supabase)
+client = NexBase.client(repo: MyApp.Repo)
+
 # Simple select
-{:ok, users} = NexBase.from("users")
+{:ok, users} = client
+|> NexBase.from("users")
 |> NexBase.select(["id", "name", "email"])
 |> NexBase.eq("active", true)
-|> NexBase.run(repo: MyApp.Repo)
+|> NexBase.run()
 
 # With filters and ordering
-{:ok, posts} = NexBase.from("posts")
+{:ok, posts} = client
+|> NexBase.from("posts")
 |> NexBase.gt("published_at", DateTime.utc_now())
 |> NexBase.order(:published_at, :desc)
 |> NexBase.limit(10)
-|> NexBase.run(repo: MyApp.Repo)
+|> NexBase.run()
 
 # Insert data
-{:ok, result} = NexBase.from("users")
+{:ok, result} = client
+|> NexBase.from("users")
 |> NexBase.insert(%{name: "John", email: "john@example.com"})
-|> NexBase.run(repo: MyApp.Repo)
+|> NexBase.run()
 
 # Update with conditions
-{:ok, result} = NexBase.from("posts")
+{:ok, result} = client
+|> NexBase.from("posts")
 |> NexBase.eq("id", 123)
 |> NexBase.update(%{title: "Updated Title", updated_at: DateTime.utc_now()})
-|> NexBase.run(repo: MyApp.Repo)
+|> NexBase.run()
 
 # Delete with conditions
-{:ok, result} = NexBase.from("posts")
+{:ok, result} = client
+|> NexBase.from("posts")
 |> NexBase.eq("id", 123)
 |> NexBase.delete()
-|> NexBase.run(repo: MyApp.Repo)
+|> NexBase.run()
 ```
 
 ## Supported Filters

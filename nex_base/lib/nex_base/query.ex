@@ -4,12 +4,13 @@ defmodule NexBase.Query do
   """
   defstruct [
     :table,
+    :repo,
     select: [],
     filters: [],
     order_by: [],
     limit: nil,
     offset: nil,
-    data: nil, # For insert/update
-    type: :select # :select, :insert, :update, :delete
+    data: nil,
+    type: :select
   ]
 end

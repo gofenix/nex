@@ -2,17 +2,43 @@ defmodule NexBase do
   @moduledoc """
   The main entry point for NexBase.
   Provides a fluent API for building and executing PostgreSQL queries.
+
+  Usage:
+    client = NexBase.client(repo: MyApp.Repo)
+
+    {:ok, users} = client
+    |> NexBase.from("users")
+    |> NexBase.select(["id", "name"])
+    |> NexBase.eq("active", true)
+    |> NexBase.run()
   """
 
   alias NexBase.Query
   require Ecto.Query
+
+  # -- Client Initialization --
+
+  @doc """
+  Initialize a NexBase client with a repository.
+  Similar to Supabase client initialization.
+  """
+  def client(opts) do
+    repo = Keyword.fetch!(opts, :repo)
+    %{repo: repo}
+  end
 
   # -- Query Building --
 
   @doc """
   Starts a query builder for the given table.
   """
-  def from(table_name) when is_binary(table_name) do
+  def from(client_or_table, table_name \\ nil)
+
+  def from(%{repo: repo}, table_name) when is_binary(table_name) do
+    %Query{table: table_name, repo: repo}
+  end
+
+  def from(table_name, nil) when is_binary(table_name) do
     %Query{table: table_name}
   end
 
@@ -129,22 +155,30 @@ defmodule NexBase do
 
   @doc """
   Executes a raw SQL query.
-
-  Options:
-    - `:repo` - The Ecto repository to use (required)
+  Can be called with client or with repo option.
   """
-  def query(sql, params \\ [], opts \\ []) do
+  def query(client_or_sql, sql_or_params \\ [], params_or_opts \\ [])
+
+  def query(%{repo: repo}, sql, params) when is_binary(sql) do
+    Ecto.Adapters.SQL.query(repo, sql, params)
+  end
+
+  def query(sql, params, opts) when is_binary(sql) do
     repo = Keyword.fetch!(opts, :repo)
     Ecto.Adapters.SQL.query(repo, sql, params)
   end
 
   @doc """
   Executes a raw SQL query, raising on error.
-
-  Options:
-    - `:repo` - The Ecto repository to use (required)
+  Can be called with client or with repo option.
   """
-  def query!(sql, params \\ [], opts \\ []) do
+  def query!(client_or_sql, sql_or_params \\ [], params_or_opts \\ [])
+
+  def query!(%{repo: repo}, sql, params) when is_binary(sql) do
+    Ecto.Adapters.SQL.query!(repo, sql, params)
+  end
+
+  def query!(sql, params, opts) when is_binary(sql) do
     repo = Keyword.fetch!(opts, :repo)
     Ecto.Adapters.SQL.query!(repo, sql, params)
   end
@@ -234,87 +268,59 @@ defmodule NexBase do
 
   @doc """
   Executes the built query.
-
-  Options:
-    - `:repo` - The Ecto repository to use (required)
+  Repo can be passed via Query struct (from client) or via options.
   """
   def run(query, opts \\ [])
 
   def run(%Query{type: :select} = query, opts) do
-    repo = Keyword.fetch!(opts, :repo)
+    repo = query.repo || Keyword.fetch!(opts, :repo)
     ecto_query = build_ecto_query(query)
     {:ok, repo.all(ecto_query)}
   rescue
     e -> {:error, e}
   end
 
-  def run(%Query{type: :insert, table: table, data: data} = _query, opts) do
-    repo = Keyword.fetch!(opts, :repo)
-    # insert_all supports both a list of maps or a single map (if wrapped)
+  def run(%Query{type: :insert, table: table, data: data} = query, opts) do
+    repo = query.repo || Keyword.fetch!(opts, :repo)
     data_list = if is_list(data), do: data, else: [data]
-
-    # insert_all returns {count, nil} unless returning is specified.
     {count, _} = repo.insert_all(table, data_list)
     {:ok, %{count: count}}
   rescue
     e -> {:error, e}
   end
 
-  def run(%Query{type: :update, table: table, data: data, filters: filters} = _query, opts) do
-    repo = Keyword.fetch!(opts, :repo)
-    # For Schema-less update, we use Repo.update_all.
-    # We must build a query to filter which rows to update.
-    # `from(t in table) |> where(...)`
-
-    # Re-use builder logic partially or manually construct:
+  def run(%Query{type: :update, table: table, data: data, filters: filters} = query, opts) do
+    repo = query.repo || Keyword.fetch!(opts, :repo)
     base_query = Ecto.Query.from(t in table)
     query_with_filters = Enum.reduce(filters, base_query, fn filter, acc ->
       apply_filter(acc, filter)
     end)
-
-    # update_all expects [set: [col: val]]
     updates = [set: Enum.to_list(data)]
-
     {count, _} = repo.update_all(query_with_filters, updates)
     {:ok, %{count: count}}
   rescue
     e -> {:error, e}
   end
 
-  def run(%Query{type: :delete, table: table, filters: filters} = _query, opts) do
-    repo = Keyword.fetch!(opts, :repo)
+  def run(%Query{type: :delete, table: table, filters: filters} = query, opts) do
+    repo = query.repo || Keyword.fetch!(opts, :repo)
     base_query = Ecto.Query.from(t in table)
     query_with_filters = Enum.reduce(filters, base_query, fn filter, acc ->
       apply_filter(acc, filter)
     end)
-
     {count, _} = repo.delete_all(query_with_filters)
     {:ok, %{count: count}}
   rescue
     e -> {:error, e}
   end
 
-  def run(%Query{type: :upsert, table: table, data: data} = _query, opts) do
-    repo = Keyword.fetch!(opts, :repo)
-    # Schema-less upsert via insert_all(..., on_conflict: :replace_all, conflict_target: :id)
-    # Ideally conflict_target should be customizable via .on_conflict() modifier (TODO).
-    # For now, default to :id or assume simple upsert.
-    # Supabase JS upsert usually replaces all.
-
+  def run(%Query{type: :upsert, table: table, data: data} = query, opts) do
+    repo = query.repo || Keyword.fetch!(opts, :repo)
     data_list = if is_list(data), do: data, else: [data]
-
-    # WARNING: conflict_target is required for upsert in PG.
-    # Without schema, we might need user to specify it?
-    # Or we default to :id if it exists?
-    # Let's assume user provides it via options or we default to [:id].
-    # But Ecto schema-less might need explicit columns.
-
-    # For MVP, let's try strict replacement on :id
     upsert_opts = [
       on_conflict: :replace_all,
-      conflict_target: :id # This is an assumption!
+      conflict_target: :id
     ]
-
     {count, _} = repo.insert_all(table, data_list, upsert_opts)
     {:ok, %{count: count}}
   rescue
@@ -329,7 +335,8 @@ defmodule NexBase do
 
     # 1. Apply Selects
     q = if select_fields == [] or select_fields == ["*"] do
-      Ecto.Query.select(q, [t], t)
+      # Use fragment to select all fields without schema
+      Ecto.Query.select(q, [t], fragment("row_to_json(?)", t))
     else
       # map(t, ^fields)
       Ecto.Query.select(q, [t], map(t, ^select_fields))
