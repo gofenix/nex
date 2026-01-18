@@ -55,7 +55,7 @@ defmodule NexBase do
     filter = {:lt, column, value}
     %{query | filters: query.filters ++ [filter]}
   end
-  
+
   @doc """
   Adds a greater-than-or-equal filter.
   """
@@ -96,7 +96,7 @@ defmodule NexBase do
     filter = {:like, column, pattern}
     %{query | filters: query.filters ++ [filter]}
   end
-  
+
   @doc """
   Adds an ilike filter.
   """
@@ -118,7 +118,7 @@ defmodule NexBase do
   def offset(%Query{} = query, offset) do
     %{query | offset: offset}
   end
-  
+
   @doc """
   Sets order by.
   """
@@ -129,16 +129,24 @@ defmodule NexBase do
 
   @doc """
   Executes a raw SQL query.
+
+  Options:
+    - `:repo` - The Ecto repository to use (required)
   """
-  def query(sql, params \\ []) do
-    Ecto.Adapters.SQL.query(NexBase.Repo, sql, params)
+  def query(sql, params \\ [], opts \\ []) do
+    repo = Keyword.fetch!(opts, :repo)
+    Ecto.Adapters.SQL.query(repo, sql, params)
   end
 
   @doc """
   Executes a raw SQL query, raising on error.
+
+  Options:
+    - `:repo` - The Ecto repository to use (required)
   """
-  def query!(sql, params \\ []) do
-    Ecto.Adapters.SQL.query!(NexBase.Repo, sql, params)
+  def query!(sql, params \\ [], opts \\ []) do
+    repo = Keyword.fetch!(opts, :repo)
+    Ecto.Adapters.SQL.query!(repo, sql, params)
   end
 
   @doc """
@@ -196,104 +204,118 @@ defmodule NexBase do
 
   @doc """
   Executes a stored procedure (RPC).
+
+  Options:
+    - `:repo` - The Ecto repository to use (required)
   """
-  def rpc(function_name, params \\ %{}) do
+  def rpc(function_name, params \\ %{}, opts \\ []) do
+    repo = Keyword.fetch!(opts, :repo)
     # Build raw SQL: SELECT * FROM func($1, $2)
     # This is complex because params can be positional or named.
     # Postgres functions support named params via `func(param := $1)`.
-    
+
     # For simplicity MVP, assuming params is a map, we construct `func(key := $val)`
-    
+
     placeholders = Enum.map(1..map_size(params), fn i -> "$#{i}" end)
     keys = Map.keys(params)
     values = Map.values(params)
-    
+
     # args_str = "p1 := $1, p2 := $2"
     args_str = Enum.zip(keys, placeholders)
                |> Enum.map(fn {k, p} -> "#{k} := #{p}" end)
                |> Enum.join(", ")
-               
+
     sql = "SELECT * FROM #{function_name}(#{args_str})"
-    
-    Ecto.Adapters.SQL.query(NexBase.Repo, sql, values)
+
+    Ecto.Adapters.SQL.query(repo, sql, values)
   end
 
   # -- Execution --
 
   @doc """
   Executes the built query.
+
+  Options:
+    - `:repo` - The Ecto repository to use (required)
   """
-  def run(%Query{type: :select} = query) do
+  def run(query, opts \\ [])
+
+  def run(%Query{type: :select} = query, opts) do
+    repo = Keyword.fetch!(opts, :repo)
     ecto_query = build_ecto_query(query)
-    {:ok, NexBase.Repo.all(ecto_query)}
+    {:ok, repo.all(ecto_query)}
   rescue
     e -> {:error, e}
   end
 
-  def run(%Query{type: :insert, table: table, data: data} = _query) do
+  def run(%Query{type: :insert, table: table, data: data} = _query, opts) do
+    repo = Keyword.fetch!(opts, :repo)
     # insert_all supports both a list of maps or a single map (if wrapped)
     data_list = if is_list(data), do: data, else: [data]
-    
+
     # insert_all returns {count, nil} unless returning is specified.
-    {count, _} = NexBase.Repo.insert_all(table, data_list)
+    {count, _} = repo.insert_all(table, data_list)
     {:ok, %{count: count}}
   rescue
     e -> {:error, e}
   end
 
-  def run(%Query{type: :update, table: table, data: data, filters: filters} = _query) do
+  def run(%Query{type: :update, table: table, data: data, filters: filters} = _query, opts) do
+    repo = Keyword.fetch!(opts, :repo)
     # For Schema-less update, we use Repo.update_all.
     # We must build a query to filter which rows to update.
     # `from(t in table) |> where(...)`
-    
+
     # Re-use builder logic partially or manually construct:
     base_query = Ecto.Query.from(t in table)
     query_with_filters = Enum.reduce(filters, base_query, fn filter, acc ->
       apply_filter(acc, filter)
     end)
-    
+
     # update_all expects [set: [col: val]]
     updates = [set: Enum.to_list(data)]
-    
-    {count, _} = NexBase.Repo.update_all(query_with_filters, updates)
+
+    {count, _} = repo.update_all(query_with_filters, updates)
     {:ok, %{count: count}}
   rescue
     e -> {:error, e}
   end
 
-  def run(%Query{type: :delete, table: table, filters: filters} = _query) do
+  def run(%Query{type: :delete, table: table, filters: filters} = _query, opts) do
+    repo = Keyword.fetch!(opts, :repo)
     base_query = Ecto.Query.from(t in table)
     query_with_filters = Enum.reduce(filters, base_query, fn filter, acc ->
       apply_filter(acc, filter)
     end)
-    
-    {count, _} = NexBase.Repo.delete_all(query_with_filters)
+
+    {count, _} = repo.delete_all(query_with_filters)
     {:ok, %{count: count}}
   rescue
     e -> {:error, e}
   end
 
-  def run(%Query{type: :upsert, table: table, data: data} = _query) do
+  def run(%Query{type: :upsert, table: table, data: data} = _query, opts) do
+    repo = Keyword.fetch!(opts, :repo)
     # Schema-less upsert via insert_all(..., on_conflict: :replace_all, conflict_target: :id)
     # Ideally conflict_target should be customizable via .on_conflict() modifier (TODO).
     # For now, default to :id or assume simple upsert.
     # Supabase JS upsert usually replaces all.
-    
+
     data_list = if is_list(data), do: data, else: [data]
-    
+
     # WARNING: conflict_target is required for upsert in PG.
     # Without schema, we might need user to specify it?
     # Or we default to :id if it exists?
     # Let's assume user provides it via options or we default to [:id].
     # But Ecto schema-less might need explicit columns.
-    
+
     # For MVP, let's try strict replacement on :id
-    opts = [
+    upsert_opts = [
       on_conflict: :replace_all,
       conflict_target: :id # This is an assumption!
     ]
-    
-    {count, _} = NexBase.Repo.insert_all(table, data_list, opts)
+
+    {count, _} = repo.insert_all(table, data_list, upsert_opts)
     {:ok, %{count: count}}
   rescue
     e -> {:error, e}
@@ -317,7 +339,7 @@ defmodule NexBase do
     q = Enum.reduce(filters, q, fn filter, acc ->
       apply_filter(acc, filter)
     end)
-    
+
     # 3. Apply Order
     q = Enum.reduce(order_by, q, fn {dir, col}, acc ->
         # dir must be :asc or :desc
