@@ -20,22 +20,31 @@ cp .env.example .env
 # 示例: postgresql://postgres:password@localhost:5432/nex_base_demo
 ```
 
-### 2. 安装依赖并编译
+### 2. 创建数据库表
+
+使用提供的 SQL 脚本创建表：
+
+```bash
+# 方式 1: 使用 psql
+psql $DATABASE_URL -f schema.sql
+
+# 方式 2: 或者手动执行 schema.sql 中的 SQL
+```
+
+### 3. 安装依赖并编译
 
 ```bash
 mix deps.get
 mix compile
 ```
 
-### 3. 启动服务器
+### 4. 启动服务器
 
 ```bash
 mix nex.dev
 ```
 
 访问 http://localhost:4000
-
-> **注意**: 应用启动时会自动创建 `tasks` 表（如果不存在）。
 
 ## NexBase API 使用示例
 
