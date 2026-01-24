@@ -1,12 +1,12 @@
-defmodule Bestofex.Application do
+defmodule BestofEx.Application do
   @moduledoc """
-  The Bestofex application.
+  The BestofEx application.
 
   ## What Nex Framework Already Does
 
   When you run `mix nex.dev` or `mix nex.start`, the framework automatically:
 
-  1. **Starts your application** - `Application.ensure_all_started(:bestofex)`
+  1. **Starts your application** - `Application.ensure_all_started(:bestof_ex)`
   2. **Starts framework dependencies**:
      - :bandit (HTTP server)
      - :phoenix_html (HEEx templates)
@@ -26,15 +26,15 @@ defmodule Bestofex.Application do
   ## When to Add Children
 
   Add supervised processes only when you need:
-  - **Database connections** - `{Bestofex.Repo, []}`
-  - **HTTP clients** - `{Finch, name: Bestofex.Finch}` (for calling external APIs)
-  - **Background workers** - `{Bestofex.Worker, arg}`
+  - **Database connections** - `{BestofEx.Repo, []}`
+  - **HTTP clients** - `{Finch, name: BestofEx.Finch}` (for calling external APIs)
+  - **Background workers** - `{BestofEx.Worker, arg}`
   - **Custom GenServers/Agents** - Your own stateful processes
 
   ## Example: Adding an HTTP Client
 
       children = [
-        {Finch, name: Bestofex.Finch}
+        {Finch, name: BestofEx.Finch}
       ]
 
   Then add to mix.exs:
@@ -49,12 +49,12 @@ defmodule Bestofex.Application do
     children = [
       # Add your supervised processes here
       # Examples:
-      # {Finch, name: Bestofex.Finch},
-      # {Bestofex.Repo, []},
-      # {Bestofex.Worker, arg}
+      # {Finch, name: BestofEx.Finch},
+      # {BestofEx.Repo, []},
+      # {BestofEx.Worker, arg}
     ]
 
-    opts = [strategy: :one_for_one, name: Bestofex.Supervisor]
+    opts = [strategy: :one_for_one, name: BestofEx.Supervisor]
     Supervisor.start_link(children, opts)
   end
 end

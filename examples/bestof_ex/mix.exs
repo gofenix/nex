@@ -1,9 +1,9 @@
-defmodule Bestofex.MixProject do
+defmodule BestofEx.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :bestofex,
+      app: :bestof_ex,
       version: "0.1.0",
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
@@ -15,13 +15,14 @@ defmodule Bestofex.MixProject do
   def application do
     [
       extra_applications: [:logger],
-      mod: {Bestofex.Application, []}
+      mod: {BestofEx.Application, []}
     ]
   end
 
   defp deps do
     [
-      {:nex_core, path: "../../framework"}
+      {:nex_core, path: "../../framework"},
+      {:nex_base, path: "../../nex_base"}
     ]
   end
 end

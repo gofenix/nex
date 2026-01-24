@@ -1,4 +1,4 @@
-# Bestofex
+# BestofEx
 
 A web application built with [Nex](https://github.com/gofenix/nex).
 
@@ -14,7 +14,7 @@ Open http://localhost:4000
 ## Project Structure
 
 ```
-bestofex/
+bestof_ex/
 ├── src/
 │   ├── application.ex      # Application supervision tree
 │   ├── layouts.ex          # HTML layout template
@@ -32,7 +32,7 @@ bestofex/
 
 ```elixir
 # src/pages/about.ex -> /about
-defmodule Bestofex.Pages.About do
+defmodule BestofEx.Pages.About do
   use Nex
 
   def render(assigns) do
@@ -47,7 +47,7 @@ end
 
 ```elixir
 # src/api/users.ex -> /api/users
-defmodule Bestofex.Api.Users do
+defmodule BestofEx.Api.Users do
   use Nex
 
   def get(req) do
@@ -68,7 +68,7 @@ end
 
 ```elixir
 # src/components/button.ex
-defmodule Bestofex.Components.Button do
+defmodule BestofEx.Components.Button do
   use Nex
 
   def button(assigns) do
@@ -83,7 +83,7 @@ Use in pages:
 
 ```elixir
 ~H"""
-<Bestofex.Components.Button.button text="Click me" />
+<BestofEx.Components.Button.button text="Click me" />
 """
 ```
 
@@ -91,8 +91,8 @@ Use in pages:
 
 ```bash
 # Docker
-docker build -t bestofex .
-docker run -p 4000:4000 bestofex
+docker build -t bestof_ex .
+docker run -p 4000:4000 bestof_ex
 
 # Production
 MIX_ENV=prod mix nex.start
