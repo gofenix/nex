@@ -47,11 +47,7 @@ defmodule BestofEx.Application do
   @impl true
   def start(_type, _args) do
     children = [
-      # Add your supervised processes here
-      # Examples:
-      # {Finch, name: BestofEx.Finch},
-      # {BestofEx.Repo, []},
-      # {BestofEx.Worker, arg}
+      {BestofEx.Repo, []}
     ]
 
     opts = [strategy: :one_for_one, name: BestofEx.Supervisor]

@@ -17,7 +17,11 @@ defmodule BestofEx.Pages.Tags.Index do
     <div>
       <h1 class="text-3xl font-bold mb-6">All Tags</h1>
       <div class="flex flex-wrap gap-4">
-        <.BestofEx.Components.TagChip.tag_chip :for={tag <- @tags} tag={tag} />
+        <a :for={tag <- @tags}
+           href={"/tags/#{tag["slug"]}"}
+           class="badge badge-outline hover:badge-primary transition-colors">
+          {tag["name"]}
+        </a>
       </div>
       <div :if={Enum.empty?(@tags)} class="text-center py-8 text-base-content/50">
         <p>No tags yet. Run <code>mix run seeds/import.exs</code> to seed data.</p>

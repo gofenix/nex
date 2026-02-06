@@ -39,12 +39,32 @@ defmodule BestofEx.Pages.Projects.Index do
             <option value="newest" selected={@params["sort"] == "newest"}>Newest</option>
           </select>
 
-          <.BestofEx.Components.TagChip.tag_chip :for={tag <- @tags} tag={tag} />
+          <a :for={tag <- @tags}
+             href={"/tags/#{tag["slug"]}"}
+             class="badge badge-outline hover:badge-primary transition-colors">
+            {tag["name"]}
+          </a>
         </form>
       </div>
 
       <div id="projects-list" class="space-y-4">
-        <.BestofEx.Components.ProjectRow.project_row :for={{project, idx} <- Enum.with_index(@projects)} project={project} rank={idx + 1 + (@page - 1) * @per_page} />
+        <div :for={{project, idx} <- Enum.with_index(@projects)} class="card bg-base-100 shadow-sm">
+          <div class="card-body flex-row items-center gap-4">
+            <div class="text-2xl font-bold text-base-content/30 w-8">
+              {idx + 1 + (@page - 1) * @per_page}
+            </div>
+            <div class="flex-1">
+              <h3 class="font-semibold text-lg">
+                <a href={"/projects/#{project["id"]}"} class="hover:text-primary">{project["name"]}</a>
+              </h3>
+              <p class="text-base-content/60 text-sm">{project["description"]}</p>
+            </div>
+            <div class="text-center">
+              <div class="text-xl font-bold">{project["stars"] || 0}</div>
+              <div class="text-xs text-base-content/50">stars</div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="mt-8 flex justify-center gap-2">
