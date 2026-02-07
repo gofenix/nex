@@ -5,6 +5,13 @@ All notable changes to the Nex framework will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.3] - 2026-02-07
+
+### Changed
+- **Automated CSRF Protection**: Generated projects no longer need manual CSRF tags — framework handles it automatically.
+- **Refined Installer**: Added reserved name validation, automatic git initialization, and `.formatter.exs` generation.
+- **Updated dependency**: `nex_core ~> 0.3.3`
+
 ## [0.3.1] - 2026-01-02
 
 ### Changed
