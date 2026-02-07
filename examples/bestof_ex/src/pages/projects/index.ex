@@ -1,98 +1,131 @@
 defmodule BestofEx.Pages.Projects.Index do
+  @moduledoc """
+  All projects page with search, tag filters, and ranked list.
+  """
   use Nex
+  alias BestofEx.Components.ProjectRow
 
   def mount(params) do
     sort = params["sort"] || "stars"
-    projects = list_projects(sort)
-    tags = list_all_tags()
+    tag = params["tag"]
+    q = params["q"]
 
     %{
       title: "All Projects - Best of Elixir",
-      projects: projects,
-      tags: tags,
-      sort: sort
+      projects: list_projects(sort: sort, tag: tag, q: q),
+      tags: list_all_tags(),
+      sort: sort,
+      current_tag: tag,
+      query: q
     }
   end
 
   def render(assigns) do
     ~H"""
-    <div>
-      <div class="flex items-center justify-between mb-6">
-        <h1 class="text-2xl font-bold">{length(@projects)} Projects</h1>
-        <div class="flex gap-2">
-          <a href="/projects?sort=stars" class={"btn btn-sm #{if @sort == "stars", do: "btn-primary", else: "btn-ghost"}"}>
-            By Stars
+    <div class="py-8">
+      <div class="container mx-auto max-w-6xl px-4">
+        <!-- Header with Search -->
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+          <h1 class="text-2xl font-bold">All Projects</h1>
+
+          <form class="relative w-full sm:w-auto" hx-get="/projects" hx-target="#project-list">
+            <input type="search" name="q" value={@query} placeholder="Search projects..."
+                   class="input input-bordered input-sm w-full sm:w-64 pl-3 pr-8"
+                   hx-get="/projects"
+                   hx-target="#project-list"
+                   hx-trigger="keyup changed delay:300ms"
+                   hx-include="[name='sort'],[name='tag']" />
+            <kbd class="kbd kbd-sm absolute right-2 top-1.5 text-xs opacity-50 hidden sm:inline">⌘K</kbd>
+          </form>
+        </div>
+
+        <!-- Tag Filter Bar -->
+        <div class="flex flex-wrap gap-2 mb-6">
+          <a href="/projects" class={"badge #{if is_nil(@current_tag), do: "badge-primary", else: "badge-outline"}"}>All</a>
+          <%= for tag <- @tags do %>
+            <a href={"/projects?tag=#{tag["slug"]}"}
+               class={"badge #{if @current_tag == tag["slug"], do: "badge-primary", else: "badge-outline"}"}>
+              {tag["name"]}
+            </a>
+          <% end %>
+        </div>
+
+        <!-- Sort Headers -->
+        <div class="flex gap-2 mb-4 text-sm">
+          <span class="text-base-content/50">Sort by:</span>
+          <a href={"/projects?sort=stars#{if @current_tag, do: "&tag=" <> @current_tag, else: ""}"}
+             class={"link #{if @sort == "stars", do: "link-primary font-semibold", else: "link-neutral"}"}>
+            Stars {if @sort == "stars", do: "↓"}
           </a>
-          <a href="/projects?sort=name" class={"btn btn-sm #{if @sort == "name", do: "btn-primary", else: "btn-ghost"}"}>
-            By Name
+          <a href={"/projects?sort=name#{if @current_tag, do: "&tag=" <> @current_tag, else: ""}"}
+             class={"link #{if @sort == "name", do: "link-primary font-semibold", else: "link-neutral"}"}>
+            Name {if @sort == "name", do: "↓"}
           </a>
         </div>
-      </div>
 
-      <div class="flex flex-wrap gap-2 mb-6">
-        <a :for={tag <- @tags}
-           href={"/tags/#{tag["slug"]}"}
-           class="badge badge-outline hover:badge-primary transition-colors cursor-pointer">
-          {tag["name"]}
-        </a>
-      </div>
+        <!-- Project List -->
+        <div id="project-list" class="bg-base-100 rounded-xl border border-base-200 p-4">
+          <div :if={Enum.empty?(@projects)} class="text-center py-8 text-base-content/50">
+            <p>No projects found.</p>
+          </div>
 
-      <div class="bg-base-100 rounded-box border border-base-300 overflow-hidden">
-        <table class="table">
-          <thead>
-            <tr>
-              <th class="w-12">#</th>
-              <th>Project</th>
-              <th class="text-right w-28">Stars</th>
-              <th class="text-right w-24">Links</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr :for={{project, idx} <- Enum.with_index(@projects)} class="project-row">
-              <td class="text-base-content/30 font-bold">{idx + 1}</td>
-              <td>
-                <div>
-                  <a href={"/projects/#{project["id"]}"} class="font-semibold hover:text-primary">
-                    {project["name"]}
-                  </a>
-                  <p class="text-base-content/50 text-sm mt-0.5 line-clamp-1">{project["description"]}</p>
-                </div>
-              </td>
-              <td class="text-right">
-                <span class="flex items-center justify-end gap-1 font-semibold star-icon">
-                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
-                  {format_stars(project["stars"] || 0)}
-                </span>
-              </td>
-              <td class="text-right">
-                <a :if={project["repo_url"]} href={project["repo_url"]} target="_blank" class="btn btn-ghost btn-xs">
-                  GitHub
-                </a>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div :if={Enum.empty?(@projects)} class="alert mt-4">
-        <span>No projects yet.</span>
+          <%= for {project, idx} <- Enum.with_index(@projects) do %>
+            {ProjectRow.render(%{project: project, tags: project["tags"] || [], mode: :total, rank: idx + 1})}
+          <% end %>
+        </div>
       </div>
     </div>
     """
   end
 
-  defp list_projects(sort) do
-    query = NexBase.from("projects")
+  defp list_projects(opts) do
+    sort = opts[:sort] || "stars"
+    tag = opts[:tag]
+    q = opts[:q]
 
-    query = case sort do
-      "name" -> query |> NexBase.order(:name, :asc)
-      _ -> query |> NexBase.order(:stars, :desc)
+    order_clause = case sort do
+      "name" -> "ORDER BY p.name ASC"
+      _ -> "ORDER BY p.stars DESC"
     end
 
-    case query |> NexBase.run() do
-      {:ok, projects} -> projects
-      _ -> []
+    tag_join = if tag do
+      "JOIN project_tags pt ON pt.project_id = p.id JOIN tags t ON t.id = pt.tag_id AND t.slug = '#{tag}'"
+    else
+      ""
     end
+
+    search_clause = if q && q != "" do
+      "AND (p.name ILIKE '%#{q}%' OR p.description ILIKE '%#{q}%')"
+    else
+      ""
+    end
+
+    {:ok, rows} = NexBase.sql("""
+      SELECT p.id, p.name, p.description, p.repo_url, p.homepage_url, p.stars
+      FROM projects p
+      #{tag_join}
+      WHERE 1=1 #{search_clause}
+      #{order_clause}
+    """)
+
+    # Fetch tags for each project
+    Enum.map(rows, fn project ->
+      tags = fetch_project_tags(project["id"])
+      Map.put(project, "tags", tags)
+    end)
+  end
+
+  defp fetch_project_tags(project_id) do
+    {:ok, rows} = NexBase.sql("""
+      SELECT t.name, t.slug
+      FROM tags t
+      JOIN project_tags pt ON pt.tag_id = t.id
+      WHERE pt.project_id = $1
+      ORDER BY t.name
+      LIMIT 3
+    """, [project_id])
+
+    rows
   end
 
   defp list_all_tags do
@@ -101,7 +134,4 @@ defmodule BestofEx.Pages.Projects.Index do
       _ -> []
     end
   end
-
-  defp format_stars(n) when n >= 1000, do: "#{Float.round(n / 1000, 1)}k"
-  defp format_stars(n), do: "#{n}"
 end

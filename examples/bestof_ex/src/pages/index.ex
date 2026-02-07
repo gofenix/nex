@@ -1,94 +1,166 @@
 defmodule BestofEx.Pages.Index do
+  @moduledoc """
+  Homepage with Hero, Hot Projects list, and Featured sidebar.
+  Two-column layout following bestofjs.org design.
+  """
   use Nex
+  alias BestofEx.Components.{ProjectRow, FeaturedCard}
 
-  def mount(_params) do
+  @elixir_projects ["Phoenix", "Ecto", "LiveView", "Nx", "Nerves", "Oban"]
+
+  def mount(params) do
+    period = params["period"] || "today"
+
     %{
       title: "Best of Elixir",
-      hot_projects: fetch_hot_projects(),
-      popular_tags: fetch_popular_tags()
+      hero_word: Enum.random(@elixir_projects),
+      period: period,
+      hot_projects: fetch_hot_projects(period),
+      featured: fetch_featured(5)
     }
   end
 
   def render(assigns) do
     ~H"""
-    <div class="space-y-10">
-      <section class="text-center py-10">
-        <h1 class="text-5xl font-extrabold text-base-content mb-3">
-          Best of <span class="text-primary">Elixir</span>
+    <!-- Hero Section -->
+    <section class="py-12 text-center border-b border-base-200 bg-gradient-to-b from-base-100 to-base-50">
+      <div class="container mx-auto max-w-6xl px-4">
+        <h1 class="text-4xl md:text-5xl font-bold text-base-content mb-3">
+          The Best of <span class="text-primary typing-cursor">{@hero_word}</span>
         </h1>
-        <p class="text-lg text-base-content/60 max-w-xl mx-auto">
-          A curated list of the best open-source projects in the Elixir ecosystem,
-          ranked by GitHub stars.
+        <p class="text-base md:text-lg text-base-content/60 max-w-2xl mx-auto leading-relaxed">
+          A place to find the best open-source projects in the Elixir ecosystem:
+          Phoenix, Ecto, LiveView, Nx, Nerves, Oban...
         </p>
-        <div class="mt-6 flex justify-center gap-3">
-          <a href="/projects" class="btn btn-primary btn-sm">Browse All Projects</a>
-          <a href="/tags" class="btn btn-outline btn-sm">Explore Tags</a>
-        </div>
-      </section>
+      </div>
+    </section>
 
-      <section>
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-xl font-bold">Hot Projects</h2>
-          <a href="/projects" class="link link-primary text-sm">View all →</a>
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div :for={project <- @hot_projects} class="card bg-base-100 shadow-sm hover:shadow-md transition-all border border-base-300">
-            <div class="card-body p-5">
-              <div class="flex items-start justify-between">
-                <h3 class="card-title text-base">
-                  <a href={"/projects/#{project["id"]}"} class="hover:text-primary">{project["name"]}</a>
-                </h3>
-                <div class="flex items-center gap-1 text-sm star-icon font-semibold">
-                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
-                  {format_stars(project["stars"] || 0)}
-                </div>
+    <!-- Main Content -->
+    <section class="py-8">
+      <div class="container mx-auto max-w-6xl px-4">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+          <!-- Left Column: Hot Projects (70%) -->
+          <div class="lg:col-span-8" id="hot-section">
+            <div class="flex items-center justify-between mb-6">
+              <div>
+                <h2 class="text-xl font-bold flex items-center gap-2">
+                  <span>🔥</span> Hot Projects
+                </h2>
+                <p class="text-sm text-base-content/50">By stars added {period_label(@period)}</p>
               </div>
-              <p class="text-base-content/60 text-sm line-clamp-2 mt-1">{project["description"]}</p>
-              <div class="card-actions justify-end mt-3">
-                <a :if={project["repo_url"]} href={project["repo_url"]} target="_blank" class="btn btn-ghost btn-xs gap-1">
-                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
-                  GitHub
-                </a>
+
+              <!-- Period Filter -->
+              <form hx-get="/" hx-target="#hot-section" hx-select="#hot-section">
+                <select name="period" class="select select-bordered select-sm text-sm"
+                        onchange="this.form.submit()">
+                  <option value="today" selected={@period == "today"}>Today</option>
+                  <option value="week" selected={@period == "week"}>This Week</option>
+                  <option value="month" selected={@period == "month"}>This Month</option>
+                </select>
+              </form>
+            </div>
+
+            <!-- Hot Projects List -->
+            <div class="bg-base-100 rounded-xl border border-base-200 p-4">
+              <div :if={Enum.empty?(@hot_projects)} class="text-center py-8 text-base-content/50">
+                <p>No hot projects yet.</p>
+                <p class="text-sm mt-1">Run <code class="kbd kbd-sm">mix run seeds/import.exs</code> to seed data.</p>
               </div>
+
+              <%= for project <- @hot_projects do %>
+                {ProjectRow.render(%{project: project, tags: project["tags"] || [], mode: :delta})}
+              <% end %>
+            </div>
+
+            <div class="mt-4 text-right">
+              <a href="/projects" class="link link-primary text-sm">View all projects →</a>
             </div>
           </div>
-        </div>
-        <div :if={Enum.empty?(@hot_projects)} class="alert">
-          <span>No projects yet. Run <code class="kbd kbd-sm">mix run seeds/import.exs</code> to seed data.</span>
-        </div>
-      </section>
 
-      <section>
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-xl font-bold">Explore by Tag</h2>
-          <a href="/tags" class="link link-primary text-sm">All tags →</a>
+          <!-- Right Column: Featured Sidebar (30%) -->
+          <div class="lg:col-span-4">
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="text-lg font-bold flex items-center gap-2">
+                <span>⭐</span> Featured
+              </h2>
+              <span class="text-xs text-base-content/50">Random order</span>
+            </div>
+
+            <div class="grid grid-cols-1 gap-3">
+              <%= for project <- @featured do %>
+                {FeaturedCard.render(%{project: project, tag: project["primary_tag"]})}
+              <% end %>
+            </div>
+          </div>
+
         </div>
-        <div class="flex flex-wrap gap-2">
-          <a :for={tag <- @popular_tags}
-             href={"/tags/#{tag["slug"]}"}
-             class="badge badge-lg badge-outline hover:badge-primary gap-1 transition-colors cursor-pointer">
-            {tag["name"]}
-          </a>
-        </div>
-      </section>
-    </div>
+      </div>
+    </section>
     """
   end
 
-  defp fetch_hot_projects do
-    case NexBase.from("projects") |> NexBase.order(:stars, :desc) |> NexBase.limit(6) |> NexBase.run() do
-      {:ok, projects} -> projects
-      _ -> []
+  # Fetch hot projects with star delta for the given period
+  defp fetch_hot_projects(period) do
+    interval = case period do
+      "week" -> "7 days"
+      "month" -> "30 days"
+      _ -> "1 day"
     end
+
+    {:ok, rows} = NexBase.sql("""
+      SELECT p.id, p.name, p.description, p.repo_url, p.homepage_url, p.stars,
+             COALESCE(p.stars - ps.stars, 0) AS star_delta
+      FROM projects p
+      LEFT JOIN project_stats ps
+        ON ps.project_id = p.id
+        AND ps.recorded_at = CURRENT_DATE - INTERVAL '#{interval}'
+      ORDER BY COALESCE(p.stars - ps.stars, 0) DESC, p.stars DESC
+      LIMIT 10
+    """)
+
+    # Fetch tags for each project
+    Enum.map(rows, fn project ->
+      tags = fetch_project_tags(project["id"])
+      Map.put(project, "tags", tags)
+    end)
   end
 
-  defp fetch_popular_tags do
-    case NexBase.from("tags") |> NexBase.order(:name, :asc) |> NexBase.limit(12) |> NexBase.run() do
-      {:ok, tags} -> tags
-      _ -> []
-    end
+  # Fetch random featured projects
+  defp fetch_featured(count) do
+    {:ok, rows} = NexBase.sql("""
+      SELECT p.id, p.name, p.stars,
+             COALESCE(p.stars - ps.stars, 0) AS star_delta,
+             (SELECT t.name FROM tags t
+              JOIN project_tags pt ON pt.tag_id = t.id
+              WHERE pt.project_id = p.id
+              LIMIT 1) AS primary_tag
+      FROM projects p
+      LEFT JOIN project_stats ps
+        ON ps.project_id = p.id
+        AND ps.recorded_at = CURRENT_DATE - INTERVAL '1 day'
+      ORDER BY RANDOM()
+      LIMIT $1
+    """, [count])
+
+    rows
   end
 
-  defp format_stars(n) when n >= 1000, do: "#{Float.round(n / 1000, 1)}k"
-  defp format_stars(n), do: "#{n}"
+  # Fetch tags for a project
+  defp fetch_project_tags(project_id) do
+    {:ok, rows} = NexBase.sql("""
+      SELECT t.name, t.slug
+      FROM tags t
+      JOIN project_tags pt ON pt.tag_id = t.id
+      WHERE pt.project_id = $1
+      ORDER BY t.name
+      LIMIT 3
+    """, [project_id])
+
+    rows
+  end
+
+  defp period_label("week"), do: "this week"
+  defp period_label("month"), do: "this month"
+  defp period_label(_), do: "yesterday"
 end

@@ -1,110 +1,341 @@
-# Nex Framework: Architect's Manifesto (V5.2 - Master)
+# Best of Elixir — AI Agent Guide
 
-You are a Master Nex Architect. Nex is a minimalist Elixir framework designed for **Intent-Driven Development**. Your mission: deliver code that is clean, performant, and "Nex-idiomatic".
+> For Nex framework conventions, NexBase database patterns, and common pitfalls.
 
-## 1. Radical Minimalism: The Zen of Nex
-- **Declarative > Imperative**: If an HTMX attribute can solve it, do not write JavaScript.
-- **Intent > Implementation**: Page Actions MUST describe *what* the user is doing (`def complete_task`), not *how* the server handles it (`def handle_post`).
-- **Atomic Actions**: One Action = One pure business intent. Avoid monolithic handlers.
+---
 
-## 2. Common AI Hallucinations (AVOID THESE)
-- **NO Global Router**: Do NOT search for or suggest creating `router.ex`. The folder structure IS the router.
-- **NO LiveView Hooks**: Nex does NOT use `Phoenix.LiveView` hooks or `on_mount`. Use HTMX events or Alpine.js.
-- **NO Template Jumping**: Logic and UI stay in the SAME `.ex` file. Do NOT create separate `.html.heex` files.
-- **NO Vanilla Fetch**: Use `hx-get/post` for server communication. Only use JS for pure local UI state.
+## 0. Critical Mistakes to Avoid
 
-## 3. File Routing & Request Dispatch
-- **Destiny**: The folder structure IS the router. No global `router.ex`.
-- **Pages (`src/pages/`)**: GET renders the page. POST/PUT/DELETE call public functions in the same module.
-- **APIs (`src/api/`)**: Handlers MUST be named after HTTP methods: `def get(req)`, `def post(req)`, `def put(req)`, `def delete(req)`.
-- **Dynamic Routes**: Use `[id].ex` for resources. `req.query["id"]` captures the path parameter.
+These are real errors made during development. **Read this section first.**
 
-## 4. Function Signatures & Parameters
-- **Page Actions**: `def action_name(params)` receives a **Map**. Params are merged from path, query, and body.
-- **API Handlers**: `def get(req)` receives a **`Nex.Req` struct**.
-- **Nex.Req**: Access data via `req.query` (path params take precedence) and `req.body`.
-- **File Uploads**: Ensure `hx-encoding="multipart/form-data"` is on the form. Access files via `params["name"]` (Pages) or `req.body["name"]` (APIs). The file will be a `%Plug.Upload{}` struct.
+### DO NOT create a custom Repo
+```elixir
+# WRONG — do not create src/repo.ex
+defmodule BestofEx.Repo do
+  use Ecto.Repo, otp_app: :bestof_ex, adapter: Ecto.Adapters.Postgres
+end
 
-## 5. Responses & Navigation
-- **Page Actions**: Return `~H"..."` (Partial), `:empty` (No-op), `{:redirect, "/path"}`, or `{:refresh, nil}`.
-- **API Handlers**: MUST return `%Nex.Response{}` via `Nex.json/2`, `Nex.text/2`, `Nex.html/2`, `Nex.redirect/2`, or `Nex.status/2`.
+# RIGHT — NexBase provides the Repo internally
+NexBase.from("projects") |> NexBase.run()
+```
 
-## 6. Real-Time & Streaming (SSE)
-- **Helper**: Use `Nex.stream(fn send -> ... end)`.
-- **Chunking**: `send.(data)` accepts String, Map (auto-JSON), or `%{event: "name", data: ...}`.
-- **UX**: Always render an initial placeholder or "typing indicator" before starting the stream.
+### DO NOT create a client object
+```elixir
+# WRONG — unnecessary indirection
+@client NexBase.client()
+@client |> NexBase.from("projects") |> NexBase.run()
 
-## 7. Surgical UX (HTMX)
-- **Precision**: Use granular `hx-target` (e.g., `#msg-count`). Return ONLY the minimal HTML snippet required.
-- **Feedback**: Always use `hx-indicator` for network actions.
-- **Smoothness**: Use `hx-swap="morph"` if Alpine.js or Datastar is present for focus-preserving updates.
+# RIGHT — call NexBase directly
+NexBase.from("projects") |> NexBase.run()
+```
 
-## 8. State Management (Nex.Store)
-- **Lifecycle**: `Nex.Store` is server-side session state tied to the `page_id`. Clears on full page refresh.
-- **API Integration**: API calls from the frontend automatically share the Store state of the parent page.
-- **The Flow**: 1. Receive Intent -> 2. Mutate Store/DB -> 3. **THEN** render UI with updated data.
-- **Example**:
-  ```elixir
-  def toggle(%{"id" => id}) do
-    new_val = Nex.Store.update(:active_id, nil, fn _ -> id end)
-    render(%{active_id: new_val})
-  end
-  ```
+### DO NOT expose Repo/config complexity to application code
+```elixir
+# WRONG — leaks internal details
+repo_config = [url: ..., pool_size: 10, ssl: true, ssl_opts: [verify: :verify_none]]
+Application.put_env(:nex_base, :repo_config, repo_config)
+children = [{NexBase.Repo, []}]
 
-## 9. Layout Contract
-- **Variable Requirement**: `src/layouts.ex` must render `@inner_content` via `{raw(@inner_content)}`.
-- **Navigation**: Use `hx-boost="true"` on the `<body>` tag for SPA-like speed.
-- **CSRF Global**: Layout should include `{meta_tag()}` in `<head>` and `hx-headers={hx_headers()}` on `<body>` for HTMX requests.
+# RIGHT — one-line init, NexBase handles the rest
+NexBase.init(url: Nex.Env.get(:database_url), ssl: true)
+children = [{NexBase.Repo, []}]
+```
 
-## 10. Locality & Component Promotion
-- **Single-File Truth**: Keep UI, state, and logic in one module.
-- **Private Components**: Extract blocks into `defp widget(assigns)` at the bottom of the file if `render/1` > 50 lines.
-- **Promotion**: Move to `src/components/` ONLY if reused across **3 or more** pages.
-- **Component Idioms**: Use `{render_slot(@inner_block)}` for default content and `{@slot_name}` for named slots.
+### DO NOT use `ssl: true` for cloud databases (Postgrex 0.22+)
+```elixir
+# WRONG — Postgrex 0.22 will verify certs, Railway/Render self-signed certs fail
+ssl: true
 
-## 11. Elixir Aesthetics
-- **Pattern Match**: Destructure params/structs in function heads.
-- **Pipelines**: Express logic as a clear series of transformations using `|>`.
-- **No Nesting**: Use guard clauses to keep code "flat".
+# WRONG — deprecated key
+ssl_opts: [verify: :verify_none]
 
-## 12. Environment & Configuration
-- **NO Config Files**: Do NOT use `config/config.exs` or `config/runtime.exs`. Nex uses `.env` files exclusively.
-- **Nex.Env**: Use the built-in `Nex.Env` module:
-  - `Nex.Env.init()` - Loads `.env` and `.env.{Mix.env()}` files automatically
-  - `Nex.Env.get(:database_url)` - Get env var with optional default
-  - `Nex.Env.get!(:database_url)` - Get required env var (raises if missing)
-  - `Nex.Env.get_integer(:pool_size, 10)` - Get as integer
-- **NO User Repo**: Do NOT create a `repo.ex`. NexBase handles it internally.
-- **NexBase.init/1**: One-line initialization. Call once in `Application.start/2`:
-  ```elixir
+# RIGHT — NexBase.init(ssl: true) handles this internally
+# It generates: ssl: [verify: :verify_none]
+NexBase.init(url: "...", ssl: true)
+```
+
+### DO NOT use `config/config.exs`
+```elixir
+# WRONG — Nex does not use config files
+config :bestof_ex, BestofEx.Repo, url: "..."
+
+# RIGHT — use .env files + Nex.Env
+# .env
+DATABASE_URL=postgresql://...
+```
+
+### DO NOT use `for` comprehension inline in HEEx
+```elixir
+# WRONG — syntax error
+<%= for project <- @projects do %>
+  <div>{project["name"]}</div>
+<% end %>
+
+# RIGHT — use :for directive
+<div :for={project <- @projects}>{project["name"]}</div>
+```
+
+### DO NOT manually zip SQL columns and rows
+```elixir
+# WRONG — verbose, error-prone
+{:ok, %{rows: rows, columns: columns}} = NexBase.query(sql, params)
+Enum.map(rows, fn row -> Enum.zip(columns, row) |> Map.new() end)
+
+# RIGHT — NexBase.sql/2 returns list of maps directly
+{:ok, rows} = NexBase.sql("SELECT * FROM projects WHERE id = $1", [id])
+```
+
+### DO NOT manually add CSRF tags
+```elixir
+# WRONG — Nex handles CSRF automatically
+<form hx-post="/action">
+  {csrf_input_tag()}
+  ...
+</form>
+
+# RIGHT — just write the form, framework injects CSRF
+<form hx-post="/action">
+  ...
+</form>
+```
+
+---
+
+## 1. Project Structure
+
+```
+bestof_ex/
+  .env                  # DATABASE_URL, POOL_SIZE
+  .specs/               # Design specifications
+  mix.exs               # deps: nex_core, nex_base
+  seeds/import.exs      # Seed data script
+  priv/repo/migrations/ # SQL migration scripts
+  src/
+    application.ex      # App startup (Nex.Env + NexBase.init)
+    layouts.ex          # Global HTML layout
+    pages/
+      index.ex          # Homepage
+      trending.ex       # Trending page
+      projects/
+        index.ex        # All projects
+        [id].ex         # Project detail (dynamic route)
+      tags/
+        index.ex        # All tags
+        [slug].ex       # Tag detail (dynamic route)
+    components/         # Shared components (3+ page reuse)
+```
+
+---
+
+## 2. Application Startup
+
+The entire startup is 3 lines:
+
+```elixir
+defmodule BestofEx.Application do
+  use Application
+
+  @impl true
   def start(_type, _args) do
     Nex.Env.init()
     NexBase.init(url: Nex.Env.get(:database_url), ssl: true)
+
     children = [{NexBase.Repo, []}]
-    Supervisor.start_link(children, strategy: :one_for_one)
+    Supervisor.start_link(children, strategy: :one_for_one, name: BestofEx.Supervisor)
   end
-  ```
-- **NexBase in Pages**: Use `NexBase.from()` directly, no client needed:
-  ```elixir
-  defp fetch_data do
-    case NexBase.from("table") |> NexBase.order(:name, :asc) |> NexBase.run() do
+end
+```
+
+- `Nex.Env.init()` — loads `.env` file
+- `NexBase.init/1` — configures database (one line, no Repo knowledge needed)
+- `{NexBase.Repo, []}` — starts the connection pool
+
+---
+
+## 3. NexBase Database Patterns
+
+### Query Builder (Supabase-style)
+
+```elixir
+# Select
+{:ok, projects} = NexBase.from("projects")
+|> NexBase.order(:stars, :desc)
+|> NexBase.limit(10)
+|> NexBase.run()
+
+# Insert
+NexBase.from("tags")
+|> NexBase.insert(%{name: "Web", slug: "web"})
+|> NexBase.run()
+
+# Update
+NexBase.from("projects")
+|> NexBase.eq(:id, 1)
+|> NexBase.update(%{stars: 5000})
+|> NexBase.run()
+
+# Delete
+NexBase.from("projects")
+|> NexBase.eq(:id, 1)
+|> NexBase.delete()
+|> NexBase.run()
+```
+
+### Raw SQL (for JOINs and complex queries)
+
+```elixir
+# NexBase.sql/2 returns {:ok, [%{"col" => val}]}
+{:ok, rows} = NexBase.sql("""
+  SELECT t.name, t.slug FROM tags t
+  JOIN project_tags pt ON pt.tag_id = t.id
+  WHERE pt.project_id = $1
+  ORDER BY t.name
+""", [project_id])
+
+# NexBase.query!/2 for DDL (returns raw Postgrex result)
+NexBase.query!("CREATE TABLE IF NOT EXISTS ...", [])
+```
+
+### Scripts (seeds, migrations)
+
+```elixir
+# Use start: true to boot the Repo in-process
+Nex.Env.init()
+NexBase.init(url: Nex.Env.get(:database_url), ssl: true, start: true)
+
+NexBase.from("tags") |> NexBase.insert(%{name: "Web"}) |> NexBase.run()
+```
+
+---
+
+## 4. Nex Framework Essentials
+
+### File Routing
+- `src/pages/index.ex` → `GET /`
+- `src/pages/projects/index.ex` → `GET /projects`
+- `src/pages/projects/[id].ex` → `GET /projects/42` (params: `%{"id" => "42"}`)
+- `src/pages/tags/[slug].ex` → `GET /tags/web-framework`
+
+### Page Module Pattern
+
+```elixir
+defmodule BestofEx.Pages.Index do
+  use Nex
+
+  def mount(_params) do
+    %{
+      title: "Best of Elixir",
+      projects: fetch_projects()
+    }
+  end
+
+  def render(assigns) do
+    ~H"""
+    <div :for={p <- @projects}>
+      <a href={"/projects/#{p["id"]}"}>{p["name"]}</a>
+    </div>
+    """
+  end
+
+  defp fetch_projects do
+    case NexBase.from("projects") |> NexBase.order(:stars, :desc) |> NexBase.run() do
       {:ok, rows} -> rows
       _ -> []
     end
   end
-  ```
-- **NexBase in Scripts**: Use `NexBase.init/1` with `start: true`:
-  ```elixir
-  Nex.Env.init()
-  NexBase.init(url: Nex.Env.get(:database_url), ssl: true, start: true)
-  NexBase.from("tags") |> NexBase.insert(%{name: "Elixir"}) |> NexBase.run()
-  ```
+end
+```
 
-## 13. Visual Harmony (DaisyUI)
-- **Component First**: Prioritize DaisyUI classes (`.card`, `.btn-primary`, `.stat`).
-- **Clean HTML**: Avoid 20+ raw Tailwind classes. Use a component class if it exists.
+### Page Actions (HTMX)
 
-## 14. Security
-- **CSRF**: Every `hx-post/put/patch/delete` form MUST include `{csrf_input_tag()}` inside the `<form>`.
+```elixir
+# Public function = callable via hx-post
+def search(%{"q" => query}) do
+  results = search_projects(query)
+  ~H"""
+  <div :for={p <- results} id="results">
+    {p["name"]}
+  </div>
+  """
+end
+```
 
-*Architect's Mantra: surgical precision, semantic intent, local focus, and absolute minimalism.*
+### Responses
+- `~H"..."` — return HTML partial
+- `:empty` — no response (204)
+- `{:redirect, "/path"}` — redirect
+- `{:refresh, nil}` — full page refresh
+
+---
+
+## 5. Layout
+
+```elixir
+defmodule BestofEx.Layouts do
+  use Nex
+
+  def render(assigns) do
+    ~H"""
+    <!DOCTYPE html>
+    <html data-theme="bestofex">
+    <head>
+      <meta charset="utf-8" />
+      {meta_tag()}
+      <script src="https://cdn.tailwindcss.com"></script>
+      <link href="https://cdn.jsdelivr.net/npm/daisyui@4/dist/full.min.css" rel="stylesheet" />
+      <script src="https://unpkg.com/htmx.org@2"></script>
+    </head>
+    <body hx-boost="true" hx-headers={hx_headers()}>
+      <nav>...</nav>
+      {raw(@inner_content)}
+    </body>
+    </html>
+    """
+  end
+end
+```
+
+- `{meta_tag()}` — required in `<head>`
+- `hx-headers={hx_headers()}` — required on `<body>`
+- `{raw(@inner_content)}` — renders page content
+- `hx-boost="true"` — SPA-like navigation
+
+---
+
+## 6. Environment
+
+Use `.env` files only. No `config/*.exs`.
+
+```bash
+# .env
+DATABASE_URL=postgresql://user:pass@host:port/db
+POOL_SIZE=10
+```
+
+```elixir
+Nex.Env.init()                          # Load .env
+Nex.Env.get(:database_url)              # "postgresql://..."
+Nex.Env.get!(:database_url)             # Raises if missing
+Nex.Env.get_integer(:pool_size, 10)     # Parse as integer
+```
+
+---
+
+## 7. UI Guidelines
+
+- **DaisyUI first**: Use `.card`, `.badge`, `.btn`, `.table` etc.
+- **Tailwind for gaps**: Use raw Tailwind only for spacing, flex, grid.
+- **HTMX for interactions**: `hx-get`, `hx-post`, `hx-target`, `hx-trigger`.
+- **No JavaScript**: Unless purely local UI state (e.g., dropdown toggle).
+- **`:for` directive**: Always use `<div :for={item <- @list}>`, never `<%= for ... %>`.
+- **`:if` directive**: Use `<div :if={condition}>` for conditional rendering.
+
+---
+
+## 8. Design Reference
+
+See `.specs/` folder for detailed design specifications:
+- `.specs/design.md` — Brand, colors, layout system
+- `.specs/pages.md` — Page-by-page wireframes and data
+- `.specs/components.md` — Reusable component specs
+- `.specs/data.md` — Schema, queries, seed strategy

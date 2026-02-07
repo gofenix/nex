@@ -1,4 +1,7 @@
 defmodule BestofEx.Pages.Tags.Index do
+  @moduledoc """
+  All tags page with grid of tag cards showing project counts.
+  """
   use Nex
 
   def mount(_params) do
@@ -10,20 +13,26 @@ defmodule BestofEx.Pages.Tags.Index do
 
   def render(assigns) do
     ~H"""
-    <div>
-      <h1 class="text-2xl font-bold mb-6">All Tags</h1>
-      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-        <a :for={tag <- @tags}
-           href={"/tags/#{tag["slug"]}"}
-           class="card bg-base-100 border border-base-300 hover:border-primary transition-colors cursor-pointer">
-          <div class="card-body p-4 flex-row items-center justify-between">
-            <span class="font-semibold">{tag["name"]}</span>
-            <span class="badge badge-ghost">{tag["count"]} projects</span>
-          </div>
-        </a>
-      </div>
-      <div :if={Enum.empty?(@tags)} class="alert mt-4">
-        <span>No tags yet. Run <code class="kbd kbd-sm">mix run seeds/import.exs</code> to seed data.</span>
+    <div class="py-8">
+      <div class="container mx-auto max-w-6xl px-4">
+        <h1 class="text-2xl font-bold mb-6">All Tags</h1>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          <%= for tag <- @tags do %>
+            <a href={"/tags/#{tag["slug"]}"}
+               class="card bg-base-100 border border-base-200 hover:border-primary hover:shadow-md transition-all cursor-pointer">
+              <div class="card-body p-4 flex-row items-center justify-between">
+                <span class="font-semibold text-primary">{tag["name"]}</span>
+                <span class="badge badge-outline badge-sm">{tag["count"]} projects</span>
+              </div>
+            </a>
+          <% end %>
+        </div>
+
+        <div :if={Enum.empty?(@tags)} class="text-center py-8 text-base-content/50">
+          <p>No tags yet.</p>
+          <p class="text-sm mt-1">Run <code class="kbd kbd-sm">mix run seeds/import.exs</code> to seed data.</p>
+        </div>
       </div>
     </div>
     """
