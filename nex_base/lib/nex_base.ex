@@ -1,30 +1,88 @@
 defmodule NexBase do
   @moduledoc """
-  The main entry point for NexBase.
-  Provides a fluent API for building and executing PostgreSQL queries.
+  A fluent PostgreSQL query builder for Elixir, inspired by Supabase.
 
-  Usage:
-    client = NexBase.client(repo: MyApp.Repo)
+  ## Quick Start
 
-    {:ok, users} = client
-    |> NexBase.from("users")
-    |> NexBase.select(["id", "name"])
-    |> NexBase.eq("active", true)
-    |> NexBase.run()
+      # 1. Initialize (once, in application.ex or script)
+      NexBase.init(url: "postgres://localhost/mydb")
+
+      # 2. Query
+      {:ok, users} = NexBase.from("users")
+      |> NexBase.eq(:active, true)
+      |> NexBase.order(:name, :asc)
+      |> NexBase.run()
+
+      # 3. Insert
+      NexBase.from("users")
+      |> NexBase.insert(%{name: "Alice", active: true})
+      |> NexBase.run()
+
+      # 4. Raw SQL
+      {:ok, rows} = NexBase.sql("SELECT * FROM users WHERE id = $1", [1])
   """
 
   alias NexBase.Query
   require Ecto.Query
 
-  # -- Client Initialization --
+  # -- Initialization --
 
   @doc """
-  Initialize a NexBase client with a repository.
-  Similar to Supabase client initialization.
+  Initialize NexBase with database configuration.
+
+  Call this once in your application startup. NexBase handles the rest internally.
+
+  ## Options
+
+    - `:url` - Database URL (falls back to DATABASE_URL env var)
+    - `:ssl` - Enable SSL for cloud databases (default: false)
+    - `:pool_size` - Connection pool size (default: 10)
+
+  ## In an application (supervision tree)
+
+      # application.ex
+      def start(_type, _args) do
+        NexBase.init(url: System.get_env("DATABASE_URL"), ssl: true)
+        children = [{NexBase.Repo, []}]
+        Supervisor.start_link(children, strategy: :one_for_one)
+      end
+
+  ## In a script (seeds, migrations)
+
+      NexBase.init(url: System.get_env("DATABASE_URL"), ssl: true, start: true)
   """
-  def client(opts) do
-    repo = Keyword.fetch!(opts, :repo)
-    %{repo: repo}
+  def init(opts \\ []) do
+    url = opts[:url] || System.get_env("DATABASE_URL")
+    pool_size = opts[:pool_size] || 10
+
+    repo_config = [url: url, pool_size: pool_size]
+
+    repo_config =
+      if opts[:ssl] do
+        repo_config ++ [
+          ssl: true,
+          ssl_opts: [verify: :verify_none],
+          queue_target: 10_000,
+          queue_interval: 20_000
+        ]
+      else
+        repo_config
+      end
+
+    Application.put_env(:nex_base, :repo_config, repo_config)
+
+    if opts[:start] do
+      Application.ensure_all_started(:postgrex)
+      Application.ensure_all_started(:ecto_sql)
+
+      case NexBase.Repo.start_link([]) do
+        {:ok, _pid} -> :ok
+        {:error, {:already_started, _pid}} -> :ok
+        {:error, reason} -> {:error, reason}
+      end
+    else
+      :ok
+    end
   end
 
   # -- Query Building --
@@ -32,13 +90,7 @@ defmodule NexBase do
   @doc """
   Starts a query builder for the given table.
   """
-  def from(client_or_table, table_name \\ nil)
-
-  def from(%{repo: repo}, table_name) when is_binary(table_name) do
-    %Query{table: table_name, repo: repo}
-  end
-
-  def from(table_name, nil) when is_binary(table_name) do
+  def from(table_name) when is_binary(table_name) do
     %Query{table: table_name}
   end
 
@@ -154,33 +206,33 @@ defmodule NexBase do
   end
 
   @doc """
-  Executes a raw SQL query.
-  Can be called with client or with repo option.
-  """
-  def query(client_or_sql, sql_or_params \\ [], params_or_opts \\ [])
+  Executes a raw SQL query and returns results as a list of maps.
 
-  def query(%{repo: repo}, sql, params) when is_binary(sql) do
-    Ecto.Adapters.SQL.query(repo, sql, params)
+  ## Examples
+
+      {:ok, rows} = NexBase.sql("SELECT * FROM users WHERE active = $1", [true])
+      {:ok, rows} = NexBase.sql(client, "SELECT * FROM users", [])
+  """
+  def sql(sql, params \\ []) when is_binary(sql) do
+    case Ecto.Adapters.SQL.query(NexBase.Repo, sql, params) do
+      {:ok, %{rows: rows, columns: columns}} ->
+        {:ok, Enum.map(rows, fn row -> columns |> Enum.zip(row) |> Map.new() end)}
+      {:error, _} = err -> err
+    end
   end
 
-  def query(sql, params, opts) when is_binary(sql) do
-    repo = Keyword.fetch!(opts, :repo)
-    Ecto.Adapters.SQL.query(repo, sql, params)
+  @doc """
+  Executes a raw SQL query (low-level, returns raw Postgrex result).
+  """
+  def query(sql, params \\ []) when is_binary(sql) do
+    Ecto.Adapters.SQL.query(NexBase.Repo, sql, params)
   end
 
   @doc """
   Executes a raw SQL query, raising on error.
-  Can be called with client or with repo option.
   """
-  def query!(client_or_sql, sql_or_params \\ [], params_or_opts \\ [])
-
-  def query!(%{repo: repo}, sql, params) when is_binary(sql) do
-    Ecto.Adapters.SQL.query!(repo, sql, params)
-  end
-
-  def query!(sql, params, opts) when is_binary(sql) do
-    repo = Keyword.fetch!(opts, :repo)
-    Ecto.Adapters.SQL.query!(repo, sql, params)
+  def query!(sql, params \\ []) when is_binary(sql) do
+    Ecto.Adapters.SQL.query!(NexBase.Repo, sql, params)
   end
 
   @doc """
@@ -242,8 +294,8 @@ defmodule NexBase do
   Options:
     - `:repo` - The Ecto repository to use (required)
   """
-  def rpc(function_name, params \\ %{}, opts \\ []) do
-    repo = Keyword.fetch!(opts, :repo)
+  def rpc(function_name, params \\ %{}, _opts \\ []) do
+    repo = NexBase.Repo
     # Build raw SQL: SELECT * FROM func($1, $2)
     # This is complex because params can be positional or named.
     # Postgres functions support named params via `func(param := $1)`.
@@ -272,16 +324,16 @@ defmodule NexBase do
   """
   def run(query, opts \\ [])
 
-  def run(%Query{type: :select} = query, opts) do
-    repo = query.repo || Keyword.fetch!(opts, :repo)
+  def run(%Query{type: :select} = query, _opts) do
+    repo = NexBase.Repo
     ecto_query = build_ecto_query(query)
     {:ok, repo.all(ecto_query)}
   rescue
     e -> {:error, e}
   end
 
-  def run(%Query{type: :insert, table: table, data: data} = query, opts) do
-    repo = query.repo || Keyword.fetch!(opts, :repo)
+  def run(%Query{type: :insert, table: table, data: data} = _query, _opts) do
+    repo = NexBase.Repo
     data_list = if is_list(data), do: data, else: [data]
     {count, _} = repo.insert_all(table, data_list)
     {:ok, %{count: count}}
@@ -289,8 +341,8 @@ defmodule NexBase do
     e -> {:error, e}
   end
 
-  def run(%Query{type: :update, table: table, data: data, filters: filters} = query, opts) do
-    repo = query.repo || Keyword.fetch!(opts, :repo)
+  def run(%Query{type: :update, table: table, data: data, filters: filters} = _query, _opts) do
+    repo = NexBase.Repo
     base_query = Ecto.Query.from(t in table)
     query_with_filters = Enum.reduce(filters, base_query, fn filter, acc ->
       apply_filter(acc, filter)
@@ -302,8 +354,8 @@ defmodule NexBase do
     e -> {:error, e}
   end
 
-  def run(%Query{type: :delete, table: table, filters: filters} = query, opts) do
-    repo = query.repo || Keyword.fetch!(opts, :repo)
+  def run(%Query{type: :delete, table: table, filters: filters} = _query, _opts) do
+    repo = NexBase.Repo
     base_query = Ecto.Query.from(t in table)
     query_with_filters = Enum.reduce(filters, base_query, fn filter, acc ->
       apply_filter(acc, filter)
@@ -314,8 +366,8 @@ defmodule NexBase do
     e -> {:error, e}
   end
 
-  def run(%Query{type: :upsert, table: table, data: data} = query, opts) do
-    repo = query.repo || Keyword.fetch!(opts, :repo)
+  def run(%Query{type: :upsert, table: table, data: data} = _query, _opts) do
+    repo = NexBase.Repo
     data_list = if is_list(data), do: data, else: [data]
     upsert_opts = [
       on_conflict: :replace_all,

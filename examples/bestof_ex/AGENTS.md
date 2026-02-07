@@ -67,11 +67,44 @@ You are a Master Nex Architect. Nex is a minimalist Elixir framework designed fo
 - **Pipelines**: Express logic as a clear series of transformations using `|>`.
 - **No Nesting**: Use guard clauses to keep code "flat".
 
-## 12. Visual Harmony (DaisyUI)
+## 12. Environment & Configuration
+- **NO Config Files**: Do NOT use `config/config.exs` or `config/runtime.exs`. Nex uses `.env` files exclusively.
+- **Nex.Env**: Use the built-in `Nex.Env` module:
+  - `Nex.Env.init()` - Loads `.env` and `.env.{Mix.env()}` files automatically
+  - `Nex.Env.get(:database_url)` - Get env var with optional default
+  - `Nex.Env.get!(:database_url)` - Get required env var (raises if missing)
+  - `Nex.Env.get_integer(:pool_size, 10)` - Get as integer
+- **NO User Repo**: Do NOT create a `repo.ex`. NexBase handles it internally.
+- **NexBase.init/1**: One-line initialization. Call once in `Application.start/2`:
+  ```elixir
+  def start(_type, _args) do
+    Nex.Env.init()
+    NexBase.init(url: Nex.Env.get(:database_url), ssl: true)
+    children = [{NexBase.Repo, []}]
+    Supervisor.start_link(children, strategy: :one_for_one)
+  end
+  ```
+- **NexBase in Pages**: Use `NexBase.from()` directly, no client needed:
+  ```elixir
+  defp fetch_data do
+    case NexBase.from("table") |> NexBase.order(:name, :asc) |> NexBase.run() do
+      {:ok, rows} -> rows
+      _ -> []
+    end
+  end
+  ```
+- **NexBase in Scripts**: Use `NexBase.init/1` with `start: true`:
+  ```elixir
+  Nex.Env.init()
+  NexBase.init(url: Nex.Env.get(:database_url), ssl: true, start: true)
+  NexBase.from("tags") |> NexBase.insert(%{name: "Elixir"}) |> NexBase.run()
+  ```
+
+## 13. Visual Harmony (DaisyUI)
 - **Component First**: Prioritize DaisyUI classes (`.card`, `.btn-primary`, `.stat`).
 - **Clean HTML**: Avoid 20+ raw Tailwind classes. Use a component class if it exists.
 
-## 13. Security
+## 14. Security
 - **CSRF**: Every `hx-post/put/patch/delete` form MUST include `{csrf_input_tag()}` inside the `<form>`.
 
 *Architect's Mantra: surgical precision, semantic intent, local focus, and absolute minimalism.*

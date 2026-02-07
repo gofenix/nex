@@ -1,55 +1,70 @@
 defmodule BestofEx.Pages.Trending do
   use Nex
 
-  @client NexBase.client(repo: BestofEx.Repo)
-
   def mount(_params) do
-    projects = list_projects()
-
     %{
       title: "Trending - Best of Elixir",
-      projects: projects
+      projects: list_trending()
     }
   end
 
   def render(assigns) do
     ~H"""
     <div>
-      <h1 class="text-3xl font-bold mb-6">Trending Projects</h1>
-      <div class="space-y-4">
-        <div :for={{project, idx} <- Enum.with_index(@projects)} class="card bg-base-100 shadow-sm">
-          <div class="card-body flex-row items-center gap-4">
-            <div class="text-2xl font-bold text-base-content/30 w-8">
-              {idx + 1}
-            </div>
-            <div class="flex-1">
-              <h3 class="font-semibold text-lg">
-                <a href={"/projects/#{project["id"]}"} class="hover:text-primary">{project["name"]}</a>
-              </h3>
-              <p class="text-base-content/60 text-sm">{project["description"]}</p>
-            </div>
-            <div class="text-center">
-              <div class="text-xl font-bold">{project["stars"] || 0}</div>
-              <div class="text-xs text-base-content/50">stars</div>
-            </div>
-          </div>
-        </div>
+      <h1 class="text-2xl font-bold mb-2">Trending Projects</h1>
+      <p class="text-base-content/60 mb-6">The most popular Elixir projects, ranked by GitHub stars.</p>
+
+      <div class="bg-base-100 rounded-box border border-base-300 overflow-hidden">
+        <table class="table">
+          <thead>
+            <tr>
+              <th class="w-12">#</th>
+              <th>Project</th>
+              <th class="text-right w-28">Stars</th>
+              <th class="text-right w-24">Links</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr :for={{project, idx} <- Enum.with_index(@projects)} class="project-row">
+              <td class="text-base-content/30 font-bold">{idx + 1}</td>
+              <td>
+                <div>
+                  <a href={"/projects/#{project["id"]}"} class="font-semibold hover:text-primary">
+                    {project["name"]}
+                  </a>
+                  <p class="text-base-content/50 text-sm mt-0.5 line-clamp-1">{project["description"]}</p>
+                </div>
+              </td>
+              <td class="text-right">
+                <span class="flex items-center justify-end gap-1 font-semibold star-icon">
+                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
+                  {format_stars(project["stars"] || 0)}
+                </span>
+              </td>
+              <td class="text-right">
+                <a :if={project["repo_url"]} href={project["repo_url"]} target="_blank" class="btn btn-ghost btn-xs">
+                  GitHub
+                </a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-      <div :if={Enum.empty?(@projects)} class="text-center py-8 text-base-content/50">
-        <p>No projects yet. Run <code>mix run seeds/import.exs</code> to seed data.</p>
+
+      <div :if={Enum.empty?(@projects)} class="alert mt-4">
+        <span>No projects yet.</span>
       </div>
     </div>
     """
   end
 
-  defp list_projects do
-    case @client
-    |> NexBase.from("projects")
-    |> NexBase.order(:stars, :desc)
-    |> NexBase.limit(50)
-    |> NexBase.run() do
+  defp list_trending do
+    case NexBase.from("projects") |> NexBase.order(:stars, :desc) |> NexBase.limit(20) |> NexBase.run() do
       {:ok, projects} -> projects
       _ -> []
     end
   end
+
+  defp format_stars(n) when n >= 1000, do: "#{Float.round(n / 1000, 1)}k"
+  defp format_stars(n), do: "#{n}"
 end

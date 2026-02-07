@@ -22,8 +22,7 @@ defmodule NexBaseDemo.MixProject do
   defp deps do
     [
       {:nex_core, path: "../../framework"},
-      {:nex_base, path: "../../nex_base"},
-      {:dotenvy, "~> 0.9"}
+      {:nex_base, path: "../../nex_base"}
     ]
   end
 end

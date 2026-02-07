@@ -1,40 +1,27 @@
-defmodule BestofEx.Pages.Projects.Index do
+defmodule BestofEx.Pages.Tags.Show do
   use Nex
 
-  def mount(params) do
-    sort = params["sort"] || "stars"
-    projects = list_projects(sort)
-    tags = list_all_tags()
+  def mount(%{"slug" => slug}) do
+    tag = get_tag(slug)
+    projects = get_tag_projects(slug)
 
     %{
-      title: "All Projects - Best of Elixir",
-      projects: projects,
-      tags: tags,
-      sort: sort
+      title: "#{tag["name"] || slug} - Best of Elixir",
+      tag: tag,
+      projects: projects
     }
   end
 
   def render(assigns) do
     ~H"""
     <div>
-      <div class="flex items-center justify-between mb-6">
-        <h1 class="text-2xl font-bold">{length(@projects)} Projects</h1>
-        <div class="flex gap-2">
-          <a href="/projects?sort=stars" class={"btn btn-sm #{if @sort == "stars", do: "btn-primary", else: "btn-ghost"}"}>
-            By Stars
-          </a>
-          <a href="/projects?sort=name" class={"btn btn-sm #{if @sort == "name", do: "btn-primary", else: "btn-ghost"}"}>
-            By Name
-          </a>
-        </div>
+      <div class="mb-4">
+        <a href="/tags" class="link link-primary text-sm">← Back to Tags</a>
       </div>
 
-      <div class="flex flex-wrap gap-2 mb-6">
-        <a :for={tag <- @tags}
-           href={"/tags/#{tag["slug"]}"}
-           class="badge badge-outline hover:badge-primary transition-colors cursor-pointer">
-          {tag["name"]}
-        </a>
+      <div class="flex items-center gap-3 mb-6">
+        <h1 class="text-2xl font-bold">{@tag["name"]}</h1>
+        <span class="badge badge-primary">{length(@projects)} projects</span>
       </div>
 
       <div class="bg-base-100 rounded-box border border-base-300 overflow-hidden">
@@ -75,29 +62,29 @@ defmodule BestofEx.Pages.Projects.Index do
       </div>
 
       <div :if={Enum.empty?(@projects)} class="alert mt-4">
-        <span>No projects yet.</span>
+        <span>No projects with this tag yet.</span>
       </div>
     </div>
     """
   end
 
-  defp list_projects(sort) do
-    query = NexBase.from("projects")
-
-    query = case sort do
-      "name" -> query |> NexBase.order(:name, :asc)
-      _ -> query |> NexBase.order(:stars, :desc)
-    end
-
-    case query |> NexBase.run() do
-      {:ok, projects} -> projects
-      _ -> []
+  defp get_tag(slug) do
+    case NexBase.from("tags") |> NexBase.eq(:slug, slug) |> NexBase.run() do
+      {:ok, [tag | _]} -> tag
+      _ -> %{}
     end
   end
 
-  defp list_all_tags do
-    case NexBase.from("tags") |> NexBase.order(:name, :asc) |> NexBase.run() do
-      {:ok, tags} -> tags
+  defp get_tag_projects(slug) do
+    case NexBase.sql("""
+      SELECT p.id, p.name, p.description, p.stars, p.repo_url, p.homepage_url
+      FROM projects p
+      JOIN project_tags pt ON pt.project_id = p.id
+      JOIN tags t ON t.id = pt.tag_id
+      WHERE t.slug = $1
+      ORDER BY p.stars DESC
+    """, [slug]) do
+      {:ok, projects} -> projects
       _ -> []
     end
   end

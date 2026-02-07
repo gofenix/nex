@@ -1,12 +1,9 @@
 defmodule NexBaseDemo.Pages.Index do
   use Nex
 
-  @client NexBase.client(repo: NexBaseDemo.Repo)
-
   def mount(_params) do
     # SSR: 直接在服务端加载数据
-    {:ok, tasks} = @client
-    |> NexBase.from("tasks")
+    {:ok, tasks} = NexBase.from("tasks")
     |> NexBase.order(:inserted_at, :desc)
     |> NexBase.limit(20)
     |> NexBase.run()
@@ -57,14 +54,12 @@ defmodule NexBaseDemo.Pages.Index do
 
   # Page Actions (SSR)
   def create(%{"title" => title}) do
-    @client
-    |> NexBase.from("tasks")
+    NexBase.from("tasks")
     |> NexBase.insert(%{title: title, completed: false})
     |> NexBase.run()
 
     # 获取新创建的任务
-    {:ok, [task]} = @client
-    |> NexBase.from("tasks")
+    {:ok, [task]} = NexBase.from("tasks")
     |> NexBase.order(:inserted_at, :desc)
     |> NexBase.limit(1)
     |> NexBase.run()
@@ -75,19 +70,16 @@ defmodule NexBaseDemo.Pages.Index do
   def toggle(%{"id" => id}) do
     id = String.to_integer(id)
 
-    {:ok, [task]} = @client
-    |> NexBase.from("tasks")
+    {:ok, [task]} = NexBase.from("tasks")
     |> NexBase.eq(:id, id)
     |> NexBase.run()
 
-    @client
-    |> NexBase.from("tasks")
+    NexBase.from("tasks")
     |> NexBase.eq(:id, id)
     |> NexBase.update(%{completed: !task["completed"]})
     |> NexBase.run()
 
-    {:ok, [updated]} = @client
-    |> NexBase.from("tasks")
+    {:ok, [updated]} = NexBase.from("tasks")
     |> NexBase.eq(:id, id)
     |> NexBase.run()
 
@@ -95,8 +87,7 @@ defmodule NexBaseDemo.Pages.Index do
   end
 
   def delete(%{"id" => id}) do
-    @client
-    |> NexBase.from("tasks")
+    NexBase.from("tasks")
     |> NexBase.eq(:id, String.to_integer(id))
     |> NexBase.delete()
     |> NexBase.run()

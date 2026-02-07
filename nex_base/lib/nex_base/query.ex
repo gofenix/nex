@@ -4,7 +4,6 @@ defmodule NexBase.Query do
   """
   defstruct [
     :table,
-    :repo,
     select: [],
     filters: [],
     order_by: [],

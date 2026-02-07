@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Automated CSRF Protection**: Framework now automatically injects hidden CSRF tokens into all state-changing `<form>` tags (POST, PUT, PATCH, DELETE) and handles HTMX headers. Manual `{csrf_input_tag()}` and `hx-headers` are no longer required.
 - **Refined Project Installer**: Enhanced `mix nex.new` with reserved name validation, automatic git initialization, and `.formatter.exs` generation.
 - **Enhanced AI Agent Instructions**: Deeply optimized `AGENTS.md` with anti-hallucination guidelines, startup command instructions, and surgical UX patterns.
+- **NexBase `sql/2` helper**: `NexBase.sql("SELECT ...", [params])` returns `{:ok, [%{col => val}]}` directly, hiding raw Postgrex result parsing.
+
+### Changed
+- **NexBase Supabase-style API**: Redesigned to `NexBase.init(url: ..., ssl: true)` + `NexBase.from("table")` — no client, no Repo knowledge needed.
+- **NexBase decoupled from nex_core**: NexBase is now a standalone library with only `ecto_sql`, `postgrex`, and `jason`. Config passed via `NexBase.init/1`.
+- **Removed `client/0`, `client/1`, `connect/1`**: Replaced by `NexBase.init/1` (for apps) and `NexBase.init(start: true)` (for scripts).
 
 ## [0.3.2] - 2026-01-04
 

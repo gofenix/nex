@@ -3,11 +3,10 @@ defmodule NexBaseDemo.Application do
 
   @impl true
   def start(_type, _args) do
-    children = [
-      NexBaseDemo.Repo
-    ]
+    Nex.Env.init()
+    NexBase.init(url: Nex.Env.get(:database_url), ssl: true)
 
-    opts = [strategy: :one_for_one, name: NexBaseDemo.Supervisor]
-    Supervisor.start_link(children, opts)
+    children = [{NexBase.Repo, []}]
+    Supervisor.start_link(children, strategy: :one_for_one, name: NexBaseDemo.Supervisor)
   end
 end
