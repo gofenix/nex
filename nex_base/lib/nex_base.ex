@@ -290,10 +290,11 @@ defmodule NexBase do
   @doc """
   Executes a stored procedure (RPC).
 
-  Options:
-    - `:repo` - The Ecto repository to use (required)
+  ## Examples
+
+      {:ok, result} = NexBase.rpc("my_function", %{param1: "value"})
   """
-  def rpc(function_name, params \\ %{}, _opts \\ []) do
+  def rpc(function_name, params \\ %{}) do
     repo = NexBase.Repo
     # Build raw SQL: SELECT * FROM func($1, $2)
     # This is complex because params can be positional or named.
@@ -319,11 +320,14 @@ defmodule NexBase do
 
   @doc """
   Executes the built query.
-  Repo can be passed via Query struct (from client) or via options.
-  """
-  def run(query, opts \\ [])
 
-  def run(%Query{type: :select} = query, _opts) do
+  ## Examples
+
+      {:ok, rows} = NexBase.from("users") |> NexBase.eq(:active, true) |> NexBase.run()
+  """
+  def run(query)
+
+  def run(%Query{type: :select} = query) do
     repo = NexBase.Repo
     ecto_query = build_ecto_query(query)
     {:ok, repo.all(ecto_query)}
@@ -331,7 +335,7 @@ defmodule NexBase do
     e -> {:error, e}
   end
 
-  def run(%Query{type: :insert, table: table, data: data} = _query, _opts) do
+  def run(%Query{type: :insert, table: table, data: data} = _query) do
     repo = NexBase.Repo
     data_list = if is_list(data), do: data, else: [data]
     {count, _} = repo.insert_all(table, data_list)
@@ -340,7 +344,7 @@ defmodule NexBase do
     e -> {:error, e}
   end
 
-  def run(%Query{type: :update, table: table, data: data, filters: filters} = _query, _opts) do
+  def run(%Query{type: :update, table: table, data: data, filters: filters} = _query) do
     repo = NexBase.Repo
     base_query = Ecto.Query.from(t in table)
     query_with_filters = Enum.reduce(filters, base_query, fn filter, acc ->
@@ -353,7 +357,7 @@ defmodule NexBase do
     e -> {:error, e}
   end
 
-  def run(%Query{type: :delete, table: table, filters: filters} = _query, _opts) do
+  def run(%Query{type: :delete, table: table, filters: filters} = _query) do
     repo = NexBase.Repo
     base_query = Ecto.Query.from(t in table)
     query_with_filters = Enum.reduce(filters, base_query, fn filter, acc ->
@@ -365,7 +369,7 @@ defmodule NexBase do
     e -> {:error, e}
   end
 
-  def run(%Query{type: :upsert, table: table, data: data} = _query, _opts) do
+  def run(%Query{type: :upsert, table: table, data: data} = _query) do
     repo = NexBase.Repo
     data_list = if is_list(data), do: data, else: [data]
     upsert_opts = [

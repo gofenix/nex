@@ -18,6 +18,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **NexBase decoupled from nex_core**: NexBase is now a standalone library with only `ecto_sql`, `postgrex`, and `jason`. Config passed via `NexBase.init/1`.
 - **Removed `client/0`, `client/1`, `connect/1`**: Replaced by `NexBase.init/1` (for apps) and `NexBase.init(start: true)` (for scripts).
 
+### NexBase 0.1.0 — Hex Publish Prep
+- **Fixed**: `elixir: "~> 1.19"` → `"~> 1.17"` (1.19 does not exist)
+- **Fixed**: `postgrex` version constraint `">= 0.0.0"` → `"~> 0.19"`
+- **Added**: `source_url`, `homepage_url` to mix.exs package metadata
+- **Added**: Type specs (`@type t`) to `NexBase.Query`
+- **Removed**: Dead `NexBase.Client` module (replaced by direct `NexBase.from/1` API)
+- **Removed**: Unused `opts` parameter from `NexBase.run/1`
+- **Fixed**: `rpc/3` doc referencing non-existent `:repo` option
+- **Rewritten**: README.md — English, matches actual API (no more `@client` pattern), documents `init/1`, `sql/2`, script usage
+
 ## [0.3.2] - 2026-01-04
 
 ### Added
