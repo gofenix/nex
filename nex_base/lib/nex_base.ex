@@ -60,8 +60,7 @@ defmodule NexBase do
     repo_config =
       if opts[:ssl] do
         repo_config ++ [
-          ssl: true,
-          ssl_opts: [verify: :verify_none],
+          ssl: [verify: :verify_none],
           queue_target: 10_000,
           queue_interval: 20_000
         ]
