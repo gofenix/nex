@@ -21,7 +21,7 @@ defmodule BestofEx.MixProject do
 
   defp deps do
     [
-      {:nex_core, path: "../../framework"},
+      {:nex_core, "~> 0.3.3"},
       {:nex_base, "~> 0.1.1"}
     ]
   end
