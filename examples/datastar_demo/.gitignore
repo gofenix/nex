@@ -1,8 +1,0 @@
-/_build
-/deps
-/*.ez
-.fetch
-erl_crash.dump
-*.beam
-.elixir_ls/
-.DS_Store

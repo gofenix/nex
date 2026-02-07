@@ -2,13 +2,13 @@ defmodule NexBaseTest do
   use ExUnit.Case
   alias NexBase.Query
 
-  # 由于我们没有真实的数据库连接，我们将重点测试 Query Builder 生成的结构是否正确
-  # 我们可以通过 mock run 函数或检查内部私有函数来验证 Ecto Query 的生成，
-  # 但更简单的是验证 NexBase.Query 结构体本身，以及确保 build_ecto_query 不会崩溃。
+  # Since we don't have a real database connection, we focus on testing whether the Query Builder generates correct structures.
+  # We can verify Ecto Query generation by mocking the run function or checking internal private functions,
+  # but a simpler approach is to verify the NexBase.Query struct itself and ensure build_ecto_query doesn't crash.
 
-  # 注意：由于 build_ecto_query 是私有的，且 run 需要数据库连接，
-  # 我们在这里主要测试 NexBase 的公共 API 是否正确构建了 NexBase.Query 结构体。
-  # 这种"状态测试"足以验证链式调用的逻辑。
+  # Note: Since build_ecto_query is private and run requires a database connection,
+  # we mainly test whether NexBase's public API correctly builds the NexBase.Query struct.
+  # This "state testing" is sufficient to validate the logic of chain calls.
 
   describe "Query Builder" do
     test "from/1 creates initial query" do
@@ -52,8 +52,8 @@ defmodule NexBaseTest do
       assert Enum.at(q.order_by, 1) == {:asc, :id}
     end
   end
-  
-  # 如果我们想测试 Ecto Query 的生成，我们可以导出一个仅在测试环境可见的函数，
-  # 或者在 NexBase 中添加一个 `to_ecto_query` 的辅助函数。
-  # 为了演示，我们可以假设 build_ecto_query 能够正常工作。
+
+  # If we want to test Ecto Query generation, we could export a function visible only in test environment,
+  # or add a `to_ecto_query` helper function in NexBase.
+  # For demonstration purposes, we assume build_ecto_query works correctly.
 end

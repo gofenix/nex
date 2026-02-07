@@ -1,5 +1,5 @@
 # seeds/import.exs
-# 使用 NexBase 导入种子数据
+# Import seed data using NexBase
 
 Nex.Env.init()
 NexBase.init(url: Nex.Env.get(:database_url), ssl: true, start: true)
