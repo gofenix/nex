@@ -1,14 +1,14 @@
-FROM elixir:1.18-alpine
+FROM hexpm/elixir:1.18.1-erlang-27.2-alpine-3.21.0
 
-RUN apk add --no-cache build-base git openssl ncurses-libs
+RUN apk add --no-cache build-base git
 
 WORKDIR /app
 
-RUN mix local.hex --force && mix local.rebar --force
+COPY mix.exs mix.lock ./
+RUN mix deps.get
 
 COPY . .
-
-RUN mix deps.get
+RUN mix compile
 
 EXPOSE 4000
 
