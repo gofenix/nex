@@ -8,16 +8,16 @@ defmodule BestofEx.Components.FeaturedCard do
   def render(assigns) do
     ~H"""
     <a href={"/projects/#{@project["id"]}"}
-       class="block border border-base-200 rounded-xl p-4 text-center hover:shadow-md hover:border-primary/30 transition-all">
+       class="card-premium block p-4 text-center group">
       <div class="flex justify-center mb-3">
         {Avatar.render(%{name: @project["name"], size: "lg"})}
       </div>
-      <div class="font-semibold text-primary text-sm truncate">{@project["name"]}</div>
-      <div class="text-accent text-xs font-semibold mt-1">
+      <div class="font-semibold text-primary text-sm truncate group-hover:underline">{@project["name"]}</div>
+      <div class="text-amber-600 text-xs font-semibold mt-1">
         + {format_delta(@project["star_delta"] || 0)}☆
       </div>
       <div :if={@tag} class="mt-2">
-        <span class="badge badge-outline badge-xs">{@tag}</span>
+        <span class="badge badge-premium badge-sm">{@tag}</span>
       </div>
     </a>
     """

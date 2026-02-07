@@ -26,46 +26,46 @@ defmodule BestofEx.Pages.Projects.Index do
       <div class="container mx-auto max-w-6xl px-4">
         <!-- Header with Search -->
         <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-          <h1 class="text-2xl font-bold">All Projects</h1>
+          <h1 class="text-2xl font-bold text-gray-900">All Projects</h1>
 
           <form class="relative w-full sm:w-auto" hx-get="/projects" hx-target="#project-list">
             <input type="search" name="q" value={@query} placeholder="Search projects..."
-                   class="input input-bordered input-sm w-full sm:w-64 pl-3 pr-8"
+                   class="input input-sm w-full sm:w-64 pl-3 pr-8 bg-white border-gray-200 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/10"
                    hx-get="/projects"
                    hx-target="#project-list"
                    hx-trigger="keyup changed delay:300ms"
                    hx-include="[name='sort'],[name='tag']" />
-            <kbd class="kbd kbd-sm absolute right-2 top-1.5 text-xs opacity-50 hidden sm:inline">⌘K</kbd>
+            <kbd class="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 font-sans hidden sm:inline">⌘K</kbd>
           </form>
         </div>
 
         <!-- Tag Filter Bar -->
         <div class="flex flex-wrap gap-2 mb-6">
-          <a href="/projects" class={"badge #{if is_nil(@current_tag), do: "badge-primary", else: "badge-outline"}"}>All</a>
+          <a href="/projects" class={"badge badge-sm #{if is_nil(@current_tag), do: "bg-primary text-white border-primary", else: "badge-premium"}"}>All</a>
           <%= for tag <- @tags do %>
             <a href={"/projects?tag=#{tag["slug"]}"}
-               class={"badge #{if @current_tag == tag["slug"], do: "badge-primary", else: "badge-outline"}"}>
+               class={"badge badge-sm #{if @current_tag == tag["slug"], do: "bg-primary text-white border-primary", else: "badge-premium"}"}>
               {tag["name"]}
             </a>
           <% end %>
         </div>
 
         <!-- Sort Headers -->
-        <div class="flex gap-2 mb-4 text-sm">
-          <span class="text-base-content/50">Sort by:</span>
+        <div class="flex gap-3 mb-4 text-sm items-center">
+          <span class="text-gray-400">Sort by:</span>
           <a href={"/projects?sort=stars#{if @current_tag, do: "&tag=" <> @current_tag, else: ""}"}
-             class={"link #{if @sort == "stars", do: "link-primary font-semibold", else: "link-neutral"}"}>
+             class={"font-medium transition-smooth #{if @sort == "stars", do: "text-primary", else: "text-gray-500 hover:text-primary"}"}>
             Stars {if @sort == "stars", do: "↓"}
           </a>
           <a href={"/projects?sort=name#{if @current_tag, do: "&tag=" <> @current_tag, else: ""}"}
-             class={"link #{if @sort == "name", do: "link-primary font-semibold", else: "link-neutral"}"}>
+             class={"font-medium transition-smooth #{if @sort == "name", do: "text-primary", else: "text-gray-500 hover:text-primary"}"}>
             Name {if @sort == "name", do: "↓"}
           </a>
         </div>
 
         <!-- Project List -->
-        <div id="project-list" class="bg-base-100 rounded-xl border border-base-200 p-4">
-          <div :if={Enum.empty?(@projects)} class="text-center py-8 text-base-content/50">
+        <div id="project-list" class="card-premium p-4">
+          <div :if={Enum.empty?(@projects)} class="text-center py-8 text-gray-500">
             <p>No projects found.</p>
           </div>
 

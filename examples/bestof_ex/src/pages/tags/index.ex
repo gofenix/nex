@@ -15,23 +15,21 @@ defmodule BestofEx.Pages.Tags.Index do
     ~H"""
     <div class="py-8">
       <div class="container mx-auto max-w-6xl px-4">
-        <h1 class="text-2xl font-bold mb-6">All Tags</h1>
+        <h1 class="text-2xl font-bold mb-6 text-gray-900">All Tags</h1>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           <%= for tag <- @tags do %>
             <a href={"/tags/#{tag["slug"]}"}
-               class="card bg-base-100 border border-base-200 hover:border-primary hover:shadow-md transition-all cursor-pointer">
-              <div class="card-body p-4 flex-row items-center justify-between">
-                <span class="font-semibold text-primary">{tag["name"]}</span>
-                <span class="badge badge-outline badge-sm">{tag["count"]} projects</span>
-              </div>
+               class="card-premium flex items-center justify-between p-4">
+              <span class="font-semibold text-primary">{tag["name"]}</span>
+              <span class="badge badge-premium badge-sm">{tag["count"]} projects</span>
             </a>
           <% end %>
         </div>
 
-        <div :if={Enum.empty?(@tags)} class="text-center py-8 text-base-content/50">
+        <div :if={Enum.empty?(@tags)} class="text-center py-8 text-gray-500">
           <p>No tags yet.</p>
-          <p class="text-sm mt-1">Run <code class="kbd kbd-sm">mix run seeds/import.exs</code> to seed data.</p>
+          <p class="text-sm mt-1">Run <code class="px-1.5 py-0.5 bg-gray-100 rounded text-xs">mix run seeds/import.exs</code> to seed data.</p>
         </div>
       </div>
     </div>

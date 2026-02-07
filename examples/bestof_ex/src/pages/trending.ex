@@ -20,27 +20,27 @@ defmodule BestofEx.Pages.Trending do
     <div class="py-8">
       <div class="container mx-auto max-w-6xl px-4">
         <!-- Header -->
-        <h1 class="text-2xl font-bold mb-6">Trending Projects</h1>
+        <h1 class="text-2xl font-bold mb-6 text-gray-900">Trending Projects</h1>
 
         <!-- Period Tabs -->
-        <div class="tabs tabs-boxed mb-6">
+        <div class="flex gap-2 mb-6">
           <a href="/trending?period=today"
-             class={"tab #{if @period == "today", do: "tab-active"}"}>
+             class={"tab-premium tab #{if @period == "today", do: "tab-active"}"}>
             Today
           </a>
           <a href="/trending?period=week"
-             class={"tab #{if @period == "week", do: "tab-active"}"}>
+             class={"tab-premium tab #{if @period == "week", do: "tab-active"}"}>
             This Week
           </a>
           <a href="/trending?period=month"
-             class={"tab #{if @period == "month", do: "tab-active"}"}>
+             class={"tab-premium tab #{if @period == "month", do: "tab-active"}"}>
             This Month
           </a>
         </div>
 
         <!-- Project List -->
-        <div id="trending-list" class="bg-base-100 rounded-xl border border-base-200 p-4">
-          <div :if={Enum.empty?(@projects)} class="text-center py-8 text-base-content/50">
+        <div id="trending-list" class="card-premium p-4">
+          <div :if={Enum.empty?(@projects)} class="text-center py-8 text-gray-500">
             <p>No trending projects for this period.</p>
           </div>
 

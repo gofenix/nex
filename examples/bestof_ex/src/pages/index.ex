@@ -23,12 +23,12 @@ defmodule BestofEx.Pages.Index do
   def render(assigns) do
     ~H"""
     <!-- Hero Section -->
-    <section class="py-12 text-center border-b border-base-200 bg-gradient-to-b from-base-100 to-base-50">
+    <section class="py-12 text-center border-b border-gray-200 bg-white">
       <div class="container mx-auto max-w-6xl px-4">
-        <h1 class="text-4xl md:text-5xl font-bold text-base-content mb-3">
+        <h1 class="text-4xl md:text-5xl font-bold text-gray-900 mb-3 tracking-tight">
           The Best of <span class="text-primary typing-cursor">{@hero_word}</span>
         </h1>
-        <p class="text-base md:text-lg text-base-content/60 max-w-2xl mx-auto leading-relaxed">
+        <p class="text-base md:text-lg text-gray-500 max-w-2xl mx-auto leading-relaxed">
           A place to find the best open-source projects in the Elixir ecosystem:
           Phoenix, Ecto, LiveView, Nx, Nerves, Oban...
         </p>
@@ -44,15 +44,15 @@ defmodule BestofEx.Pages.Index do
           <div class="lg:col-span-8" id="hot-section">
             <div class="flex items-center justify-between mb-6">
               <div>
-                <h2 class="text-xl font-bold flex items-center gap-2">
-                  <span>🔥</span> Hot Projects
+                <h2 class="text-xl font-bold flex items-center gap-2 text-gray-900">
+                  <span class="text-amber-500">🔥</span> Hot Projects
                 </h2>
-                <p class="text-sm text-base-content/50">By stars added {period_label(@period)}</p>
+                <p class="text-sm text-gray-500">By stars added {period_label(@period)}</p>
               </div>
 
               <!-- Period Filter -->
               <form hx-get="/" hx-target="#hot-section" hx-select="#hot-section">
-                <select name="period" class="select select-bordered select-sm text-sm"
+                <select name="period" class="select select-sm text-sm bg-white border-gray-200 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/10"
                         onchange="this.form.submit()">
                   <option value="today" selected={@period == "today"}>Today</option>
                   <option value="week" selected={@period == "week"}>This Week</option>
@@ -62,10 +62,10 @@ defmodule BestofEx.Pages.Index do
             </div>
 
             <!-- Hot Projects List -->
-            <div class="bg-base-100 rounded-xl border border-base-200 p-4">
-              <div :if={Enum.empty?(@hot_projects)} class="text-center py-8 text-base-content/50">
+            <div class="card-premium p-4">
+              <div :if={Enum.empty?(@hot_projects)} class="text-center py-8 text-gray-500">
                 <p>No hot projects yet.</p>
-                <p class="text-sm mt-1">Run <code class="kbd kbd-sm">mix run seeds/import.exs</code> to seed data.</p>
+                <p class="text-sm mt-1">Run <code class="px-1.5 py-0.5 bg-gray-100 rounded text-xs">mix run seeds/import.exs</code> to seed data.</p>
               </div>
 
               <%= for project <- @hot_projects do %>
@@ -74,17 +74,17 @@ defmodule BestofEx.Pages.Index do
             </div>
 
             <div class="mt-4 text-right">
-              <a href="/projects" class="link link-primary text-sm">View all projects →</a>
+              <a href="/projects" class="text-sm text-primary hover:text-accent transition-smooth font-medium">View all projects →</a>
             </div>
           </div>
 
           <!-- Right Column: Featured Sidebar (30%) -->
           <div class="lg:col-span-4">
             <div class="flex items-center justify-between mb-4">
-              <h2 class="text-lg font-bold flex items-center gap-2">
-                <span>⭐</span> Featured
+              <h2 class="text-lg font-bold flex items-center gap-2 text-gray-900">
+                <span class="text-amber-500">⭐</span> Featured
               </h2>
-              <span class="text-xs text-base-content/50">Random order</span>
+              <span class="text-xs text-gray-400">Random order</span>
             </div>
 
             <div class="grid grid-cols-1 gap-3">
