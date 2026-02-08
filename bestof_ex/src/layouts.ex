@@ -173,8 +173,7 @@ defmodule BestofEx.Layouts do
               <div class="flex items-center gap-3">
                 <form action="/projects" method="get" class="relative hidden sm:block">
                   <input type="search" name="q" placeholder="Search..."
-                         class="input input-sm input-premium w-44 pl-3 pr-8 text-sm rounded-lg"
-                         hx-get="/projects" hx-target="#project-list" hx-trigger="keyup changed delay:300ms" />
+                         class="input input-sm input-premium w-44 pl-3 pr-8 text-sm rounded-lg" />
                   <kbd class="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 font-sans">⌘K</kbd>
                 </form>
                 <a href="https://github.com/gofenix/nex" target="_blank"

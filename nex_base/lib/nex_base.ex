@@ -63,7 +63,10 @@ defmodule NexBase do
     repo_module = repo_module_for(adapter)
     repo_config = build_repo_config(adapter, url, pool_size, opts)
 
-    name = :"nex_base_#{:erlang.unique_integer([:positive, :monotonic])}"
+    # First connection uses the module name (Ecto default).
+    # Subsequent connections get unique names for multi-db support.
+    is_first = Application.get_env(:nex_base, :default_conn) == nil
+    name = if is_first, do: repo_module, else: :"nex_base_#{:erlang.unique_integer([:positive, :monotonic])}"
 
     conn = %Conn{
       name: name,
@@ -72,10 +75,16 @@ defmodule NexBase do
       repo_config: repo_config
     }
 
-    # Store as default for backward compatibility
-    Application.put_env(:nex_base, :default_conn, conn)
-    # Store config keyed by name for Repo init/2 lookup
+    # Always store config under legacy key (for Repo init/2 fallback)
+    Application.put_env(:nex_base, :repo_config, repo_config)
+    # Store config keyed by name for multi-conn Repo init/2 lookup
     Application.put_env(:nex_base, name, repo_config)
+    # Store as default for backward compatibility (first init wins)
+    if is_first do
+      Application.put_env(:nex_base, :default_conn, conn)
+    end
+    # Also store adapter for legacy adapter/0 calls
+    Application.put_env(:nex_base, :adapter, adapter)
 
     if opts[:start] do
       start_conn(conn)
@@ -126,7 +135,8 @@ defmodule NexBase do
     end
     Application.ensure_all_started(:ecto_sql)
 
-    case repo_module.start_link(name: name) do
+    start_opts = if name == repo_module, do: [], else: [name: name]
+    case repo_module.start_link(start_opts) do
       {:ok, _pid} -> :ok
       {:error, {:already_started, _pid}} -> :ok
       {:error, reason} -> {:error, reason}
@@ -284,8 +294,7 @@ defmodule NexBase do
       {:ok, rows} = conn |> NexBase.sql("SELECT * FROM users", [])
   """
   def sql(%Conn{} = conn, sql_str, params) when is_binary(sql_str) and is_list(params) do
-    {repo_mod, name} = resolve_repo(conn)
-    repo_mod.put_dynamic_repo(name)
+    repo_mod = resolve_repo(conn)
     sql_str = normalize_placeholders(sql_str, conn.adapter)
     case Ecto.Adapters.SQL.query(repo_mod, sql_str, params) do
       {:ok, %{rows: rows, columns: columns}} ->
@@ -302,8 +311,7 @@ defmodule NexBase do
   Executes a raw SQL query (low-level, returns raw driver result).
   """
   def query(%Conn{} = conn, sql_str, params) when is_binary(sql_str) and is_list(params) do
-    {repo_mod, name} = resolve_repo(conn)
-    repo_mod.put_dynamic_repo(name)
+    repo_mod = resolve_repo(conn)
     Ecto.Adapters.SQL.query(repo_mod, normalize_placeholders(sql_str, conn.adapter), params)
   end
 
@@ -315,8 +323,7 @@ defmodule NexBase do
   Executes a raw SQL query, raising on error.
   """
   def query!(%Conn{} = conn, sql_str, params) when is_binary(sql_str) and is_list(params) do
-    {repo_mod, name} = resolve_repo(conn)
-    repo_mod.put_dynamic_repo(name)
+    repo_mod = resolve_repo(conn)
     Ecto.Adapters.SQL.query!(repo_mod, normalize_placeholders(sql_str, conn.adapter), params)
   end
 
@@ -390,8 +397,7 @@ defmodule NexBase do
       raise "NexBase.rpc/2 is not supported with SQLite (stored procedures are a PostgreSQL feature)"
     end
 
-    {repo_mod, name} = resolve_repo(conn)
-    repo_mod.put_dynamic_repo(name)
+    repo_mod = resolve_repo(conn)
 
     placeholders = Enum.map(1..map_size(params), fn i -> "$#{i}" end)
     keys = Map.keys(params)
@@ -425,8 +431,7 @@ defmodule NexBase do
 
   def run(%Query{type: :insert, table: table, data: data, conn: conn} = _query) do
     conn = conn || default_conn()
-    {repo_mod, name} = resolve_repo(conn)
-    repo_mod.put_dynamic_repo(name)
+    repo_mod = resolve_repo(conn)
     data_list = if is_list(data), do: data, else: [data]
     {count, _} = repo_mod.insert_all(table, data_list)
     {:ok, %{count: count}}
@@ -436,8 +441,7 @@ defmodule NexBase do
 
   def run(%Query{type: :update, table: table, data: data, filters: filters, conn: conn} = _query) do
     conn = conn || default_conn()
-    {repo_mod, name} = resolve_repo(conn)
-    repo_mod.put_dynamic_repo(name)
+    repo_mod = resolve_repo(conn)
     base_query = Ecto.Query.from(t in table)
     query_with_filters = Enum.reduce(filters, base_query, fn filter, acc ->
       apply_filter(acc, filter, conn.adapter)
@@ -451,8 +455,7 @@ defmodule NexBase do
 
   def run(%Query{type: :delete, table: table, filters: filters, conn: conn} = _query) do
     conn = conn || default_conn()
-    {repo_mod, name} = resolve_repo(conn)
-    repo_mod.put_dynamic_repo(name)
+    repo_mod = resolve_repo(conn)
     base_query = Ecto.Query.from(t in table)
     query_with_filters = Enum.reduce(filters, base_query, fn filter, acc ->
       apply_filter(acc, filter, conn.adapter)
@@ -465,8 +468,7 @@ defmodule NexBase do
 
   def run(%Query{type: :upsert, table: table, data: data, conn: conn} = _query) do
     conn = conn || default_conn()
-    {repo_mod, name} = resolve_repo(conn)
-    repo_mod.put_dynamic_repo(name)
+    repo_mod = resolve_repo(conn)
     data_list = if is_list(data), do: data, else: [data]
     upsert_opts = [
       on_conflict: :replace_all,
@@ -480,12 +482,17 @@ defmodule NexBase do
 
   # -- Internal Helpers --
 
-  defp resolve_repo(%Conn{repo_module: repo_mod, name: name}), do: {repo_mod, name}
+  defp resolve_repo(%Conn{repo_module: repo_mod, name: name}) do
+    # For multi-conn (custom name), set dynamic repo so Ecto routes to the right process
+    if name != repo_mod do
+      repo_mod.put_dynamic_repo(name)
+    end
+    repo_mod
+  end
 
   defp run_select(%Query{table: table, select: select_fields, filters: filters, limit: limit, offset: offset, order_by: order_by, conn: conn}) do
     conn = conn || default_conn()
-    {repo_mod, name} = resolve_repo(conn)
-    repo_mod.put_dynamic_repo(name)
+    repo_mod = resolve_repo(conn)
 
     columns = if select_fields == [] or select_fields == ["*"], do: "*", else: Enum.map_join(select_fields, ", ", &to_string/1)
 

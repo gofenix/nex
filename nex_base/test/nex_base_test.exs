@@ -2,6 +2,14 @@ defmodule NexBaseTest do
   use ExUnit.Case
   alias NexBase.{Query, Conn}
 
+  setup do
+    # Reset default conn between tests so each test has clean state
+    Application.delete_env(:nex_base, :default_conn)
+    Application.delete_env(:nex_base, :repo_config)
+    Application.delete_env(:nex_base, :adapter)
+    :ok
+  end
+
   describe "Query Builder" do
     test "from/1 creates initial query without conn" do
       q = NexBase.from("users")

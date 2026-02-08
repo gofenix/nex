@@ -30,7 +30,13 @@ defmodule NexBase.Repo do
   end
 
   def start_link(%Conn{repo_module: repo_mod, name: name}) do
-    repo_mod.start_link(name: name)
+    # When name == repo_mod, this is the default single-connection mode.
+    # Ecto registers the process under the module name by default.
+    if name == repo_mod do
+      repo_mod.start_link([])
+    else
+      repo_mod.start_link(name: name)
+    end
   end
 
   def start_link(opts) when is_list(opts) do

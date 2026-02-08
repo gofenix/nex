@@ -28,13 +28,11 @@ defmodule BestofEx.Pages.Projects.Index do
         <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <h1 class="text-2xl font-bold text-gray-900">All Projects</h1>
 
-          <form class="relative w-full sm:w-auto" hx-get="/projects" hx-target="#project-list">
+          <form action="/projects" method="get" class="relative w-full sm:w-auto">
+            <input type="hidden" name="sort" value={@sort} />
+            <input :if={@current_tag} type="hidden" name="tag" value={@current_tag} />
             <input type="search" name="q" value={@query} placeholder="Search projects..."
-                   class="input input-sm w-full sm:w-64 pl-3 pr-8 bg-white border-gray-200 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/10"
-                   hx-get="/projects"
-                   hx-target="#project-list"
-                   hx-trigger="keyup changed delay:300ms"
-                   hx-include="[name='sort'],[name='tag']" />
+                   class="input input-sm w-full sm:w-64 pl-3 pr-8 bg-white border-gray-200 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/10" />
             <kbd class="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 font-sans hidden sm:inline">⌘K</kbd>
           </form>
         </div>
