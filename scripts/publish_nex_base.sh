@@ -120,6 +120,12 @@ echo "📤 Publishing nex_base v$VERSION..."
 HEX_HOME=~/.hex mix hex.publish --yes
 cd ..
 
+# Cleanup generated tar files
+echo ""
+echo "🧹 Cleaning up generated files..."
+rm -f nex_base/nex_base-$VERSION.tar
+rm -rf nex_base/nex_base-$VERSION
+
 echo ""
 echo -e "${GREEN}🎉 nex_base v$VERSION published successfully!${NC}"
 echo ""
