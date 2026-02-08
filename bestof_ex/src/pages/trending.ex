@@ -71,23 +71,31 @@ defmodule BestofEx.Pages.Trending do
       LIMIT 20
     """)
 
-    # Fetch tags for each project
-    Enum.map(rows, fn project ->
-      tags = fetch_project_tags(project["id"])
-      Map.put(project, "tags", tags)
-    end)
+    attach_tags_batch(rows)
   end
 
-  defp fetch_project_tags(project_id) do
-    {:ok, rows} = NexBase.sql("""
-      SELECT t.name, t.slug
-      FROM tags t
-      JOIN project_tags pt ON pt.tag_id = t.id
-      WHERE pt.project_id = $1
-      ORDER BY t.name
-      LIMIT 3
-    """, [project_id])
+  defp attach_tags_batch(projects) do
+    ids = Enum.map(projects, & &1["id"])
 
-    rows
+    if ids == [] do
+      projects
+    else
+      placeholders = Enum.map_join(1..length(ids), ", ", fn i -> "$#{i}" end)
+
+      {:ok, tag_rows} = NexBase.sql("""
+        SELECT pt.project_id, t.name, t.slug
+        FROM tags t
+        JOIN project_tags pt ON pt.tag_id = t.id
+        WHERE pt.project_id IN (#{placeholders})
+        ORDER BY t.name
+      """, ids)
+
+      tags_by_project = Enum.group_by(tag_rows, & &1["project_id"])
+
+      Enum.map(projects, fn project ->
+        tags = Map.get(tags_by_project, project["id"], []) |> Enum.take(3)
+        Map.put(project, "tags", tags)
+      end)
+    end
   end
 end
