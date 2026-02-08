@@ -23,6 +23,7 @@ defmodule BestofEx.MixProject do
     [
       {:nex_core, "~> 0.3.3"},
       {:nex_base, path: "../nex_base"},
+      {:ecto_sqlite3, "~> 0.17"},
       {:req, "~> 0.5"}
     ]
   end

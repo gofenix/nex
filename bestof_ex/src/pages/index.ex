@@ -197,10 +197,10 @@ defmodule BestofEx.Pages.Index do
 
   # Fetch hot projects with star delta for the given period
   defp fetch_hot_projects(period) do
-    interval = case period do
-      "week" -> "7 days"
-      "month" -> "30 days"
-      _ -> "1 day"
+    days = case period do
+      "week" -> "-7 days"
+      "month" -> "-30 days"
+      _ -> "-1 days"
     end
 
     {:ok, rows} = NexBase.sql("""
@@ -209,7 +209,7 @@ defmodule BestofEx.Pages.Index do
       FROM projects p
       LEFT JOIN project_stats ps
         ON ps.project_id = p.id
-        AND ps.recorded_at = CURRENT_DATE - INTERVAL '#{interval}'
+        AND ps.recorded_at = date('now', '#{days}')
       ORDER BY COALESCE(p.stars - ps.stars, 0) DESC, p.stars DESC
       LIMIT 10
     """)
@@ -233,7 +233,7 @@ defmodule BestofEx.Pages.Index do
       FROM projects p
       LEFT JOIN project_stats ps
         ON ps.project_id = p.id
-        AND ps.recorded_at = CURRENT_DATE - INTERVAL '1 day'
+        AND ps.recorded_at = date('now', '-1 days')
       ORDER BY RANDOM()
       LIMIT $1
     """, [count])
@@ -292,7 +292,7 @@ defmodule BestofEx.Pages.Index do
       FROM projects p
       LEFT JOIN project_stats ps
         ON ps.project_id = p.id
-        AND ps.recorded_at = date_trunc('month', CURRENT_DATE)::date
+        AND ps.recorded_at = date('now', 'start of month')
       ORDER BY COALESCE(p.stars - ps.stars, 0) DESC, p.stars DESC
       LIMIT $1
     """, [count])

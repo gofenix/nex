@@ -54,10 +54,10 @@ defmodule BestofEx.Pages.Trending do
   end
 
   defp list_trending(period) do
-    interval = case period do
-      "week" -> "7 days"
-      "month" -> "30 days"
-      _ -> "1 day"
+    days = case period do
+      "week" -> "-7 days"
+      "month" -> "-30 days"
+      _ -> "-1 days"
     end
 
     {:ok, rows} = NexBase.sql("""
@@ -66,7 +66,7 @@ defmodule BestofEx.Pages.Trending do
       FROM projects p
       LEFT JOIN project_stats ps
         ON ps.project_id = p.id
-        AND ps.recorded_at = CURRENT_DATE - INTERVAL '#{interval}'
+        AND ps.recorded_at = date('now', '#{days}')
       ORDER BY COALESCE(p.stars - ps.stars, 0) DESC, p.stars DESC
       LIMIT 20
     """)

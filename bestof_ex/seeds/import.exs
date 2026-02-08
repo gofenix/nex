@@ -2,7 +2,7 @@
 # Fetch real Elixir project data from GitHub API
 
 Nex.Env.init()
-NexBase.init(url: Nex.Env.get(:database_url), ssl: true, start: true)
+NexBase.init(url: Nex.Env.get(:database_url), start: true)
 
 IO.puts("🚀 Syncing real data from GitHub...")
 IO.puts("   Searching for Elixir repos with stars > 1000")

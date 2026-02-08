@@ -6,3 +6,6 @@
 erl_crash.dump
 .elixir_ls/
 .DS_Store
+db/*.db
+db/*.db-shm
+db/*.db-wal
