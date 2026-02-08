@@ -3,41 +3,34 @@ defmodule NexBase do
   A fluent database query builder for Elixir, inspired by Supabase.
 
   Supports PostgreSQL and SQLite — the adapter is auto-detected from the URL scheme.
+  Supports multiple simultaneous database connections.
 
   ## Quick Start
 
-      # PostgreSQL
+      # Single connection (simplest)
       NexBase.init(url: "postgres://localhost/mydb")
+      NexBase.from("users") |> NexBase.run()
 
-      # SQLite
-      NexBase.init(url: "sqlite:///path/to/mydb.db")
+      # Multiple connections
+      main = NexBase.init(url: "postgres://localhost/main")
+      cache = NexBase.init(url: "sqlite::memory:")
 
-      # Query (same API for both databases)
-      {:ok, users} = NexBase.from("users")
-      |> NexBase.eq(:active, true)
-      |> NexBase.order(:name, :asc)
-      |> NexBase.run()
-
-      # Insert
-      NexBase.from("users")
-      |> NexBase.insert(%{name: "Alice", active: true})
-      |> NexBase.run()
+      main |> NexBase.from("users") |> NexBase.run()
+      cache |> NexBase.from("sessions") |> NexBase.run()
 
       # Raw SQL
-      {:ok, rows} = NexBase.sql("SELECT * FROM users WHERE id = $1", [1])
+      main |> NexBase.sql("SELECT * FROM users WHERE id = $1", [1])
   """
 
-  alias NexBase.Query
+  alias NexBase.{Query, Conn}
   require Ecto.Query
 
   # -- Initialization --
 
   @doc """
-  Initialize NexBase with database configuration.
+  Initialize a database connection. Returns a `%NexBase.Conn{}` struct.
 
-  Call this once in your application startup. NexBase handles the rest internally.
   The adapter is auto-detected from the URL scheme:
-
   - `postgres://` or `postgresql://` → PostgreSQL
   - `sqlite://` → SQLite
 
@@ -50,32 +43,45 @@ defmodule NexBase do
 
   ## Examples
 
-      # PostgreSQL (in application.ex)
+      # Single connection (in application.ex)
       NexBase.init(url: "postgres://localhost/mydb", ssl: true)
       children = [{NexBase.Repo, []}]
 
-      # SQLite (in application.ex)
-      NexBase.init(url: "sqlite:///path/to/mydb.db")
-      children = [{NexBase.Repo, []}]
+      # Multiple connections
+      main = NexBase.init(url: "postgres://localhost/main")
+      analytics = NexBase.init(url: "postgres://analytics/db")
+      children = [{NexBase.Repo, main}, {NexBase.Repo, analytics}]
 
-      # In a script (seeds, migrations)
-      NexBase.init(url: System.get_env("DATABASE_URL"), start: true)
+      # In a script
+      conn = NexBase.init(url: "sqlite::memory:", start: true)
+      conn |> NexBase.from("users") |> NexBase.run()
   """
   def init(opts \\ []) do
     url = opts[:url] || System.get_env("DATABASE_URL")
     adapter = detect_adapter(url)
     pool_size = opts[:pool_size] || 10
-
-    Application.put_env(:nex_base, :adapter, adapter)
-
+    repo_module = repo_module_for(adapter)
     repo_config = build_repo_config(adapter, url, pool_size, opts)
-    Application.put_env(:nex_base, :repo_config, repo_config)
+
+    name = :"nex_base_#{:erlang.unique_integer([:positive, :monotonic])}"
+
+    conn = %Conn{
+      name: name,
+      adapter: adapter,
+      repo_module: repo_module,
+      repo_config: repo_config
+    }
+
+    # Store as default for backward compatibility
+    Application.put_env(:nex_base, :default_conn, conn)
+    # Store config keyed by name for Repo init/2 lookup
+    Application.put_env(:nex_base, name, repo_config)
 
     if opts[:start] do
-      start_repo(adapter)
-    else
-      :ok
+      start_conn(conn)
     end
+
+    conn
   end
 
   defp detect_adapter(nil), do: :postgres
@@ -110,36 +116,50 @@ defmodule NexBase do
   defp parse_sqlite_url("sqlite://" <> path), do: path
   defp parse_sqlite_url(path), do: path
 
-  defp start_repo(:postgres) do
-    Application.ensure_all_started(:postgrex)
-    Application.ensure_all_started(:ecto_sql)
-    do_start_repo()
-  end
+  defp repo_module_for(:postgres), do: NexBase.Repo.Postgres
+  defp repo_module_for(:sqlite), do: NexBase.Repo.SQLite
 
-  defp start_repo(:sqlite) do
-    Application.ensure_all_started(:exqlite)
+  defp start_conn(%Conn{adapter: adapter, repo_module: repo_module, name: name}) do
+    case adapter do
+      :postgres -> Application.ensure_all_started(:postgrex)
+      :sqlite -> Application.ensure_all_started(:exqlite)
+    end
     Application.ensure_all_started(:ecto_sql)
-    do_start_repo()
-  end
 
-  defp do_start_repo do
-    case NexBase.Repo.start_link([]) do
+    case repo_module.start_link(name: name) do
       {:ok, _pid} -> :ok
       {:error, {:already_started, _pid}} -> :ok
       {:error, reason} -> {:error, reason}
     end
   end
 
-  @doc "Returns the currently active adapter (`:postgres` or `:sqlite`)."
-  def adapter do
-    Application.get_env(:nex_base, :adapter, :postgres)
+  @doc "Returns the default connection, or raises if none configured."
+  def default_conn do
+    Application.get_env(:nex_base, :default_conn) ||
+      raise "NexBase not initialized. Call NexBase.init/1 first."
   end
+
+  @doc "Returns the adapter for a connection (`:postgres` or `:sqlite`)."
+  def adapter(%Conn{adapter: adapter}), do: adapter
+  def adapter, do: default_conn().adapter
 
   # -- Query Building --
 
   @doc """
   Starts a query builder for the given table.
+
+  Can be called with or without a connection:
+
+      # Uses default connection
+      NexBase.from("users")
+
+      # Uses specific connection (pipe-friendly)
+      conn |> NexBase.from("users")
   """
+  def from(%Conn{} = conn, table_name) when is_binary(table_name) do
+    %Query{table: table_name, conn: conn}
+  end
+
   def from(table_name) when is_binary(table_name) do
     %Query{table: table_name}
   end
@@ -261,30 +281,47 @@ defmodule NexBase do
   ## Examples
 
       {:ok, rows} = NexBase.sql("SELECT * FROM users WHERE active = $1", [true])
-      {:ok, rows} = NexBase.sql(client, "SELECT * FROM users", [])
+      {:ok, rows} = conn |> NexBase.sql("SELECT * FROM users", [])
   """
-  def sql(sql, params \\ []) when is_binary(sql) do
-    repo = repo()
-    sql = normalize_placeholders(sql)
-    case Ecto.Adapters.SQL.query(repo, sql, params) do
+  def sql(%Conn{} = conn, sql_str, params) when is_binary(sql_str) and is_list(params) do
+    {repo_mod, name} = resolve_repo(conn)
+    repo_mod.put_dynamic_repo(name)
+    sql_str = normalize_placeholders(sql_str, conn.adapter)
+    case Ecto.Adapters.SQL.query(repo_mod, sql_str, params) do
       {:ok, %{rows: rows, columns: columns}} ->
         {:ok, Enum.map(rows, fn row -> columns |> Enum.zip(row) |> Map.new() end)}
       {:error, _} = err -> err
     end
   end
 
+  def sql(sql_str, params \\ []) when is_binary(sql_str) do
+    sql(default_conn(), sql_str, params)
+  end
+
   @doc """
   Executes a raw SQL query (low-level, returns raw driver result).
   """
-  def query(sql, params \\ []) when is_binary(sql) do
-    Ecto.Adapters.SQL.query(repo(), normalize_placeholders(sql), params)
+  def query(%Conn{} = conn, sql_str, params) when is_binary(sql_str) and is_list(params) do
+    {repo_mod, name} = resolve_repo(conn)
+    repo_mod.put_dynamic_repo(name)
+    Ecto.Adapters.SQL.query(repo_mod, normalize_placeholders(sql_str, conn.adapter), params)
+  end
+
+  def query(sql_str, params \\ []) when is_binary(sql_str) do
+    query(default_conn(), sql_str, params)
   end
 
   @doc """
   Executes a raw SQL query, raising on error.
   """
-  def query!(sql, params \\ []) when is_binary(sql) do
-    Ecto.Adapters.SQL.query!(repo(), normalize_placeholders(sql), params)
+  def query!(%Conn{} = conn, sql_str, params) when is_binary(sql_str) and is_list(params) do
+    {repo_mod, name} = resolve_repo(conn)
+    repo_mod.put_dynamic_repo(name)
+    Ecto.Adapters.SQL.query!(repo_mod, normalize_placeholders(sql_str, conn.adapter), params)
+  end
+
+  def query!(sql_str, params \\ []) when is_binary(sql_str) do
+    query!(default_conn(), sql_str, params)
   end
 
   @doc """
@@ -348,9 +385,13 @@ defmodule NexBase do
       {:ok, result} = NexBase.rpc("my_function", %{param1: "value"})
   """
   def rpc(function_name, params \\ %{}) do
-    if adapter() == :sqlite do
+    conn = default_conn()
+    if conn.adapter == :sqlite do
       raise "NexBase.rpc/2 is not supported with SQLite (stored procedures are a PostgreSQL feature)"
     end
+
+    {repo_mod, name} = resolve_repo(conn)
+    repo_mod.put_dynamic_repo(name)
 
     placeholders = Enum.map(1..map_size(params), fn i -> "$#{i}" end)
     keys = Map.keys(params)
@@ -360,9 +401,9 @@ defmodule NexBase do
                |> Enum.map(fn {k, p} -> "#{k} := #{p}" end)
                |> Enum.join(", ")
 
-    sql = "SELECT * FROM #{function_name}(#{args_str})"
+    sql_str = "SELECT * FROM #{function_name}(#{args_str})"
 
-    Ecto.Adapters.SQL.query(repo(), sql, values)
+    Ecto.Adapters.SQL.query(repo_mod, sql_str, values)
   end
 
   # -- Execution --
@@ -382,48 +423,56 @@ defmodule NexBase do
     e -> {:error, e}
   end
 
-  def run(%Query{type: :insert, table: table, data: data} = _query) do
-    repo = repo()
+  def run(%Query{type: :insert, table: table, data: data, conn: conn} = _query) do
+    conn = conn || default_conn()
+    {repo_mod, name} = resolve_repo(conn)
+    repo_mod.put_dynamic_repo(name)
     data_list = if is_list(data), do: data, else: [data]
-    {count, _} = repo.insert_all(table, data_list)
+    {count, _} = repo_mod.insert_all(table, data_list)
     {:ok, %{count: count}}
   rescue
     e -> {:error, e}
   end
 
-  def run(%Query{type: :update, table: table, data: data, filters: filters} = _query) do
-    repo = repo()
+  def run(%Query{type: :update, table: table, data: data, filters: filters, conn: conn} = _query) do
+    conn = conn || default_conn()
+    {repo_mod, name} = resolve_repo(conn)
+    repo_mod.put_dynamic_repo(name)
     base_query = Ecto.Query.from(t in table)
     query_with_filters = Enum.reduce(filters, base_query, fn filter, acc ->
-      apply_filter(acc, filter)
+      apply_filter(acc, filter, conn.adapter)
     end)
     updates = [set: Enum.to_list(data)]
-    {count, _} = repo.update_all(query_with_filters, updates)
+    {count, _} = repo_mod.update_all(query_with_filters, updates)
     {:ok, %{count: count}}
   rescue
     e -> {:error, e}
   end
 
-  def run(%Query{type: :delete, table: table, filters: filters} = _query) do
-    repo = repo()
+  def run(%Query{type: :delete, table: table, filters: filters, conn: conn} = _query) do
+    conn = conn || default_conn()
+    {repo_mod, name} = resolve_repo(conn)
+    repo_mod.put_dynamic_repo(name)
     base_query = Ecto.Query.from(t in table)
     query_with_filters = Enum.reduce(filters, base_query, fn filter, acc ->
-      apply_filter(acc, filter)
+      apply_filter(acc, filter, conn.adapter)
     end)
-    {count, _} = repo.delete_all(query_with_filters)
+    {count, _} = repo_mod.delete_all(query_with_filters)
     {:ok, %{count: count}}
   rescue
     e -> {:error, e}
   end
 
-  def run(%Query{type: :upsert, table: table, data: data} = _query) do
-    repo = repo()
+  def run(%Query{type: :upsert, table: table, data: data, conn: conn} = _query) do
+    conn = conn || default_conn()
+    {repo_mod, name} = resolve_repo(conn)
+    repo_mod.put_dynamic_repo(name)
     data_list = if is_list(data), do: data, else: [data]
     upsert_opts = [
       on_conflict: :replace_all,
       conflict_target: :id
     ]
-    {count, _} = repo.insert_all(table, data_list, upsert_opts)
+    {count, _} = repo_mod.insert_all(table, data_list, upsert_opts)
     {:ok, %{count: count}}
   rescue
     e -> {:error, e}
@@ -431,62 +480,58 @@ defmodule NexBase do
 
   # -- Internal Helpers --
 
-  defp repo, do: NexBase.Repo.repo()
+  defp resolve_repo(%Conn{repo_module: repo_mod, name: name}), do: {repo_mod, name}
 
-  # SELECT queries use raw SQL to avoid row_to_json (Postgres-only)
-  # and schemaless query issues (SQLite). This is portable across both adapters.
-  defp run_select(%Query{table: table, select: select_fields, filters: filters, limit: limit, offset: offset, order_by: order_by}) do
+  defp run_select(%Query{table: table, select: select_fields, filters: filters, limit: limit, offset: offset, order_by: order_by, conn: conn}) do
+    conn = conn || default_conn()
+    {repo_mod, name} = resolve_repo(conn)
+    repo_mod.put_dynamic_repo(name)
+
     columns = if select_fields == [] or select_fields == ["*"], do: "*", else: Enum.map_join(select_fields, ", ", &to_string/1)
 
-    {where_clause, params} = build_where(filters)
+    {where_clause, params} = build_where(filters, conn.adapter)
     order_clause = build_order(order_by)
     limit_clause = if limit, do: " LIMIT #{limit}", else: ""
     offset_clause = if offset, do: " OFFSET #{offset}", else: ""
 
-    sql = "SELECT #{columns} FROM #{table}#{where_clause}#{order_clause}#{limit_clause}#{offset_clause}"
-    sql = normalize_placeholders(sql)
+    sql_str = "SELECT #{columns} FROM #{table}#{where_clause}#{order_clause}#{limit_clause}#{offset_clause}"
+    sql_str = normalize_placeholders(sql_str, conn.adapter)
 
-    case Ecto.Adapters.SQL.query(repo(), sql, params) do
+    case Ecto.Adapters.SQL.query(repo_mod, sql_str, params) do
       {:ok, %{rows: rows, columns: cols}} ->
         {:ok, Enum.map(rows, fn row -> cols |> Enum.zip(row) |> Map.new() end)}
       {:error, _} = err -> err
     end
   end
 
-  defp build_where([]), do: {"", []}
-  defp build_where(filters) do
+  defp build_where([], _adapter), do: {"", []}
+  defp build_where(filters, adapter) do
     {clauses, params, _idx} =
       Enum.reduce(filters, {[], [], 1}, fn filter, {clauses, params, idx} ->
-        {clause, new_params, next_idx} = filter_to_sql(filter, idx)
+        {clause, new_params, next_idx} = filter_to_sql(filter, idx, adapter)
         {clauses ++ [clause], params ++ new_params, next_idx}
       end)
 
     {" WHERE " <> Enum.join(clauses, " AND "), params}
   end
 
-  defp filter_to_sql({:eq, col, val}, idx),   do: {"#{col} = $#{idx}", [val], idx + 1}
-  defp filter_to_sql({:neq, col, val}, idx),  do: {"#{col} != $#{idx}", [val], idx + 1}
-  defp filter_to_sql({:gt, col, val}, idx),   do: {"#{col} > $#{idx}", [val], idx + 1}
-  defp filter_to_sql({:lt, col, val}, idx),   do: {"#{col} < $#{idx}", [val], idx + 1}
-  defp filter_to_sql({:gte, col, val}, idx),  do: {"#{col} >= $#{idx}", [val], idx + 1}
-  defp filter_to_sql({:lte, col, val}, idx),  do: {"#{col} <= $#{idx}", [val], idx + 1}
-  defp filter_to_sql({:like, col, val}, idx),  do: {"#{col} LIKE $#{idx}", [val], idx + 1}
-  defp filter_to_sql({:ilike, col, val}, idx) do
-    if adapter() == :sqlite do
-      # SQLite LIKE is case-insensitive for ASCII by default
-      {"#{col} LIKE $#{idx}", [val], idx + 1}
-    else
-      {"#{col} ILIKE $#{idx}", [val], idx + 1}
-    end
-  end
-  defp filter_to_sql({:is, col, val}, idx) do
+  defp filter_to_sql({:eq, col, val}, idx, _),   do: {"#{col} = $#{idx}", [val], idx + 1}
+  defp filter_to_sql({:neq, col, val}, idx, _),  do: {"#{col} != $#{idx}", [val], idx + 1}
+  defp filter_to_sql({:gt, col, val}, idx, _),   do: {"#{col} > $#{idx}", [val], idx + 1}
+  defp filter_to_sql({:lt, col, val}, idx, _),   do: {"#{col} < $#{idx}", [val], idx + 1}
+  defp filter_to_sql({:gte, col, val}, idx, _),  do: {"#{col} >= $#{idx}", [val], idx + 1}
+  defp filter_to_sql({:lte, col, val}, idx, _),  do: {"#{col} <= $#{idx}", [val], idx + 1}
+  defp filter_to_sql({:like, col, val}, idx, _),  do: {"#{col} LIKE $#{idx}", [val], idx + 1}
+  defp filter_to_sql({:ilike, col, val}, idx, :sqlite), do: {"#{col} LIKE $#{idx}", [val], idx + 1}
+  defp filter_to_sql({:ilike, col, val}, idx, _), do: {"#{col} ILIKE $#{idx}", [val], idx + 1}
+  defp filter_to_sql({:is, col, val}, idx, _) do
     if is_nil(val) or val == :null do
       {"#{col} IS NULL", [], idx}
     else
       {"#{col} = $#{idx}", [val], idx + 1}
     end
   end
-  defp filter_to_sql({:in, col, values}, idx) do
+  defp filter_to_sql({:in, col, values}, idx, _) do
     placeholders = Enum.map_join(0..(length(values) - 1), ", ", fn i -> "$#{idx + i}" end)
     {"#{col} IN (#{placeholders})", values, idx + length(values)}
   end
@@ -500,52 +545,45 @@ defmodule NexBase do
     " ORDER BY " <> Enum.join(clauses, ", ")
   end
 
-  # Convert $1, $2 placeholders to ? for SQLite
-  defp normalize_placeholders(sql) do
-    if adapter() == :sqlite do
-      Regex.replace(~r/\$\d+/, sql, "?")
-    else
-      sql
-    end
-  end
+  defp normalize_placeholders(sql, :sqlite), do: Regex.replace(~r/\$\d+/, sql, "?")
+  defp normalize_placeholders(sql, _), do: sql
 
   # Ecto-based filter application (used by update/delete which go through Ecto.Query)
-  defp apply_filter(query, {:eq, col, val}) do
+  defp apply_filter(query, {:eq, col, val}, _) do
     Ecto.Query.where(query, [t], field(t, ^col) == ^val)
   end
-  defp apply_filter(query, {:neq, col, val}) do
+  defp apply_filter(query, {:neq, col, val}, _) do
     Ecto.Query.where(query, [t], field(t, ^col) != ^val)
   end
-  defp apply_filter(query, {:gt, col, val}) do
+  defp apply_filter(query, {:gt, col, val}, _) do
     Ecto.Query.where(query, [t], field(t, ^col) > ^val)
   end
-  defp apply_filter(query, {:lt, col, val}) do
+  defp apply_filter(query, {:lt, col, val}, _) do
     Ecto.Query.where(query, [t], field(t, ^col) < ^val)
   end
-  defp apply_filter(query, {:like, col, pattern}) do
+  defp apply_filter(query, {:like, col, pattern}, _) do
     Ecto.Query.where(query, [t], like(field(t, ^col), ^pattern))
   end
-  defp apply_filter(query, {:ilike, col, pattern}) do
-    if adapter() == :sqlite do
-      Ecto.Query.where(query, [t], like(field(t, ^col), ^pattern))
-    else
-      Ecto.Query.where(query, [t], ilike(field(t, ^col), ^pattern))
-    end
+  defp apply_filter(query, {:ilike, col, pattern}, :sqlite) do
+    Ecto.Query.where(query, [t], like(field(t, ^col), ^pattern))
   end
-  defp apply_filter(query, {:gte, col, val}) do
+  defp apply_filter(query, {:ilike, col, pattern}, _) do
+    Ecto.Query.where(query, [t], ilike(field(t, ^col), ^pattern))
+  end
+  defp apply_filter(query, {:gte, col, val}, _) do
     Ecto.Query.where(query, [t], field(t, ^col) >= ^val)
   end
-  defp apply_filter(query, {:lte, col, val}) do
+  defp apply_filter(query, {:lte, col, val}, _) do
     Ecto.Query.where(query, [t], field(t, ^col) <= ^val)
   end
-  defp apply_filter(query, {:is, col, val}) do
+  defp apply_filter(query, {:is, col, val}, _) do
     if is_nil(val) or val == :null do
       Ecto.Query.where(query, [t], is_nil(field(t, ^col)))
     else
       Ecto.Query.where(query, [t], field(t, ^col) == ^val)
     end
   end
-  defp apply_filter(query, {:in, col, values}) do
+  defp apply_filter(query, {:in, col, values}, _) do
     Ecto.Query.where(query, [t], field(t, ^col) in ^values)
   end
 end

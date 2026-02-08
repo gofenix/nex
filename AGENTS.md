@@ -142,7 +142,7 @@ Dependencies for example projects:
 defp deps do
   [
     {:nex_core, path: "../../framework"},
-    {:nex_base, "~> 0.2.0"}  # only if project needs database
+    {:nex_base, "~> 0.3.0"}  # only if project needs database
   ]
 end
 ```

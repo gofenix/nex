@@ -1,42 +1,40 @@
 defmodule NexBase.Repo do
   @moduledoc """
-  Facade module that delegates to the active adapter-specific Repo.
+  Facade module for starting adapter-specific Repos in supervision trees.
 
-  The actual Repo module is determined by the adapter chosen during
-  `NexBase.init/1` (auto-detected from the URL scheme).
+  Supports both single and multi-connection usage:
 
-  - `postgres://` → `NexBase.Repo.Postgres`
-  - `sqlite://`   → `NexBase.Repo.SQLite`
-
-  Users should use `NexBase.Repo` in their supervision tree:
-
+      # Single connection
+      NexBase.init(url: "postgres://localhost/mydb")
       children = [{NexBase.Repo, []}]
 
-  This module forwards `start_link/1`, `child_spec/1`, and common Repo
-  functions to the underlying adapter Repo.
+      # Multiple connections
+      main = NexBase.init(url: "postgres://localhost/main")
+      analytics = NexBase.init(url: "postgres://analytics/db")
+      children = [{NexBase.Repo, main}, {NexBase.Repo, analytics}]
   """
 
-  @doc "Returns the currently active Repo module based on adapter config."
-  def repo do
-    case Application.get_env(:nex_base, :adapter, :postgres) do
-      :postgres -> NexBase.Repo.Postgres
-      :sqlite -> NexBase.Repo.SQLite
-    end
+  alias NexBase.Conn
+
+  def child_spec(%Conn{} = conn) do
+    %{
+      id: {__MODULE__, conn.name},
+      start: {__MODULE__, :start_link, [conn]},
+      type: :supervisor
+    }
   end
 
-  def child_spec(opts) do
-    repo().child_spec(opts)
+  def child_spec(opts) when is_list(opts) do
+    conn = Application.get_env(:nex_base, :default_conn)
+    if conn, do: child_spec(conn), else: raise("NexBase not initialized. Call NexBase.init/1 first.")
   end
 
-  def start_link(opts \\ []) do
-    repo().start_link(opts)
+  def start_link(%Conn{repo_module: repo_mod, name: name}) do
+    repo_mod.start_link(name: name)
   end
 
-  # Delegate common Ecto.Repo functions
-  def all(queryable, opts \\ []), do: repo().all(queryable, opts)
-  def one(queryable, opts \\ []), do: repo().one(queryable, opts)
-  def one!(queryable, opts \\ []), do: repo().one!(queryable, opts)
-  def insert_all(source, entries, opts \\ []), do: repo().insert_all(source, entries, opts)
-  def update_all(queryable, updates, opts \\ []), do: repo().update_all(queryable, updates, opts)
-  def delete_all(queryable, opts \\ []), do: repo().delete_all(queryable, opts)
+  def start_link(opts) when is_list(opts) do
+    conn = Application.get_env(:nex_base, :default_conn)
+    if conn, do: start_link(conn), else: raise("NexBase not initialized. Call NexBase.init/1 first.")
+  end
 end

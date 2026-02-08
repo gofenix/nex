@@ -5,6 +5,23 @@ All notable changes to the Nex framework will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [NexBase 0.3.0] - Unreleased
+
+### Added
+- **Multi-connection support**: Connect to multiple databases simultaneously. `NexBase.init/1` returns a `%NexBase.Conn{}` struct that flows through the query chain via pipe: `conn |> NexBase.from("users") |> NexBase.run()`
+- **`NexBase.Conn` struct**: Encapsulates connection identity (adapter, repo module, process name)
+- **`NexBase.from/2`**: Accepts a conn as first argument for pipe-friendly multi-db queries
+- **`NexBase.sql/3`, `query/3`, `query!/3`**: Accept conn as first argument for raw SQL on specific connections
+- **Dynamic Repo routing**: Uses Ecto's `put_dynamic_repo` to route queries to the correct database process
+
+### Changed
+- **`NexBase.init/1` returns `%NexBase.Conn{}`** instead of `:ok` (backward compatible — can be ignored for single-connection usage)
+- **`NexBase.Repo.child_spec/1`** accepts `%NexBase.Conn{}` for supervision tree registration
+- **Internal architecture**: All query execution now resolves the target Repo from the conn struct
+
+### Migration from 0.2.x
+No API changes required for single-connection usage. Multi-connection is opt-in.
+
 ## [NexBase 0.2.0] - Unreleased
 
 ### Added

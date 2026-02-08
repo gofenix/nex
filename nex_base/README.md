@@ -6,6 +6,7 @@ A fluent, Supabase-inspired database query builder for Elixir. Supports **Postgr
 
 - **Fluent API** — Chainable query builder, reads like natural language
 - **Multi-database** — PostgreSQL and SQLite, auto-detected from URL scheme
+- **Multi-connection** — Connect to multiple databases simultaneously
 - **Schema-less** — Query any table by name, no Ecto schemas needed
 - **Raw SQL** — `NexBase.sql/2` for JOINs and complex queries, returns `[%{"col" => val}]`
 - **Built on Ecto** — Production-ready, connection pooling, type safety
@@ -16,7 +17,7 @@ A fluent, Supabase-inspired database query builder for Elixir. Supports **Postgr
 ```elixir
 def deps do
   [
-    {:nex_base, "~> 0.2.0"},
+    {:nex_base, "~> 0.3.0"},
     # Add the driver for your database:
     {:postgrex, "~> 0.19"},       # for PostgreSQL
     # {:ecto_sqlite3, "~> 0.17"}, # for SQLite
@@ -43,6 +44,33 @@ def start(_type, _args) do
   children = [{NexBase.Repo, []}]
   Supervisor.start_link(children, strategy: :one_for_one)
 end
+```
+
+### Multiple Databases
+
+Connect to multiple databases simultaneously:
+
+```elixir
+def start(_type, _args) do
+  main = NexBase.init(url: "postgres://localhost/main")
+  analytics = NexBase.init(url: "postgres://analytics-host/analytics")
+  cache = NexBase.init(url: "sqlite::memory:")
+
+  children = [
+    {NexBase.Repo, main},
+    {NexBase.Repo, analytics},
+    {NexBase.Repo, cache},
+  ]
+  Supervisor.start_link(children, strategy: :one_for_one)
+end
+
+# Query specific databases by piping the connection:
+main |> NexBase.from("users") |> NexBase.run()
+analytics |> NexBase.from("events") |> NexBase.run()
+cache |> NexBase.from("sessions") |> NexBase.run()
+
+# Raw SQL with specific connection:
+main |> NexBase.sql("SELECT * FROM users WHERE id = $1", [1])
 ```
 
 ### 2. Query
@@ -96,7 +124,7 @@ For JOINs, aggregations, and complex queries:
 
 | Function | Description |
 |----------|-------------|
-| `NexBase.init(opts)` | Configure database connection |
+| `NexBase.init(opts)` | Configure database connection, returns `%NexBase.Conn{}` |
 
 **Options for `init/1`:**
 - `:url` — Database URL (or falls back to `DATABASE_URL` env var)

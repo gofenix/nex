@@ -10,6 +10,7 @@ defmodule NexBase.Query do
 
   @type t :: %__MODULE__{
           table: String.t() | nil,
+          conn: NexBase.Conn.t() | nil,
           select: [atom() | String.t()],
           filters: [filter()],
           order_by: [{:asc | :desc, atom()}],
@@ -21,6 +22,7 @@ defmodule NexBase.Query do
 
   defstruct [
     :table,
+    :conn,
     select: [],
     filters: [],
     order_by: [],

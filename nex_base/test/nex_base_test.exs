@@ -1,19 +1,17 @@
 defmodule NexBaseTest do
   use ExUnit.Case
-  alias NexBase.Query
-
-  # Since we don't have a real database connection, we focus on testing whether the Query Builder generates correct structures.
-  # We can verify Ecto Query generation by mocking the run function or checking internal private functions,
-  # but a simpler approach is to verify the NexBase.Query struct itself and ensure build_ecto_query doesn't crash.
-
-  # Note: Since build_ecto_query is private and run requires a database connection,
-  # we mainly test whether NexBase's public API correctly builds the NexBase.Query struct.
-  # This "state testing" is sufficient to validate the logic of chain calls.
+  alias NexBase.{Query, Conn}
 
   describe "Query Builder" do
-    test "from/1 creates initial query" do
+    test "from/1 creates initial query without conn" do
       q = NexBase.from("users")
-      assert %Query{table: "users"} = q
+      assert %Query{table: "users", conn: nil} = q
+    end
+
+    test "from/2 creates query with conn" do
+      conn = NexBase.init(url: "postgres://localhost/testdb")
+      q = conn |> NexBase.from("users")
+      assert %Query{table: "users", conn: ^conn} = q
     end
 
     test "select/2 adds columns" do
@@ -51,32 +49,87 @@ defmodule NexBaseTest do
       assert Enum.at(q.order_by, 0) == {:desc, :created_at}
       assert Enum.at(q.order_by, 1) == {:asc, :id}
     end
+
+    test "conn flows through chain" do
+      conn = NexBase.init(url: "postgres://localhost/testdb")
+      q = conn
+          |> NexBase.from("users")
+          |> NexBase.eq(:active, true)
+          |> NexBase.order(:name, :asc)
+          |> NexBase.limit(10)
+
+      assert q.conn == conn
+      assert q.table == "users"
+      assert length(q.filters) == 1
+    end
   end
 
   describe "Adapter Detection" do
+    test "init/1 returns Conn struct" do
+      conn = NexBase.init(url: "postgres://localhost/testdb")
+      assert %Conn{} = conn
+    end
+
     test "init/1 detects postgres from URL" do
-      NexBase.init(url: "postgres://localhost/testdb")
-      assert NexBase.adapter() == :postgres
+      conn = NexBase.init(url: "postgres://localhost/testdb")
+      assert conn.adapter == :postgres
+      assert conn.repo_module == NexBase.Repo.Postgres
     end
 
     test "init/1 detects postgres from postgresql:// URL" do
-      NexBase.init(url: "postgresql://localhost/testdb")
-      assert NexBase.adapter() == :postgres
+      conn = NexBase.init(url: "postgresql://localhost/testdb")
+      assert conn.adapter == :postgres
     end
 
     test "init/1 detects sqlite from URL" do
-      NexBase.init(url: "sqlite:///tmp/test.db")
-      assert NexBase.adapter() == :sqlite
+      conn = NexBase.init(url: "sqlite:///tmp/test.db")
+      assert conn.adapter == :sqlite
+      assert conn.repo_module == NexBase.Repo.SQLite
     end
 
     test "init/1 detects sqlite in-memory" do
-      NexBase.init(url: "sqlite::memory:")
-      assert NexBase.adapter() == :sqlite
+      conn = NexBase.init(url: "sqlite::memory:")
+      assert conn.adapter == :sqlite
     end
 
     test "init/1 defaults to postgres when no URL" do
-      NexBase.init([])
-      assert NexBase.adapter() == :postgres
+      conn = NexBase.init([])
+      assert conn.adapter == :postgres
+    end
+
+    test "init/1 generates unique names" do
+      conn1 = NexBase.init(url: "postgres://localhost/db1")
+      conn2 = NexBase.init(url: "postgres://localhost/db2")
+      assert conn1.name != conn2.name
+    end
+
+    test "init/1 stores as default conn" do
+      conn = NexBase.init(url: "postgres://localhost/testdb")
+      assert NexBase.default_conn() == conn
+    end
+  end
+
+  describe "Multi-connection" do
+    test "multiple inits create independent conns" do
+      pg = NexBase.init(url: "postgres://localhost/main")
+      sqlite = NexBase.init(url: "sqlite::memory:")
+
+      assert pg.adapter == :postgres
+      assert sqlite.adapter == :sqlite
+      assert pg.name != sqlite.name
+    end
+
+    test "conn pipes through from to query" do
+      pg = NexBase.init(url: "postgres://localhost/main")
+      sqlite = NexBase.init(url: "sqlite::memory:")
+
+      q1 = pg |> NexBase.from("users")
+      q2 = sqlite |> NexBase.from("sessions")
+
+      assert q1.conn == pg
+      assert q2.conn == sqlite
+      assert q1.conn.adapter == :postgres
+      assert q2.conn.adapter == :sqlite
     end
   end
 end
