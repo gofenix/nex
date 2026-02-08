@@ -5,6 +5,11 @@ All notable changes to the Nex framework will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [NexBase 0.3.1] - Unreleased
+
+### Fixed
+- **`postgrex` is now a regular (non-optional) dependency** — PostgreSQL is the default adapter and should work out of the box without users manually adding `{:postgrex, "~> 0.19"}` to their deps
+
 ## [NexBase 0.3.0] - Unreleased
 
 ### Added

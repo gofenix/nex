@@ -54,7 +54,7 @@ check_step "README.md exists" "[ -f nex_base/README.md ]"
 check_step "LICENSE exists" "[ -f nex_base/LICENSE ]"
 
 # Check 6: No stale tar files
-check_step "No stale tar files" "! ls nex_base/nex_base-*.tar 2>/dev/null | grep -q ."
+check_step "No stale tar files" "[ -z \"\$(find nex_base -maxdepth 1 -name 'nex_base-*.tar' 2>/dev/null)\" ]"
 
 # Check 7: Compiles cleanly
 echo -n "  Compiling... "

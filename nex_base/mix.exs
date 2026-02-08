@@ -4,7 +4,7 @@ defmodule NexBase.MixProject do
   def project do
     [
       app: :nex_base,
-      version: "0.3.0",
+      version: "0.3.1",
       elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -27,7 +27,7 @@ defmodule NexBase.MixProject do
   defp deps do
     [
       {:ecto_sql, "~> 3.10"},
-      {:postgrex, "~> 0.19", optional: true},
+      {:postgrex, "~> 0.19"},
       {:ecto_sqlite3, "~> 0.17", optional: true},
       {:jason, "~> 1.4"},
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
