@@ -1,0 +1,13 @@
+defmodule NexBase.Repo.Postgres do
+  use Ecto.Repo,
+    otp_app: :nex_base,
+    adapter: Ecto.Adapters.Postgres
+
+  def init(_type, config) do
+    name = config[:name]
+    repo_config =
+      (name && Application.get_env(:nex_base, name, nil)) ||
+      Application.get_env(:nex_base, :repo_config, [])
+    {:ok, Keyword.merge(config, repo_config)}
+  end
+end

@@ -1,0 +1,26 @@
+app = 'bestof-ex'
+primary_region = 'nrt'
+
+[build]
+
+[env]
+  PORT = '4000'
+  HOST = '0.0.0.0'
+  DATABASE_URL = 'sqlite:///data/bestof_ex.db'
+
+[http_service]
+  internal_port = 4000
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+
+[mounts]
+  source = 'bestof_data'
+  destination = '/data'
+
+[[vm]]
+  memory = '512mb'
+  cpu_kind = 'shared'
+  cpus = 1
+  memory_mb = 512

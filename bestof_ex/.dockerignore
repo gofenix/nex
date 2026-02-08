@@ -8,3 +8,6 @@ erl_crash.dump
 .vscode/
 .idea/
 .elixir_ls/
+db/*.db
+db/*.db-shm
+db/*.db-wal
