@@ -4,12 +4,17 @@ RUN apk add --no-cache build-base git
 
 WORKDIR /app
 
-COPY mix.exs mix.lock ./
-RUN mix deps.get
+ENV MIX_ENV=prod
 
+# Install hex + rebar (hexpm image has them, but force to ensure latest)
+RUN mix local.hex --force && mix local.rebar --force
+
+# Cache deps layer
+COPY mix.exs mix.lock ./
+RUN mix deps.get --only prod && mix deps.compile
+
+# Copy source and compile
 COPY . .
 RUN mix compile
-
-EXPOSE 4000
 
 CMD ["mix", "nex.start"]
