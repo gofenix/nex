@@ -1,10 +1,11 @@
 # NexBase
 
-A fluent, Supabase-inspired PostgreSQL query builder for Elixir. Schema-less, chainable, built on Ecto.
+A fluent, Supabase-inspired database query builder for Elixir. Supports **PostgreSQL** and **SQLite**. Schema-less, chainable, built on Ecto.
 
 ## Features
 
 - **Fluent API** — Chainable query builder, reads like natural language
+- **Multi-database** — PostgreSQL and SQLite, auto-detected from URL scheme
 - **Schema-less** — Query any table by name, no Ecto schemas needed
 - **Raw SQL** — `NexBase.sql/2` for JOINs and complex queries, returns `[%{"col" => val}]`
 - **Built on Ecto** — Production-ready, connection pooling, type safety
@@ -15,7 +16,10 @@ A fluent, Supabase-inspired PostgreSQL query builder for Elixir. Schema-less, ch
 ```elixir
 def deps do
   [
-    {:nex_base, "~> 0.1.0"}
+    {:nex_base, "~> 0.2.0"},
+    # Add the driver for your database:
+    {:postgrex, "~> 0.19"},       # for PostgreSQL
+    # {:ecto_sqlite3, "~> 0.17"}, # for SQLite
   ]
 end
 ```
@@ -24,10 +28,17 @@ end
 
 ### 1. Initialize
 
+The adapter is auto-detected from the URL scheme:
+
 ```elixir
 # In your application.ex
 def start(_type, _args) do
-  NexBase.init(url: System.get_env("DATABASE_URL"), ssl: true)
+  # PostgreSQL
+  NexBase.init(url: "postgres://localhost/mydb", ssl: true)
+
+  # SQLite
+  # NexBase.init(url: "sqlite:///path/to/mydb.db")
+  # NexBase.init(url: "sqlite::memory:")
 
   children = [{NexBase.Repo, []}]
   Supervisor.start_link(children, strategy: :one_for_one)
@@ -130,9 +141,9 @@ For JOINs, aggregations, and complex queries:
 |----------|-------------|
 | `run(q)` | Execute query, returns `{:ok, result}` or `{:error, reason}` |
 | `sql(sql, params)` | Raw SQL, returns `{:ok, [%{"col" => val}]}` |
-| `query(sql, params)` | Raw SQL, returns raw Postgrex result |
+| `query(sql, params)` | Raw SQL, returns raw driver result |
 | `query!(sql, params)` | Raw SQL, raises on error |
-| `rpc(func, params)` | Call a stored procedure |
+| `rpc(func, params)` | Call a stored procedure (PostgreSQL only) |
 
 ## Usage in Scripts
 
@@ -157,18 +168,6 @@ case NexBase.from("users") |> NexBase.eq(:id, 123) |> NexBase.run() do
   {:error, reason} -> Logger.error("Query failed: #{inspect(reason)}")
 end
 ```
-
-## Supabase Comparison
-
-| Operation | Supabase JS | NexBase |
-|-----------|-------------|---------|
-| Init | `createClient(url, key)` | `NexBase.init(url: "...")` |
-| From | `supabase.from('table')` | `NexBase.from("table")` |
-| Filter | `.eq('col', val)` | `\|> NexBase.eq(:col, val)` |
-| Order | `.order('col')` | `\|> NexBase.order(:col, :desc)` |
-| Insert | `.insert({...})` | `\|> NexBase.insert(%{...})` |
-| Execute | `await ...` | `\|> NexBase.run()` |
-| Raw SQL | `supabase.rpc(...)` | `NexBase.sql("...", [])` |
 
 ## License
 

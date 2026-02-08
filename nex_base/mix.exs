@@ -4,11 +4,11 @@ defmodule NexBase.MixProject do
   def project do
     [
       app: :nex_base,
-      version: "0.1.1",
+      version: "0.2.0",
       elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      description: "A fluent, Supabase-inspired PostgreSQL query builder for Elixir. Schema-less, chainable, built on Ecto.",
+      description: "A fluent, Supabase-inspired database query builder for Elixir. Supports PostgreSQL and SQLite. Schema-less, chainable, built on Ecto.",
       source_url: "https://github.com/gofenix/nex",
       homepage_url: "https://github.com/gofenix/nex/tree/main/nex_base",
       package: package(),
@@ -27,7 +27,8 @@ defmodule NexBase.MixProject do
   defp deps do
     [
       {:ecto_sql, "~> 3.10"},
-      {:postgrex, "~> 0.19"},
+      {:postgrex, "~> 0.19", optional: true},
+      {:ecto_sqlite3, "~> 0.17", optional: true},
       {:jason, "~> 1.4"},
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
     ]

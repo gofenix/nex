@@ -53,7 +53,30 @@ defmodule NexBaseTest do
     end
   end
 
-  # If we want to test Ecto Query generation, we could export a function visible only in test environment,
-  # or add a `to_ecto_query` helper function in NexBase.
-  # For demonstration purposes, we assume build_ecto_query works correctly.
+  describe "Adapter Detection" do
+    test "init/1 detects postgres from URL" do
+      NexBase.init(url: "postgres://localhost/testdb")
+      assert NexBase.adapter() == :postgres
+    end
+
+    test "init/1 detects postgres from postgresql:// URL" do
+      NexBase.init(url: "postgresql://localhost/testdb")
+      assert NexBase.adapter() == :postgres
+    end
+
+    test "init/1 detects sqlite from URL" do
+      NexBase.init(url: "sqlite:///tmp/test.db")
+      assert NexBase.adapter() == :sqlite
+    end
+
+    test "init/1 detects sqlite in-memory" do
+      NexBase.init(url: "sqlite::memory:")
+      assert NexBase.adapter() == :sqlite
+    end
+
+    test "init/1 defaults to postgres when no URL" do
+      NexBase.init([])
+      assert NexBase.adapter() == :postgres
+    end
+  end
 end

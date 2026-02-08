@@ -28,7 +28,7 @@ The only exception is `website/priv/docs/zh/` which holds Chinese translations f
 nex/
   framework/      # Core package (nex_core) — published to hex.pm
   installer/      # Project generator (nex_new) — published to hex.pm
-  nex_base/       # PostgreSQL query builder (nex_base) — published to hex.pm (independent version)
+  nex_base/       # Database query builder (nex_base) — PostgreSQL + SQLite, published to hex.pm (independent version)
   website/        # Official documentation site
   examples/       # Example projects (counter, todos, bestof_ex, etc.)
   scripts/        # Release scripts
@@ -142,7 +142,7 @@ Dependencies for example projects:
 defp deps do
   [
     {:nex_core, path: "../../framework"},
-    {:nex_base, "~> 0.1.1"}  # only if project needs database
+    {:nex_base, "~> 0.2.0"}  # only if project needs database
   ]
 end
 ```

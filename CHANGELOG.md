@@ -5,6 +5,23 @@ All notable changes to the Nex framework will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [NexBase 0.2.0] - Unreleased
+
+### Added
+- **SQLite support**: Auto-detected from URL scheme (`sqlite:///path/to/db` or `sqlite::memory:`)
+- **Multi-database architecture**: Two internal Repo modules (`NexBase.Repo.Postgres`, `NexBase.Repo.SQLite`) behind a unified `NexBase.Repo` facade
+- **Portable SELECT**: Replaced PostgreSQL-specific `row_to_json` with raw SQL for cross-database compatibility
+- **`NexBase.adapter/0`**: Returns the currently active adapter (`:postgres` or `:sqlite`)
+
+### Changed
+- **Dependencies**: `postgrex` and `ecto_sqlite3` are now optional — users add the driver they need
+- **`ilike` on SQLite**: Silently degrades to `LIKE` (SQLite LIKE is case-insensitive for ASCII by default)
+- **`rpc/2` on SQLite**: Raises a clear error (stored procedures are PostgreSQL-only)
+- **SQL placeholders**: Automatically converts `$1, $2` to `?` for SQLite
+
+### Migration from 0.1.x
+No API changes required. Existing PostgreSQL users just need to add `{:postgrex, "~> 0.19"}` to their deps (it was previously a transitive dependency).
+
 ## [0.3.3] - 2026-02-07
 
 ### Added

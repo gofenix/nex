@@ -1,21 +1,42 @@
 defmodule NexBase.Repo do
-  use Ecto.Repo,
-    otp_app: :nex_base,
-    adapter: Ecto.Adapters.Postgres
+  @moduledoc """
+  Facade module that delegates to the active adapter-specific Repo.
 
-  @doc """
-  Dynamically loads configuration.
+  The actual Repo module is determined by the adapter chosen during
+  `NexBase.init/1` (auto-detected from the URL scheme).
 
-  Config is read from Application env `:nex_base, :repo_config`,
-  which should be set by the caller before starting the Repo.
+  - `postgres://` → `NexBase.Repo.Postgres`
+  - `sqlite://`   → `NexBase.Repo.SQLite`
 
-  ## Example
+  Users should use `NexBase.Repo` in their supervision tree:
 
-      Application.put_env(:nex_base, :repo_config, url: "postgres://...", pool_size: 5)
-      NexBase.Repo.start_link([])
+      children = [{NexBase.Repo, []}]
+
+  This module forwards `start_link/1`, `child_spec/1`, and common Repo
+  functions to the underlying adapter Repo.
   """
-  def init(_type, config) do
-    repo_config = Application.get_env(:nex_base, :repo_config, [])
-    {:ok, Keyword.merge(config, repo_config)}
+
+  @doc "Returns the currently active Repo module based on adapter config."
+  def repo do
+    case Application.get_env(:nex_base, :adapter, :postgres) do
+      :postgres -> NexBase.Repo.Postgres
+      :sqlite -> NexBase.Repo.SQLite
+    end
   end
+
+  def child_spec(opts) do
+    repo().child_spec(opts)
+  end
+
+  def start_link(opts \\ []) do
+    repo().start_link(opts)
+  end
+
+  # Delegate common Ecto.Repo functions
+  def all(queryable, opts \\ []), do: repo().all(queryable, opts)
+  def one(queryable, opts \\ []), do: repo().one(queryable, opts)
+  def one!(queryable, opts \\ []), do: repo().one!(queryable, opts)
+  def insert_all(source, entries, opts \\ []), do: repo().insert_all(source, entries, opts)
+  def update_all(queryable, updates, opts \\ []), do: repo().update_all(queryable, updates, opts)
+  def delete_all(queryable, opts \\ []), do: repo().delete_all(queryable, opts)
 end
