@@ -5,6 +5,12 @@ All notable changes to the Nex framework will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [NexBase 0.3.2] - 2026-02-10
+
+### Fixed
+- **Single-connection name bug**: First `NexBase.init/1` call now assigns the Ecto module name (e.g. `NexBase.Repo.SQLite`) instead of a unique atom (`:nex_base_N`). This fixes "could not lookup Ecto repo because it was not started" errors when using the default single-connection mode.
+- **First-init-wins semantics**: `default_conn` is now only set on the first `init/1` call, preventing subsequent calls from overwriting the default connection with a multi-db unique name.
+
 ## [NexBase 0.3.1] - Unreleased
 
 ### Fixed
