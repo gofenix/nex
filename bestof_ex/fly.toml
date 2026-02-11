@@ -1,12 +1,21 @@
-app = 'bestof-ex'
+# fly.toml app configuration file generated for bestofex on 2026-02-08T22:36:42+08:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'bestofex'
 primary_region = 'nrt'
 
 [build]
 
 [env]
-  PORT = '4000'
-  HOST = '0.0.0.0'
   DATABASE_URL = 'sqlite:///data/bestof_ex.db'
+  HOST = '0.0.0.0'
+  PORT = '4000'
+
+[[mounts]]
+  source = 'bestof_data'
+  destination = '/data'
 
 [http_service]
   internal_port = 4000
@@ -14,10 +23,6 @@ primary_region = 'nrt'
   auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 0
-
-[mounts]
-  source = 'bestof_data'
-  destination = '/data'
 
 [[vm]]
   memory = '512mb'
