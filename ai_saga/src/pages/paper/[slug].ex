@@ -51,8 +51,8 @@ defmodule AiSaga.Pages.Paper.Slug do
 
   def render(assigns) do
     ~H"""
-    <div class="max-w-4xl mx-auto space-y-8">
-      <a href="/" class="inline-flex items-center gap-2 text-sm font-mono opacity-60 hover:opacity-100">
+    <div class="max-w-4xl mx-auto">
+      <a href="/" class="inline-flex items-center gap-2 text-sm font-mono opacity-60 hover:opacity-100 mb-6">
         ← 返回首页
       </a>
 
@@ -71,7 +71,7 @@ defmodule AiSaga.Pages.Paper.Slug do
             <span class="text-sm font-mono opacity-60">{@paper["published_year"]}年</span>
           </div>
 
-          <h1 class="text-4xl font-black leading-tight">{@paper["title"]}</h1>
+          <h1 class="text-3xl md:text-4xl font-black leading-tight">{@paper["title"]}</h1>
 
           <div class="flex flex-wrap gap-2">
             <%= for author <- @authors do %>
@@ -95,112 +95,163 @@ defmodule AiSaga.Pages.Paper.Slug do
           <p class="text-lg leading-relaxed">{@paper["abstract"]}</p>
         </div>
 
+        <%!-- 锚点导航 --%>
+        <nav class="sticky top-0 z-10 bg-white border-2 border-black p-3 flex flex-wrap gap-2">
+          <%= if @paper["prev_paradigm"] do %>
+            <a href="#history" class="px-3 py-1.5 text-sm bg-[rgb(255,222,0)]/20 hover:bg-[rgb(255,222,0)] border border-black transition-colors">📜 历史视角</a>
+          <% end %>
+          <a href="#paradigm-shift" class="px-3 py-1.5 text-sm bg-[rgb(111,194,255)]/20 hover:bg-[rgb(111,194,255)] border border-black transition-colors">🔄 范式变迁</a>
+          <%= if @paper["author_destinies"] do %>
+            <a href="#people" class="px-3 py-1.5 text-sm bg-[rgb(255,160,160)]/20 hover:bg-[rgb(255,160,160)] border border-black transition-colors">👤 人物视角</a>
+          <% end %>
+          <%= if @paper["subsequent_impact"] do %>
+            <a href="#impact" class="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 border border-black transition-colors">📈 后续影响</a>
+          <% end %>
+        </nav>
+
         <%!-- 三个视角的内容 --%>
-        <div class="space-y-8">
+        <div class="space-y-6">
 
           <%!-- 一、历史视角：承前启后 --%>
           <%= if @paper["prev_paradigm"] do %>
-            <section class="space-y-4">
-              <h2 class="text-2xl font-black border-b-2 border-black pb-2">📜 一、历史视角：承前启后</h2>
+            <section id="history" class="space-y-4 scroll-mt-20">
+              <h2 class="text-2xl font-black border-b-2 border-black pb-2">📜 历史视角：承前启后</h2>
 
-              <div class="bg-white p-6 border-2 border-black md-shadow-sm prose max-w-none">
-                <h3 class="text-lg font-bold mb-3">上一个范式</h3>
-                <div class="markdown-content">
+              <%!-- 上一个范式 --%>
+              <details class="bg-white border-2 border-black group" open>
+                <summary class="p-4 cursor-pointer font-bold flex items-center justify-between hover:bg-gray-50">
+                  <span>📖 上一个范式</span>
+                  <span class="text-xs opacity-60 group-open:rotate-180 transition-transform">▼</span>
+                </summary>
+                <div class="p-4 pt-0 prose max-w-none markdown-content border-t border-gray-200">
                   {Phoenix.HTML.raw(markdown_to_html(@paper["prev_paradigm"]))}
                 </div>
-              </div>
+              </details>
             </section>
           <% end %>
 
+          <%!-- 核心贡献 --%>
           <%= if @paper["core_contribution"] do %>
-            <section class="bg-[rgb(255,222,0)] p-6 border-2 border-black md-shadow-sm">
-              <h3 class="text-lg font-bold mb-3">💡 核心贡献</h3>
-              <div class="markdown-content prose max-w-none">
+            <details class="bg-[rgb(255,222,0)] border-2 border-black group" open>
+              <summary class="p-4 cursor-pointer font-bold flex items-center justify-between hover:bg-yellow-300">
+                <span>💡 核心贡献</span>
+                <span class="text-xs opacity-60 group-open:rotate-180 transition-transform">▼</span>
+              </summary>
+              <div class="p-4 pt-0 prose max-w-none markdown-content bg-white border-t-2 border-black">
                 {Phoenix.HTML.raw(markdown_to_html(@paper["core_contribution"]))}
               </div>
-            </section>
+            </details>
           <% end %>
 
+          <%!-- 核心机制 --%>
           <%= if @paper["core_mechanism"] do %>
-            <section class="bg-white p-6 border-2 border-black md-shadow-sm">
-              <h3 class="text-lg font-bold mb-3">⚙️ 核心机制</h3>
-              <div class="markdown-content prose max-w-none">
+            <details class="bg-white border-2 border-black group" open>
+              <summary class="p-4 cursor-pointer font-bold flex items-center justify-between hover:bg-gray-50">
+                <span>⚙️ 核心机制</span>
+                <span class="text-xs opacity-60 group-open:rotate-180 transition-transform">▼</span>
+              </summary>
+              <div class="p-4 pt-0 prose max-w-none markdown-content border-t border-gray-200">
                 {Phoenix.HTML.raw(markdown_to_html(@paper["core_mechanism"]))}
               </div>
-            </section>
+            </details>
           <% end %>
 
+          <%!-- 为什么赢了 --%>
           <%= if @paper["why_it_wins"] do %>
-            <section class="bg-[rgb(111,194,255)] p-6 border-2 border-black md-shadow-sm">
-              <h3 class="text-lg font-bold mb-3">🏆 为什么赢了</h3>
-              <div class="markdown-content prose max-w-none">
+            <details class="bg-[rgb(111,194,255)] border-2 border-black group" open>
+              <summary class="p-4 cursor-pointer font-bold flex items-center justify-between hover:bg-blue-300">
+                <span>🏆 为什么赢了</span>
+                <span class="text-xs opacity-60 group-open:rotate-180 transition-transform">▼</span>
+              </summary>
+              <div class="p-4 pt-0 prose max-w-none markdown-content bg-white border-t-2 border-black">
                 {Phoenix.HTML.raw(markdown_to_html(@paper["why_it_wins"]))}
               </div>
-            </section>
+            </details>
           <% end %>
 
           <%!-- 二、范式变迁视角 --%>
-          <section class="space-y-4">
-            <h2 class="text-2xl font-black border-b-2 border-black pb-2">🔄 二、范式变迁视角</h2>
+          <section id="paradigm-shift" class="space-y-4 scroll-mt-20">
+            <h2 class="text-2xl font-black border-b-2 border-black pb-2">🔄 范式变迁视角</h2>
 
-            <div class="grid gap-4">
-              <div class="bg-white p-6 border-2 border-black prose max-w-none">
-                <h3 class="text-lg font-bold mb-3 text-red-600">⚠️ 当时面临的挑战</h3>
-                <div class="markdown-content">
-                  {Phoenix.HTML.raw(markdown_to_html(@paper["challenge"]))}
-                </div>
+            <%!-- 挑战 --%>
+            <details class="bg-white border-2 border-red-200 group" open>
+              <summary class="p-4 cursor-pointer font-bold flex items-center justify-between hover:bg-red-50 text-red-700">
+                <span>⚠️ 当时面临的挑战</span>
+                <span class="text-xs opacity-60 group-open:rotate-180 transition-transform">▼</span>
+              </summary>
+              <div class="p-4 pt-0 prose max-w-none markdown-content border-t border-red-100">
+                {Phoenix.HTML.raw(markdown_to_html(@paper["challenge"]))}
               </div>
+            </details>
 
-              <div class="bg-[rgb(255,222,0)] p-6 border-2 border-black prose max-w-none">
-                <h3 class="text-lg font-bold mb-3">💡 解决方案</h3>
-                <div class="markdown-content">
-                  {Phoenix.HTML.raw(markdown_to_html(@paper["solution"]))}
-                </div>
+            <%!-- 解决方案 --%>
+            <details class="bg-[rgb(255,222,0)] border-2 border-black group" open>
+              <summary class="p-4 cursor-pointer font-bold flex items-center justify-between hover:bg-yellow-300">
+                <span>💡 解决方案</span>
+                <span class="text-xs opacity-60 group-open:rotate-180 transition-transform">▼</span>
+              </summary>
+              <div class="p-4 pt-0 prose max-w-none markdown-content bg-white border-t-2 border-black">
+                {Phoenix.HTML.raw(markdown_to_html(@paper["solution"]))}
               </div>
+            </details>
 
-              <div class="bg-[rgb(111,194,255)] p-6 border-2 border-black prose max-w-none">
-                <h3 class="text-lg font-bold mb-3">🌊 深远影响</h3>
-                <div class="markdown-content">
-                  {Phoenix.HTML.raw(markdown_to_html(@paper["impact"]))}
-                </div>
+            <%!-- 深远影响 --%>
+            <details class="bg-[rgb(111,194,255)] border-2 border-black group" open>
+              <summary class="p-4 cursor-pointer font-bold flex items-center justify-between hover:bg-blue-300">
+                <span>🌊 深远影响</span>
+                <span class="text-xs opacity-60 group-open:rotate-180 transition-transform">▼</span>
+              </summary>
+              <div class="p-4 pt-0 prose max-w-none markdown-content bg-white border-t-2 border-black">
+                {Phoenix.HTML.raw(markdown_to_html(@paper["impact"]))}
               </div>
-            </div>
+            </details>
           </section>
 
           <%!-- 三、人的视角 --%>
           <%= if @paper["author_destinies"] do %>
-            <section class="space-y-4">
-              <h2 class="text-2xl font-black border-b-2 border-black pb-2">👤 三、人的视角：作者去向</h2>
+            <section id="people" class="space-y-4 scroll-mt-20">
+              <h2 class="text-2xl font-black border-b-2 border-black pb-2">👤 人的视角：作者去向</h2>
 
-              <div class="bg-white p-6 border-2 border-black md-shadow-sm prose max-w-none">
-                <div class="markdown-content">
+              <details class="bg-white border-2 border-black group" open>
+                <summary class="p-4 cursor-pointer font-bold flex items-center justify-between hover:bg-gray-50">
+                  <span>👥 作者后续发展</span>
+                  <span class="text-xs opacity-60 group-open:rotate-180 transition-transform">▼</span>
+                </summary>
+                <div class="p-4 pt-0 prose max-w-none markdown-content border-t border-gray-200">
                   {Phoenix.HTML.raw(markdown_to_html(@paper["author_destinies"]))}
                 </div>
-              </div>
+              </details>
             </section>
           <% end %>
 
           <%!-- 后续影响 --%>
           <%= if @paper["subsequent_impact"] do %>
-            <section class="space-y-4">
+            <section id="impact" class="space-y-4 scroll-mt-20">
               <h2 class="text-2xl font-black border-b-2 border-black pb-2">📈 后续影响</h2>
 
-              <div class="bg-gray-50 p-6 border-2 border-black md-shadow-sm prose max-w-none">
-                <div class="markdown-content">
+              <details class="bg-gray-50 border-2 border-black group" open>
+                <summary class="p-4 cursor-pointer font-bold flex items-center justify-between hover:bg-gray-100">
+                  <span>📊 对后续研究的影响</span>
+                  <span class="text-xs opacity-60 group-open:rotate-180 transition-transform">▼</span>
+                </summary>
+                <div class="p-4 pt-0 prose max-w-none markdown-content border-t border-gray-200">
                   {Phoenix.HTML.raw(markdown_to_html(@paper["subsequent_impact"]))}
                 </div>
-              </div>
+              </details>
             </section>
           <% end %>
 
           <%!-- 原始历史背景（如果没有新格式） --%>
           <%= if !@paper["prev_paradigm"] && @paper["history_context"] do %>
-            <section class="bg-gray-50 p-6 border-2 border-black prose max-w-none">
-              <h2 class="text-lg font-bold mb-3">📜 历史背景</h2>
-              <div class="markdown-content">
+            <details class="bg-gray-50 border-2 border-black group" open>
+              <summary class="p-4 cursor-pointer font-bold flex items-center justify-between hover:bg-gray-100">
+                <span>📜 历史背景</span>
+                <span class="text-xs opacity-60 group-open:rotate-180 transition-transform">▼</span>
+              </summary>
+              <div class="p-4 pt-0 prose max-w-none markdown-content border-t border-gray-200">
                 {Phoenix.HTML.raw(markdown_to_html(@paper["history_context"]))}
               </div>
-            </section>
+            </details>
           <% end %>
 
         </div>

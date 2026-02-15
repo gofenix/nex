@@ -7,16 +7,40 @@ defmodule AiSaga.Pages.Index do
       |> NexBase.order(:start_year, :asc)
       |> NexBase.run()
 
-    {:ok, daily} =
+    # 如果没有设置今日推荐，随机获取一篇高影响力论文
+    {:ok, daily_candidates} =
       NexBase.from("papers")
       |> NexBase.eq(:is_daily_pick, 1)
       |> NexBase.single()
       |> NexBase.run()
 
+    daily = List.first(daily_candidates || [])
+
+    daily_pick =
+      if daily do
+        daily
+      else
+        # 随机获取一篇高影响力论文作为今日推荐
+        {:ok, candidates} =
+          NexBase.from("papers")
+          |> NexBase.order(:citations, :desc)
+          |> NexBase.limit(10)
+          |> NexBase.run()
+
+        candidates |> Enum.shuffle() |> List.first()
+      end
+
+    # 只取关键范式节点（避免过多）
+    key_paradigms =
+      paradigms
+      |> Enum.filter(fn p ->
+        p["slug"] in ["perceptron", "symbolic-ai", "connectionism", "deep-learning", "transformers"]
+      end)
+
     {:ok, recent} =
       NexBase.from("papers")
       |> NexBase.order(:published_year, :desc)
-      |> NexBase.limit(5)
+      |> NexBase.limit(4)
       |> NexBase.run()
 
     {:ok, all_papers} =
@@ -27,12 +51,13 @@ defmodule AiSaga.Pages.Index do
       NexBase.from("papers")
       |> NexBase.eq(:is_paradigm_shift, 1)
       |> NexBase.order(:published_year, :asc)
+      |> NexBase.limit(4)
       |> NexBase.run()
 
     %{
       title: "AiSaga - 理解AI的起点",
-      paradigms: paradigms,
-      daily: List.first(daily || []),
+      paradigms: key_paradigms,
+      daily: daily_pick,
       recent: recent,
       all_papers: all_papers,
       shifts: shifts
@@ -41,97 +66,184 @@ defmodule AiSaga.Pages.Index do
 
   def render(assigns) do
     ~H"""
-    <div class="space-y-12">
-      <div class="text-center py-8 border-b-2 border-black pb-8">
-        <h1 class="text-5xl font-black mb-3 tracking-tight">🤖 AiSaga</h1>
-        <p class="text-lg opacity-60 max-w-xl mx-auto">
-          理解AI的起点。通过历史、范式与人物的视角，读懂每一篇重要论文。
+    <div class="space-y-16">
+      <!-- Hero Section: 价值主张 -->
+      <div class="text-center py-16">
+        <div class="inline-block bg-[rgb(255,222,0)] px-4 py-1 text-sm font-bold border-2 border-black mb-6">
+          🤖 AI Saga
+        </div>
+        <h1 class="text-4xl md:text-6xl font-black mb-6 tracking-tight leading-tight">
+          用三个视角<br/>读懂AI论文
+        </h1>
+        <p class="text-lg opacity-60 max-w-2xl mx-auto mb-8">
+          不只是读论文，而是理解论文背后的历史脉络、范式变迁与人物故事。<br/>
+          从感知机到Transformer，一起探索人工智能的演进之路。
         </p>
+        <div class="flex gap-4 justify-center">
+          <a href="/paper" class="px-8 py-4 bg-black text-white font-bold hover:bg-gray-800 transition-colors">
+            浏览论文 →
+          </a>
+          <a href="/paradigm" class="px-8 py-4 bg-white border-2 border-black font-bold hover:bg-gray-50 transition-colors">
+            探索范式
+          </a>
+        </div>
+        <div class="mt-8 text-sm opacity-40">
+          已收录 <%= length(@all_papers) %> 篇重要论文 · <%= length(@paradigms) %> 个研究范式
+        </div>
       </div>
 
+      <!-- 三视角理念 -->
+      <section class="bg-white border-2 border-black p-8 md:p-12">
+        <h2 class="text-2xl font-bold mb-8 text-center">三个维度，读懂每一篇论文</h2>
+        <div class="grid md:grid-cols-3 gap-6">
+          <div class="text-center p-6 bg-[rgb(255,222,0)]/10 border-2 border-black">
+            <div class="text-4xl mb-4">📜</div>
+            <h3 class="text-xl font-bold mb-2">历史视角</h3>
+            <p class="text-sm opacity-70">
+              承前启后<br/>
+              上一个范式是什么？<br/>
+              这篇论文的核心创新在哪里？
+            </p>
+          </div>
+          <div class="text-center p-6 bg-[rgb(111,194,255)]/10 border-2 border-black">
+            <div class="text-4xl mb-4">🔄</div>
+            <h3 class="text-xl font-bold mb-2">范式变迁</h3>
+            <p class="text-sm opacity-70">
+              挑战与突破<br/>
+              当时面临什么困境？<br/>
+              如何推动领域前进？
+            </p>
+          </div>
+          <div class="text-center p-6 bg-[rgb(255,160,160)]/10 border-2 border-black">
+            <div class="text-4xl mb-4">👤</div>
+            <h3 class="text-xl font-bold mb-2">人的视角</h3>
+            <p class="text-sm opacity-70">
+              作者与传承<br/>
+              谁在推动这一切？<br/>
+              他们的后续去向？
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 今日推荐 -->
       <section>
         <div class="flex items-center gap-3 mb-6">
           <span class="text-2xl">✨</span>
           <h2 class="text-2xl font-bold">今日推荐</h2>
+          <%= if !@daily["is_daily_pick"] do %>
+            <span class="text-xs px-2 py-1 bg-gray-100 text-gray-600">随机精选</span>
+          <% end %>
         </div>
         <%= if @daily do %>
           <a href={"/paper/#{@daily["slug"]}"} class="block bg-[rgb(255,222,0)] p-8 border-2 border-black md-shadow hover:translate-x-1 hover:translate-y-1 transition-transform">
             <div class="flex items-center gap-3 mb-3">
-              <span class="px-3 py-1 bg-black text-white text-sm font-mono">PARADIGM SHIFT</span>
-              <span class="text-sm opacity-60">{@daily["published_year"]}</span>
+              <span class="px-3 py-1 bg-black text-white text-sm font-mono">精选</span>
+              <span class="text-sm opacity-60"><%= @daily["published_year"] %></span>
+              <%= if @daily["is_paradigm_shift"] do %>
+                <span class="px-2 py-0.5 bg-red-500 text-white text-xs">范式突破</span>
+              <% end %>
             </div>
-            <h3 class="text-2xl font-bold mb-3">{@daily["title"]}</h3>
-            <p class="text-base mb-4 line-clamp-3">{@daily["abstract"]}</p>
+            <h3 class="text-2xl font-bold mb-3"><%= @daily["title"] %></h3>
+            <p class="text-base mb-4 line-clamp-3 opacity-80"><%= @daily["abstract"] %></p>
             <div class="flex items-center justify-between">
-              <span class="text-sm font-mono opacity-60">阅读更多 →</span>
-              <span class="text-sm font-mono">{@daily["citations"]} citations</span>
+              <span class="text-sm font-mono opacity-60">阅读全文 →</span>
+              <span class="text-sm font-mono"><%= @daily["citations"] %> 引用</span>
             </div>
           </a>
-        <% else %>
-          <div class="bg-white p-6 border-2 border-black md-shadow">
-            <p class="text-center opacity-60">暂无今日推荐</p>
-          </div>
         <% end %>
       </section>
 
+      <!-- 关键范式时间线（简化版） -->
       <section>
-        <div class="flex items-center gap-3 mb-6">
-          <span class="text-2xl">📅</span>
-          <h2 class="text-2xl font-bold">范式时间线</h2>
-        </div>
-        <div class="relative">
-          <div class="absolute left-4 top-0 bottom-0 w-0.5 bg-black"></div>
-          <div class="space-y-8">
-            <%= for paradigm <- @paradigms do %>
-              <div class="relative pl-12">
-                <div class="absolute left-2 w-4 h-4 bg-[rgb(111,194,255)] border-2 border-black"></div>
-                <a href={"/paradigm/#{paradigm["slug"]}"} class="block bg-white p-5 border-2 border-black md-shadow-sm hover:bg-gray-50">
-                  <div class="flex items-center justify-between mb-2">
-                    <h3 class="text-xl font-bold">{paradigm["name"]}</h3>
-                    <span class="font-mono text-sm opacity-60">
-                      <%= paradigm["start_year"] %> - <%= if paradigm["end_year"], do: paradigm["end_year"], else: "现在" %>
-                    </span>
-                  </div>
-                  <p class="text-sm opacity-70 line-clamp-2">{paradigm["description"]}</p>
-                </a>
-              </div>
-            <% end %>
+        <div class="flex items-center justify-between mb-6">
+          <div class="flex items-center gap-3">
+            <span class="text-2xl">📅</span>
+            <h2 class="text-2xl font-bold">范式演进</h2>
           </div>
+          <a href="/paradigm" class="text-sm underline opacity-60 hover:opacity-100">查看全部 →</a>
+        </div>
+        <div class="grid md:grid-cols-5 gap-3">
+          <%= for paradigm <- @paradigms do %>
+            <a href={"/paradigm/#{paradigm["slug"]}"} class="block bg-white p-4 border-2 border-black hover:bg-gray-50 text-center">
+              <div class="text-2xl mb-2">
+                <%= case paradigm["slug"] do %>
+                  <% "perceptron" -> %> 🧠
+                  <% "symbolic-ai" -> %> 🔤
+                  <% "connectionism" -> %> 🔗
+                  <% "deep-learning" -> %> 🎯
+                  <% "transformers" -> %> ⚡
+                  <% _ -> %> 📊
+                <% end %>
+              </div>
+              <h3 class="font-bold text-sm mb-1"><%= paradigm["name"] %></h3>
+              <span class="text-xs opacity-60 font-mono">
+                <%= paradigm["start_year"] %>
+              </span>
+            </a>
+          <% end %>
         </div>
       </section>
 
-      <section class="bg-white p-6 border-2 border-black md-shadow">
+      <!-- 最新收录 -->
+      <section>
+        <div class="flex items-center justify-between mb-6">
+          <div class="flex items-center gap-3">
+            <span class="text-2xl">📝</span>
+            <h2 class="text-2xl font-bold">最新收录</h2>
+          </div>
+          <a href="/paper" class="text-sm underline opacity-60 hover:opacity-100">查看全部 →</a>
+        </div>
+        <div class="grid md:grid-cols-2 gap-4">
+          <%= for paper <- @recent do %>
+            <a href={"/paper/#{paper["slug"]}"} class="block bg-white p-5 border-2 border-black md-shadow-sm hover:translate-x-1 hover:translate-y-1 transition-transform">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="font-mono text-sm opacity-60"><%= paper["published_year"] %></span>
+                <%= if paper["is_paradigm_shift"] do %>
+                  <span class="w-2 h-2 bg-[rgb(255,222,0)]"></span>
+                <% end %>
+              </div>
+              <h3 class="font-bold mb-2 line-clamp-2"><%= paper["title"] %></h3>
+              <p class="text-sm opacity-60 line-clamp-2"><%= paper["abstract"] %></p>
+            </a>
+          <% end %>
+        </div>
+      </section>
+
+      <!-- AI生成 -->
+      <section class="bg-black text-white p-8 border-2 border-black">
         <div class="flex items-center gap-3 mb-4">
           <span class="text-2xl">🎲</span>
-          <h2 class="text-2xl font-bold">AI自动生成论文</h2>
+          <h2 class="text-2xl font-bold">AI自动生成论文解读</h2>
         </div>
         <p class="text-sm opacity-70 mb-4">
-          基于已有 <%= length(@all_papers) %> 篇论文，AI将从HuggingFace热门论文中推荐并生成下一篇的深度解读。
+          基于已有 <%= length(@all_papers) %> 篇论文的知识库，AI将从最新研究中发现价值，并生成三视角深度解读。
         </p>
         <button
           hx-post="/api/generate_paper"
           hx-swap="outerHTML"
-          class="px-6 py-3 bg-[rgb(255,222,0)] border-2 border-black font-bold hover:bg-yellow-300 transition-colors"
+          class="px-6 py-3 bg-[rgb(255,222,0)] text-black border-2 border-white font-bold hover:bg-yellow-300 transition-colors"
         >
           开始生成
         </button>
         <div id="generate-result" class="mt-4"></div>
       </section>
 
+      <!-- 范式变迁时刻 -->
       <section>
         <div class="flex items-center gap-3 mb-6">
-          <span class="text-2xl">⚡</span>
-          <h2 class="text-2xl font-bold">范式变迁时刻</h2>
+          <span class="text-2xl">🌟</span>
+          <h2 class="text-2xl font-bold">范式突破时刻</h2>
         </div>
         <div class="grid md:grid-cols-2 gap-4">
           <%= for paper <- @shifts do %>
-            <a href={"/paper/#{paper["slug"]}"} class="block bg-white p-5 border-2 border-black md-shadow-sm hover:translate-x-1 hover:translate-y-1 transition-transform">
+            <a href={"/paper/#{paper["slug"]}"} class="block bg-[rgb(111,194,255)]/20 p-5 border-2 border-black md-shadow-sm hover:translate-x-1 hover:translate-y-1 transition-transform">
               <div class="flex items-center gap-2 mb-2">
-                <span class="w-2 h-2 bg-[rgb(255,222,0)]"></span>
-                <span class="font-mono text-sm">{paper["published_year"]}</span>
+                <span class="px-2 py-0.5 bg-black text-white text-xs">范式突破</span>
+                <span class="font-mono text-sm opacity-60"><%= paper["published_year"] %></span>
               </div>
-              <h3 class="font-bold mb-2 line-clamp-2">{paper["title"]}</h3>
-              <p class="text-sm opacity-60 line-clamp-2">{paper["shift_trigger"]}</p>
+              <h3 class="font-bold mb-2 line-clamp-2"><%= paper["title"] %></h3>
+              <p class="text-sm opacity-70 line-clamp-2"><%= paper["shift_trigger"] %></p>
             </a>
           <% end %>
         </div>
