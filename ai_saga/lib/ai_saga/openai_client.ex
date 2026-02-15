@@ -54,8 +54,16 @@ defmodule AiSaga.OpenAIClient do
       "- #{p.name} (#{p.start_year}-#{p.end_year || "现在"}): #{status}"
     end)
 
+    # 构建已有论文的 arXiv ID 列表
+    existing_ids_str = if length(papers_summary.existing_arxiv_ids) > 0 do
+      papers_summary.existing_arxiv_ids
+      |> Enum.join(", ")
+    else
+      "无"
+    end
+
     candidates_str = Enum.map_join(hf_candidates, "\n", fn p ->
-      "- #{p.title} (#{p.published_at})\n  作者: #{Enum.join(p.authors, ", ")}\n  影响力: #{p.influence_score}"
+      "- #{p.title} (#{p.published_at})\n  arXiv ID: #{p.id}\n  作者: #{Enum.join(p.authors, ", ")}\n  影响力: #{p.influence_score}"
     end)
 
     """
@@ -63,6 +71,11 @@ defmodule AiSaga.OpenAIClient do
 
     【我们已有的论文分布】（共#{papers_summary.total_count}篇）
     #{paradigm_str}
+
+    【已收藏的论文 arXiv ID】
+    #{existing_ids_str}
+
+    ⚠️ 重要：请不要推荐上述已有 arXiv ID 列表中的论文，必须推荐全新的论文。
 
     【HuggingFace热门候选】
     #{candidates_str}
@@ -76,7 +89,7 @@ defmodule AiSaga.OpenAIClient do
     标题: [论文标题]
     作者: [主要作者]
     年份: [发表年份]
-    arXiv ID: [如 1706.03762]
+    arXiv ID: [如 1706.03762，必须是候选列表中的有效ID]
     推荐理由: [为什么选这篇？它如何填补空白或推动历史？]
     """
   end

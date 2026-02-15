@@ -57,18 +57,24 @@ defmodule AiSaga.PaperGenerator do
       }
     end)
 
-    # 获取年份范围
+    # 获取年份范围和已有论文的 arXiv ID
     {:ok, all_papers} = NexBase.from("papers")
-    |> NexBase.select([:published_year])
+    |> NexBase.select([:published_year, :arxiv_id, :title])
     |> NexBase.order(:published_year, :asc)
     |> NexBase.run()
 
     years = Enum.map(all_papers, & &1["published_year"])
 
+    # 收集所有已有的 arXiv ID（过滤掉 nil）
+    existing_arxiv_ids = all_papers
+    |> Enum.map(& &1["arxiv_id"])
+    |> Enum.filter(& &1 != nil)
+
     summary = %{
       paradigm_summaries: paradigm_summaries,
       years: years,
-      total_count: length(all_papers)
+      total_count: length(all_papers),
+      existing_arxiv_ids: existing_arxiv_ids
     }
 
     {:ok, summary}
