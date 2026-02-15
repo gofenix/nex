@@ -124,7 +124,7 @@ defmodule AiSaga.PaperGenerator do
     paper_data = %{
       title: arxiv_paper.title,
       slug: slug,
-      abstract: arxiv_paper.abstract,
+      abstract: analysis.chinese_abstract || arxiv_paper.abstract,
       arxiv_id: recommendation.arxiv_id,
       published_year: String.to_integer(year),
       published_month: String.slice(arxiv_paper.published, 5, 2) |> String.to_integer(),

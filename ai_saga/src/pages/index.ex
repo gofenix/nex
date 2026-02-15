@@ -110,7 +110,6 @@ defmodule AiSaga.Pages.Index do
         </p>
         <button
           hx-post="/api/generate_paper"
-          hx-target="#generate-result"
           hx-swap="outerHTML"
           class="px-6 py-3 bg-[rgb(255,222,0)] border-2 border-black font-bold hover:bg-yellow-300 transition-colors"
         >

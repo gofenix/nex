@@ -11,23 +11,31 @@ defmodule AiSaga.OpenAIClient do
   基于论文统计摘要推荐下一篇论文
   """
   def recommend_paper(papers_summary, hf_candidates) do
-    prompt = build_recommendation_prompt(papers_summary, hf_candidates)
+    # 先过滤掉已存在的论文
+    existing_ids = papers_summary.existing_arxiv_ids || []
+    filtered_candidates = Enum.reject(hf_candidates, fn c ->
+      clean_arxiv_id(c.id) in existing_ids
+    end)
 
-    case call_openai(prompt) do
-      {:ok, response} ->
-        recommendation =
-          response
-          |> parse_recommendation()
-          |> normalize_recommendation(hf_candidates, response)
+    # 如果没有可用候选，返回错误
+    if length(filtered_candidates) == 0 do
+      {:error, "没有可用的候选论文（所有候选都已存在）"}
+    else
+      prompt = build_recommendation_prompt(papers_summary, filtered_candidates)
 
-        if valid_arxiv_id?(recommendation.arxiv_id) do
-          {:ok, recommendation}
+      with {:ok, response} <- call_openai(prompt),
+           recommendation = parse_recommendation(response),
+           recommendation = normalize_recommendation(recommendation, filtered_candidates, response) do
+        if recommendation.arxiv_id in existing_ids do
+          # AI 仍然推荐了已存在的，返回错误
+          {:error, "AI 推荐了已存在的论文: #{recommendation.arxiv_id}"}
         else
-          {:error, "No valid arXiv ID found in recommendation"}
+          {:ok, recommendation}
         end
-
-      {:error, reason} ->
-        {:error, reason}
+      else
+        {:error, reason} ->
+          {:error, reason}
+      end
     end
   end
 
@@ -117,53 +125,50 @@ defmodule AiSaga.OpenAIClient do
     标题: #{new_paper.title}
     作者: #{Enum.join(new_paper.authors, ", ")}
     年份: #{new_paper.published}
-    摘要: #{new_paper.abstract}
+    英文摘要: #{new_paper.abstract}
 
     【HuggingFace数据】
     #{hf_str}
 
-    请按照以下格式生成内容（使用Markdown格式）：
+    请按照以下格式生成内容（全部使用中文，保持学术性和准确性，但要简洁高效）：
+
+    ## 中文摘要
+    将英文摘要翻译成100-150字的中文学术摘要，简要概括核心贡献。
 
     ## 上一个范式
-    描述这篇论文出现之前的主流方法，包括：
-    - 主流技术栈（用表格对比组件、贡献、问题）
-    - 当时的困境
+    描述论文前的主流方法，用表格对比和列表说明困境。
 
     ## 核心贡献
-    - 突破性洞察（引用关键句子）
-    - 2-3个核心创新点
-    - 一句话总结
+    列出2-3个核心创新点，一句话总结。
 
     ## 核心机制
-    - 核心公式（用代码块）
-    - 步骤拆解（用表格）
-    - 关键设计组件
+    核心算法和关键步骤，可用代码块或表格。
 
     ## 为什么赢了
-    - 与之前方法的对比表格
-    - 关键优势
+    与之前方法的对比表格（3个维度）。
 
     ## 当时面临的挑战
-    简洁描述领域面临的核心问题
+    领域面临的核心问题（2-3点）。
 
     ## 解决方案
-    简洁描述论文如何解决这些问题
+    论文如何解决（技术要点）。
 
     ## 深远影响
-    简洁描述对领域的影响
+    对领域的具体改变和影响。
 
     ## 后续影响
-    - 范式转换表格（时代、核心、代表工作）
-    - 后续重要工作的时间线
+    后续重要工作和时间线。
 
     ## 作者去向
-    - 表格列出主要作者的后续发展
-    - 名言引用（如果有）
+    主要作者后续发展（表格）。
 
     ## 历史背景
-    描述论文发表时的时代背景、研究动机
+    论文发表时的时代背景（100字左右）。
 
-    请用中文生成，保持学术性和准确性。
+    重要提示：
+    1. 所有内容用中文
+    2. 简洁但专业，不要过度冗长
+    3. 多使用表格、列表组织信息
     """
   end
 
@@ -181,7 +186,7 @@ defmodule AiSaga.OpenAIClient do
           %{role: "user", content: prompt}
         ],
         temperature: 0.7,
-        max_tokens: 4000
+        max_tokens: 2500
       }
 
       case Req.post(
@@ -190,7 +195,8 @@ defmodule AiSaga.OpenAIClient do
           {"Authorization", "Bearer #{api_key}"},
           {"Content-Type", "application/json"}
         ],
-        json: body
+        json: body,
+        receive_timeout: 60_000
       ) do
         {:ok, %{status: 200, body: response}} ->
           content = response["choices"] |> List.first() |> Map.get("message") |> Map.get("content")
@@ -305,6 +311,7 @@ defmodule AiSaga.OpenAIClient do
     |> Map.new()
 
     %{
+      chinese_abstract: sections["中文摘要"],
       prev_paradigm: sections["上一个范式"],
       core_contribution: sections["核心贡献"],
       core_mechanism: sections["核心机制"],
