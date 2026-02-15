@@ -52,7 +52,7 @@ NexBase.query!(
   []
 )
 
-# Create papers table with all the new perspective fields
+# Create papers table with all the perspective fields (same as SQLite)
 NexBase.query!(
   "CREATE TABLE papers (\n" <>
   "  id SERIAL PRIMARY KEY,\n" <>
@@ -65,19 +65,10 @@ NexBase.query!(
   "  url TEXT,\n" <>
   "  categories TEXT,\n" <>
   "  citations INTEGER DEFAULT 0,\n" <>
-  "\n" <>
   "  history_context TEXT,\n" <>
   "  challenge TEXT,\n" <>
   "  solution TEXT,\n" <>
   "  impact TEXT,\n" <>
-  "\n" <>
-  "  prev_paradigm TEXT,\n" <>
-  "  core_contribution TEXT,\n" <>
-  "  core_mechanism TEXT,\n" <>
-  "  why_it_wins TEXT,\n" <>
-  "  subsequent_impact TEXT,\n" <>
-  "  author_destinies TEXT,\n" <>
-  "\n" <>
   "  paradigm_id INTEGER REFERENCES paradigms(id),\n" <>
   "  is_paradigm_shift INTEGER DEFAULT 0,\n" <>
   "  shift_trigger TEXT,\n" <>
@@ -85,7 +76,13 @@ NexBase.query!(
   "  daily_date TEXT,\n" <>
   "  trend_value TEXT,\n" <>
   "  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n" <>
-  "  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP\n" <>
+  "  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n" <>
+  "  prev_paradigm TEXT,\n" <>
+  "  core_contribution TEXT,\n" <>
+  "  core_mechanism TEXT,\n" <>
+  "  why_it_wins TEXT,\n" <>
+  "  subsequent_impact TEXT,\n" <>
+  "  author_destinies TEXT\n" <>
   ")",
   []
 )

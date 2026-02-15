@@ -21,8 +21,10 @@ pg_conn = NexBase.init(
 
 IO.puts("PostgreSQL connection established")
 
-# Connect to SQLite (using absolute path)
-sqlite_url = "sqlite:///#{Path.expand("data/ai_saga.db", __DIR__ |> Path.join("../../.."))}"
+# Connect to SQLite (using absolute path from project root)
+sqlite_path = Path.join(File.cwd!(), "data/ai_saga.db")
+sqlite_url = "sqlite:///#{sqlite_path}"
+IO.puts("SQLite path: #{sqlite_path}")
 sqlite_conn = NexBase.init(
   url: sqlite_url,
   start: true
