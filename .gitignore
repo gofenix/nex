@@ -37,3 +37,10 @@ doc/
 .specs/
 .chat/
 .review/
+.claude/
+.coco/
+.codex/
+.gemini/
+.github/
+.opencode/
+.trae/
