@@ -4,8 +4,8 @@ defmodule AiSaga.OpenAIClient do
   用于推荐论文和生成三视角分析
   """
 
-  @model "gpt-5.3-codex"
-  @base_url "https://api.gpt.ge/v1"
+  defp model, do: System.get_env("OPENAI_MODEL") || "gpt-4o"
+  defp base_url, do: System.get_env("OPENAI_BASE_URL") || "https://api.openai.com/v1"
 
   @doc """
   基于论文统计摘要推荐下一篇论文
@@ -15,7 +15,16 @@ defmodule AiSaga.OpenAIClient do
 
     case call_openai(prompt) do
       {:ok, response} ->
-        {:ok, parse_recommendation(response)}
+        recommendation =
+          response
+          |> parse_recommendation()
+          |> normalize_recommendation(hf_candidates, response)
+
+        if valid_arxiv_id?(recommendation.arxiv_id) do
+          {:ok, recommendation}
+        else
+          {:error, "No valid arXiv ID found in recommendation"}
+        end
 
       {:error, reason} ->
         {:error, reason}
@@ -42,7 +51,6 @@ defmodule AiSaga.OpenAIClient do
     # 构建范式统计字符串
     paradigm_str = Enum.map_join(papers_summary.paradigm_summaries, "\n", fn p ->
       status = if p.count == 0, do: "⚠️ 空白", else: "#{p.count}篇"
-      reps = if p.representatives == [], do: "无", else: Enum.join(p.representatives, ", ")
       "- #{p.name} (#{p.start_year}-#{p.end_year || "现在"}): #{status}"
     end)
 
@@ -154,7 +162,7 @@ defmodule AiSaga.OpenAIClient do
       {:error, "OPENAI_API_KEY not set"}
     else
       body = %{
-        model: @model,
+        model: model(),
         messages: [
           %{role: "system", content: "You are an expert in AI history and research."},
           %{role: "user", content: prompt}
@@ -164,7 +172,7 @@ defmodule AiSaga.OpenAIClient do
       }
 
       case Req.post(
-        "#{@base_url}/chat/completions",
+        "#{base_url()}/chat/completions",
         headers: [
           {"Authorization", "Bearer #{api_key}"},
           {"Content-Type", "application/json"}
@@ -205,6 +213,69 @@ defmodule AiSaga.OpenAIClient do
       ""
     end
   end
+
+  defp normalize_recommendation(recommendation, hf_candidates, response) do
+    parsed_id = recommendation.arxiv_id |> clean_arxiv_id()
+    regex_id = extract_arxiv_id_from_text(response)
+    candidate_id = find_candidate_arxiv_id(hf_candidates, recommendation.title)
+
+    resolved_id =
+      [parsed_id, regex_id, candidate_id]
+      |> Enum.find(&valid_arxiv_id?/1)
+
+    Map.put(recommendation, :arxiv_id, resolved_id || recommendation.arxiv_id)
+  end
+
+  defp clean_arxiv_id(nil), do: nil
+
+  defp clean_arxiv_id(id) when is_binary(id) do
+    id
+    |> String.trim()
+    |> String.replace_prefix("arXiv:", "")
+    |> String.replace_prefix("https://arxiv.org/abs/", "")
+    |> String.replace_prefix("http://arxiv.org/abs/", "")
+    |> case do
+      "未提供" -> nil
+      "" -> nil
+      value -> value
+    end
+  end
+
+  defp clean_arxiv_id(_), do: nil
+
+  defp extract_arxiv_id_from_text(text) when is_binary(text) do
+    case Regex.run(~r/\b\d{4}\.\d{4,5}(?:v\d+)?\b/, text) do
+      [id] -> id
+      _ -> nil
+    end
+  end
+
+  defp extract_arxiv_id_from_text(_), do: nil
+
+  defp find_candidate_arxiv_id(hf_candidates, title) do
+    normalized_title = normalize_title(title)
+
+    hf_candidates
+    |> Enum.find(fn candidate -> normalize_title(candidate.title) == normalized_title end)
+    |> case do
+      nil -> nil
+      candidate -> clean_arxiv_id(candidate.id)
+    end
+  end
+
+  defp normalize_title(nil), do: ""
+
+  defp normalize_title(title) do
+    title
+    |> String.downcase()
+    |> String.replace(~r/[^\p{L}\p{N}]+/u, "")
+  end
+
+  defp valid_arxiv_id?(id) when is_binary(id) do
+    Regex.match?(~r/^\d{4}\.\d{4,5}(?:v\d+)?$/, id)
+  end
+
+  defp valid_arxiv_id?(_), do: false
 
   # 解析分析结果
   defp parse_analysis(response) do

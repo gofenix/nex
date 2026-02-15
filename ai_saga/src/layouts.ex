@@ -12,6 +12,7 @@ defmodule AiSaga.Layouts do
         <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio"></script>
         <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.23/dist/full.min.css" rel="stylesheet" type="text/css" />
         <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+        <script src="https://unpkg.com/htmx-ext-sse@2.2.2/sse.js"></script>
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -36,14 +37,17 @@ defmodule AiSaga.Layouts do
           .font-mono { font-family: 'Space Mono', monospace; }
         </style>
       </head>
-      <body class="min-h-screen" hx-boost="true">
+      <body class="min-h-screen">
         <nav class="sticky top-0 z-50 bg-[rgb(244,239,234)] border-b-2 border-black">
           <div class="max-w-4xl mx-auto w-full px-6 py-4 flex items-center justify-between">
             <a href="/" class="text-2xl font-black tracking-tight hover:underline">🤖 AiSaga</a>
             <div class="flex gap-6 text-sm font-medium">
               <a href="/" class="hover:underline">首页</a>
+              <a href="/paper" class="hover:underline">论文</a>
+              <a href="/paradigm" class="hover:underline">范式</a>
               <a href="/timeline" class="hover:underline">时间线</a>
-              <a href="/authors" class="hover:underline">人物</a>
+              <a href="/author" class="hover:underline">人物</a>
+              <a href="/search" class="hover:underline">搜索</a>
             </div>
           </div>
         </nav>

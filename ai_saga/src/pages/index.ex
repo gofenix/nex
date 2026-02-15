@@ -2,32 +2,37 @@ defmodule AiSaga.Pages.Index do
   use Nex
 
   def mount(_params) do
-    {:ok, paradigms} = NexBase.from("paradigms")
-    |> NexBase.order(:start_year, :asc)
-    |> NexBase.run()
+    {:ok, paradigms} =
+      NexBase.from("paradigms")
+      |> NexBase.order(:start_year, :asc)
+      |> NexBase.run()
 
-    {:ok, daily} = NexBase.from("papers")
-    |> NexBase.eq(:is_daily_pick, 1)
-    |> NexBase.single()
-    |> NexBase.run()
+    {:ok, daily} =
+      NexBase.from("papers")
+      |> NexBase.eq(:is_daily_pick, 1)
+      |> NexBase.single()
+      |> NexBase.run()
 
-    {:ok, recent} = NexBase.from("papers")
-    |> NexBase.order(:published_year, :desc)
-    |> NexBase.limit(5)
-    |> NexBase.run()
+    {:ok, recent} =
+      NexBase.from("papers")
+      |> NexBase.order(:published_year, :desc)
+      |> NexBase.limit(5)
+      |> NexBase.run()
 
-    {:ok, all_papers} = NexBase.from("papers")
-    |> NexBase.run()
+    {:ok, all_papers} =
+      NexBase.from("papers")
+      |> NexBase.run()
 
-    {:ok, shifts} = NexBase.from("papers")
-    |> NexBase.eq(:is_paradigm_shift, 1)
-    |> NexBase.order(:published_year, :asc)
-    |> NexBase.run()
+    {:ok, shifts} =
+      NexBase.from("papers")
+      |> NexBase.eq(:is_paradigm_shift, 1)
+      |> NexBase.order(:published_year, :asc)
+      |> NexBase.run()
 
     %{
       title: "AiSaga - 理解AI的起点",
       paradigms: paradigms,
-      daily: if(daily == nil, do: nil, else: hd(daily)),
+      daily: List.first(daily || []),
       recent: recent,
       all_papers: all_papers,
       shifts: shifts
@@ -106,14 +111,11 @@ defmodule AiSaga.Pages.Index do
         <button
           hx-post="/api/generate_paper"
           hx-target="#generate-result"
-          hx-indicator="#generate-loading"
+          hx-swap="outerHTML"
           class="px-6 py-3 bg-[rgb(255,222,0)] border-2 border-black font-bold hover:bg-yellow-300 transition-colors"
         >
           开始生成
         </button>
-        <div id="generate-loading" class="htmx-indicator mt-4 hidden">
-          <p class="text-sm opacity-60">⏳ AI正在分析、推荐、生成... (约30-60秒)</p>
-        </div>
         <div id="generate-result" class="mt-4"></div>
       </section>
 

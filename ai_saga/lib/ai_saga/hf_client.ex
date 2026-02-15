@@ -95,9 +95,4 @@ defmodule AiSaga.HFClient do
     end)
   end
   defp extract_authors(_), do: []
-
-  # 解析论文详情
-  defp parse_paper_detail(paper) do
-    parse_paper(paper)
-  end
 end

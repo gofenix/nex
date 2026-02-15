@@ -2,9 +2,10 @@ defmodule AiSaga.Pages.Paradigm.Index do
   use Nex
 
   def mount(_params) do
-    {:ok, paradigms} = NexBase.from("paradigms")
-    |> NexBase.order(:start_year, :asc)
-    |> NexBase.run()
+    {:ok, paradigms} =
+      NexBase.from("paradigms")
+      |> NexBase.order(:start_year, :asc)
+      |> NexBase.run()
 
     %{
       title: "所有范式",

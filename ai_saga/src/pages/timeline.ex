@@ -2,9 +2,10 @@ defmodule AiSaga.Pages.Timeline do
   use Nex
 
   def mount(_params) do
-    {:ok, papers} = NexBase.from("papers")
-    |> NexBase.order(:published_year, :asc)
-    |> NexBase.run()
+    {:ok, papers} =
+      NexBase.from("papers")
+      |> NexBase.order(:published_year, :asc)
+      |> NexBase.run()
 
     %{
       title: "AI 论文时间线",

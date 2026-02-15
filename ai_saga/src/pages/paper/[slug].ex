@@ -2,28 +2,34 @@ defmodule AiSaga.Pages.Paper.Slug do
   use Nex
 
   def mount(%{"slug" => slug}) do
-    {:ok, [paper]} = NexBase.from("papers")
-    |> NexBase.eq(:slug, slug)
-    |> NexBase.single()
-    |> NexBase.run()
-
-    {:ok, [paradigm]} = NexBase.from("paradigms")
-    |> NexBase.eq(:id, paper["paradigm_id"])
-    |> NexBase.single()
-    |> NexBase.run()
-
-    {:ok, author_links} = NexBase.from("paper_authors")
-    |> NexBase.eq(:paper_id, paper["id"])
-    |> NexBase.order(:author_order, :asc)
-    |> NexBase.run()
-
-    authors = Enum.map(author_links, fn link ->
-      {:ok, [a]} = NexBase.from("authors")
-      |> NexBase.eq(:id, link["author_id"])
+    {:ok, [paper]} =
+      NexBase.from("papers")
+      |> NexBase.eq(:slug, slug)
       |> NexBase.single()
       |> NexBase.run()
-      a
-    end)
+
+    {:ok, [paradigm]} =
+      NexBase.from("paradigms")
+      |> NexBase.eq(:id, paper["paradigm_id"])
+      |> NexBase.single()
+      |> NexBase.run()
+
+    {:ok, author_links} =
+      NexBase.from("paper_authors")
+      |> NexBase.eq(:paper_id, paper["id"])
+      |> NexBase.order(:author_order, :asc)
+      |> NexBase.run()
+
+    authors =
+      Enum.map(author_links, fn link ->
+        {:ok, [a]} =
+          NexBase.from("authors")
+          |> NexBase.eq(:id, link["author_id"])
+          |> NexBase.single()
+          |> NexBase.run()
+
+        a
+      end)
 
     %{
       title: paper["title"],
@@ -35,6 +41,7 @@ defmodule AiSaga.Pages.Paper.Slug do
 
   # 将Markdown转换为HTML
   defp markdown_to_html(nil), do: ""
+
   defp markdown_to_html(text) do
     case Earmark.as_html(text, gfm: true, breaks: true) do
       {:ok, html, _} -> html
@@ -137,19 +144,25 @@ defmodule AiSaga.Pages.Paper.Slug do
             <h2 class="text-2xl font-black border-b-2 border-black pb-2">🔄 二、范式变迁视角</h2>
 
             <div class="grid gap-4">
-              <div class="bg-white p-6 border-2 border-black">
+              <div class="bg-white p-6 border-2 border-black prose max-w-none">
                 <h3 class="text-lg font-bold mb-3 text-red-600">⚠️ 当时面临的挑战</h3>
-                <p class="opacity-80">{@paper["challenge"]}</p>
+                <div class="markdown-content">
+                  {Phoenix.HTML.raw(markdown_to_html(@paper["challenge"]))}
+                </div>
               </div>
 
-              <div class="bg-[rgb(255,222,0)] p-6 border-2 border-black">
+              <div class="bg-[rgb(255,222,0)] p-6 border-2 border-black prose max-w-none">
                 <h3 class="text-lg font-bold mb-3">💡 解决方案</h3>
-                <p class="opacity-90">{@paper["solution"]}</p>
+                <div class="markdown-content">
+                  {Phoenix.HTML.raw(markdown_to_html(@paper["solution"]))}
+                </div>
               </div>
 
-              <div class="bg-[rgb(111,194,255)] p-6 border-2 border-black">
+              <div class="bg-[rgb(111,194,255)] p-6 border-2 border-black prose max-w-none">
                 <h3 class="text-lg font-bold mb-3">🌊 深远影响</h3>
-                <p class="opacity-90">{@paper["impact"]}</p>
+                <div class="markdown-content">
+                  {Phoenix.HTML.raw(markdown_to_html(@paper["impact"]))}
+                </div>
               </div>
             </div>
           </section>
@@ -182,9 +195,11 @@ defmodule AiSaga.Pages.Paper.Slug do
 
           <%!-- 原始历史背景（如果没有新格式） --%>
           <%= if !@paper["prev_paradigm"] && @paper["history_context"] do %>
-            <section class="bg-gray-50 p-6 border-2 border-black">
+            <section class="bg-gray-50 p-6 border-2 border-black prose max-w-none">
               <h2 class="text-lg font-bold mb-3">📜 历史背景</h2>
-              <p class="opacity-80">{@paper["history_context"]}</p>
+              <div class="markdown-content">
+                {Phoenix.HTML.raw(markdown_to_html(@paper["history_context"]))}
+              </div>
             </section>
           <% end %>
 

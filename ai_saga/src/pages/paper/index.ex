@@ -2,9 +2,10 @@ defmodule AiSaga.Pages.Paper.Index do
   use Nex
 
   def mount(_params) do
-    {:ok, papers} = NexBase.from("papers")
-    |> NexBase.order(:published_year, :desc)
-    |> NexBase.run()
+    {:ok, papers} =
+      NexBase.from("papers")
+      |> NexBase.order(:published_year, :desc)
+      |> NexBase.run()
 
     %{
       title: "所有论文",

@@ -108,7 +108,8 @@ defmodule AiSaga.PaperGenerator do
     author_part = List.first(arxiv_paper.authors) |> String.downcase() |> String.split(" ") |> List.last()
     year = String.slice(arxiv_paper.published, 0, 4)
     keyword = extract_keyword(arxiv_paper.title)
-    slug = "#{author_part}-#{year}-#{keyword}"
+    base_slug = "#{author_part}-#{year}-#{keyword}"
+    slug = ensure_unique_slug(base_slug)
 
     # 确定范式ID
     paradigm_id = infer_paradigm_id(year)
@@ -141,25 +142,13 @@ defmodule AiSaga.PaperGenerator do
       history_context: analysis.history_context
     }
 
-    # 插入论文
-    {:ok, [inserted]} = NexBase.from("papers")
-    |> NexBase.insert(paper_data)
-    |> NexBase.run()
-
-    # 插入作者关系
-    Enum.each(Enum.with_index(arxiv_paper.authors), fn {author_name, index} ->
-      author_id = find_or_create_author(author_name)
-
-      NexBase.from("paper_authors")
-      |> NexBase.insert(%{
-        paper_id: inserted["id"],
-        author_id: author_id,
-        author_order: index + 1
-      })
-      |> NexBase.run()
-    end)
-
-    {:ok, slug}
+    with {:ok, _} <- NexBase.from("papers") |> NexBase.insert(paper_data) |> NexBase.run(),
+         {:ok, inserted} <- get_paper_by_slug(slug),
+         :ok <- insert_paper_authors(inserted["id"], arxiv_paper.authors) do
+      {:ok, slug}
+    else
+      {:error, reason} -> {:error, reason}
+    end
   end
 
   # 从标题提取关键词
@@ -170,6 +159,17 @@ defmodule AiSaga.PaperGenerator do
     |> String.split()
     |> Enum.take(3)
     |> Enum.join("-")
+  end
+
+  # 确保slug唯一性
+  defp ensure_unique_slug(base_slug, suffix \\ 0) do
+    candidate = if suffix == 0, do: base_slug, else: "#{base_slug}-#{suffix}"
+
+    case NexBase.from("papers") |> NexBase.eq(:slug, candidate) |> NexBase.single() |> NexBase.run() do
+      {:ok, []} -> candidate
+      {:ok, [_paper]} -> ensure_unique_slug(base_slug, suffix + 1)
+      {:error, _} -> candidate
+    end
   end
 
   # 根据年份推断范式ID
@@ -190,20 +190,58 @@ defmodule AiSaga.PaperGenerator do
 
     case NexBase.from("authors") |> NexBase.eq(:slug, slug) |> NexBase.single() |> NexBase.run() do
       {:ok, [author]} ->
-        author["id"]
+        {:ok, author["id"]}
+
+      {:ok, []} ->
+        insert_author(name, slug)
 
       _ ->
-        {:ok, [inserted]} = NexBase.from("authors")
-        |> NexBase.insert(%{
-          name: name,
-          slug: slug,
-          bio: "待补充",
-          affiliation: "待补充",
-          influence_score: 50
-        })
-        |> NexBase.run()
+        insert_author(name, slug)
+    end
+  end
 
-        inserted["id"]
+  defp get_paper_by_slug(slug) do
+    case NexBase.from("papers") |> NexBase.eq(:slug, slug) |> NexBase.single() |> NexBase.run() do
+      {:ok, [paper]} -> {:ok, paper}
+      {:ok, []} -> {:error, "paper insert succeeded but paper lookup failed"}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp insert_paper_authors(paper_id, authors) do
+    Enum.reduce_while(Enum.with_index(authors), :ok, fn {author_name, index}, _acc ->
+      with {:ok, author_id} <- find_or_create_author(author_name),
+           {:ok, _} <-
+             NexBase.from("paper_authors")
+             |> NexBase.insert(%{paper_id: paper_id, author_id: author_id, author_order: index + 1})
+             |> NexBase.run() do
+        {:cont, :ok}
+      else
+        {:error, reason} -> {:halt, {:error, reason}}
+      end
+    end)
+  end
+
+  defp insert_author(name, slug) do
+    with {:ok, _} <-
+           NexBase.from("authors")
+           |> NexBase.insert(%{
+             name: name,
+             slug: slug,
+             bio: "待补充",
+             affiliation: "待补充",
+             influence_score: 50
+           })
+           |> NexBase.run(),
+         {:ok, [inserted]} <-
+           NexBase.from("authors")
+           |> NexBase.eq(:slug, slug)
+           |> NexBase.single()
+           |> NexBase.run() do
+      {:ok, inserted["id"]}
+    else
+      {:ok, []} -> {:error, "author insert succeeded but author lookup failed"}
+      {:error, reason} -> {:error, reason}
     end
   end
 end

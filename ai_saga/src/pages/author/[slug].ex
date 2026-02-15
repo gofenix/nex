@@ -2,23 +2,28 @@ defmodule AiSaga.Pages.Author.Slug do
   use Nex
 
   def mount(%{"slug" => slug}) do
-    {:ok, [author]} = NexBase.from("authors")
-    |> NexBase.eq(:slug, slug)
-    |> NexBase.single()
-    |> NexBase.run()
-
-    {:ok, links} = NexBase.from("paper_authors")
-    |> NexBase.eq(:author_id, author["id"])
-    |> NexBase.order(:author_order, :asc)
-    |> NexBase.run()
-
-    papers = Enum.map(links, fn link ->
-      {:ok, [p]} = NexBase.from("papers")
-      |> NexBase.eq(:id, link["paper_id"])
+    {:ok, [author]} =
+      NexBase.from("authors")
+      |> NexBase.eq(:slug, slug)
       |> NexBase.single()
       |> NexBase.run()
-      p
-    end)
+
+    {:ok, links} =
+      NexBase.from("paper_authors")
+      |> NexBase.eq(:author_id, author["id"])
+      |> NexBase.order(:author_order, :asc)
+      |> NexBase.run()
+
+    papers =
+      Enum.map(links, fn link ->
+        {:ok, [p]} =
+          NexBase.from("papers")
+          |> NexBase.eq(:id, link["paper_id"])
+          |> NexBase.single()
+          |> NexBase.run()
+
+        p
+      end)
 
     %{
       title: author["name"],

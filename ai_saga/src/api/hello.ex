@@ -32,10 +32,13 @@ defmodule AiSaga.Api.Hello do
         Nex.json(%{error: "Name is required"}, status: 400)
 
       true ->
-        Nex.json(%{
-          message: "Hello, #{name}! Welcome to Nex.",
-          created_at: DateTime.utc_now() |> DateTime.to_iso8601()
-        }, status: 201)
+        Nex.json(
+          %{
+            message: "Hello, #{name}! Welcome to Nex.",
+            created_at: DateTime.utc_now() |> DateTime.to_iso8601()
+          },
+          status: 201
+        )
     end
   end
 end

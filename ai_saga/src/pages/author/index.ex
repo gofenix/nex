@@ -2,9 +2,10 @@ defmodule AiSaga.Pages.Author.Index do
   use Nex
 
   def mount(_params) do
-    {:ok, authors} = NexBase.from("authors")
-    |> NexBase.order(:influence_score, :desc)
-    |> NexBase.run()
+    {:ok, authors} =
+      NexBase.from("authors")
+      |> NexBase.order(:influence_score, :desc)
+      |> NexBase.run()
 
     %{
       title: "重要人物",

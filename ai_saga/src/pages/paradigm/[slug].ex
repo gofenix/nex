@@ -2,15 +2,17 @@ defmodule AiSaga.Pages.Paradigm.Slug do
   use Nex
 
   def mount(%{"slug" => slug}) do
-    {:ok, [paradigm]} = NexBase.from("paradigms")
-    |> NexBase.eq(:slug, slug)
-    |> NexBase.single()
-    |> NexBase.run()
+    {:ok, [paradigm]} =
+      NexBase.from("paradigms")
+      |> NexBase.eq(:slug, slug)
+      |> NexBase.single()
+      |> NexBase.run()
 
-    {:ok, papers} = NexBase.from("papers")
-    |> NexBase.eq(:paradigm_id, paradigm["id"])
-    |> NexBase.order(:published_year, :asc)
-    |> NexBase.run()
+    {:ok, papers} =
+      NexBase.from("papers")
+      |> NexBase.eq(:paradigm_id, paradigm["id"])
+      |> NexBase.order(:published_year, :asc)
+      |> NexBase.run()
 
     %{
       title: paradigm["name"],
