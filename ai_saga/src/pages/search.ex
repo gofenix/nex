@@ -95,11 +95,14 @@ defmodule AiSaga.Pages.Search do
   def render(assigns) do
     ~H"""
     <div class="max-w-4xl mx-auto space-y-8">
-      <a href="/" class="inline-flex items-center gap-2 text-sm font-mono opacity-60 hover:opacity-100">
+      <a href="/" class="back-link mb-6 inline-block">
         ← 返回首页
       </a>
 
-      <h1 class="text-3xl font-black">🔍 搜索论文</h1>
+      <div class="page-header">
+        <h1>🔍 搜索论文</h1>
+        <p>通过关键词、范式或年份筛选找到你感兴趣的论文</p>
+      </div>
 
       <%!-- 搜索表单 --%>
       <form action="/search" method="get" class="space-y-4">
@@ -197,13 +200,13 @@ defmodule AiSaga.Pages.Search do
         <%= if length(@papers) > 0 do %>
           <div class="space-y-4">
             <%= for paper <- @papers do %>
-              <a href={"/paper/#{paper["slug"]}"} class="block bg-white p-5 border-2 border-black md-shadow-sm hover:translate-x-1 hover:translate-y-1 transition-transform">
+              <a href={"/paper/#{paper["slug"]}"} class="card block p-5">
                 <div class="flex items-start justify-between gap-4">
                   <div class="flex-1">
-                    <div class="flex items-center gap-2 mb-2">
-                      <span class="font-mono text-sm opacity-60">{paper["published_year"]}</span>
+                    <div class="flex items-center gap-3 mb-2">
+                      <span class="year-tag">{paper["published_year"]}</span>
                       <%= if paper["is_paradigm_shift"] == 1 do %>
-                        <span class="px-2 py-0.5 bg-[rgb(255,222,0)] border border-black text-xs font-mono">范式突破</span>
+                        <span class="badge badge-yellow">范式突破</span>
                       <% end %>
                     </div>
                     <h2 class="font-bold mb-2 line-clamp-2">{paper["title"]}</h2>
@@ -217,9 +220,9 @@ defmodule AiSaga.Pages.Search do
             <% end %>
           </div>
         <% else %>
-          <div class="text-center py-12 bg-gray-50 border-2 border-black">
-            <p class="text-lg opacity-60">没有找到符合条件的论文</p>
-            <p class="text-sm opacity-40 mt-2">请尝试调整搜索条件</p>
+          <div class="empty-state">
+            <p>没有找到符合条件的论文</p>
+            <p class="hint">请尝试调整搜索条件</p>
           </div>
         <% end %>
       <% end %>

@@ -52,23 +52,23 @@ defmodule AiSaga.Pages.Paper.Slug do
   def render(assigns) do
     ~H"""
     <div class="max-w-4xl mx-auto">
-      <a href="/" class="inline-flex items-center gap-2 text-sm font-mono opacity-60 hover:opacity-100 mb-6">
-        ← 返回首页
+      <a href="/paper" class="back-link mb-6 inline-block">
+        ← 返回论文列表
       </a>
 
       <article class="space-y-6">
         <%!-- 基本信息头部 --%>
         <header class="space-y-4 border-b-2 border-black pb-6">
           <div class="flex flex-wrap items-center gap-3">
-            <a href={"/paradigm/#{@paradigm["slug"]}"} class="px-3 py-1 bg-[rgb(111,194,255)] border border-black text-sm font-mono hover:bg-blue-200">
+            <a href={"/paradigm/#{@paradigm["slug"]}"} class="badge badge-blue">
               {@paradigm["name"]}
             </a>
             <%= if @paper["is_paradigm_shift"] == 1 do %>
-              <span class="px-3 py-1 bg-[rgb(255,222,0)] border border-black text-sm font-mono font-bold">
+              <span class="badge badge-yellow">
                 ⚡ 范式变迁
               </span>
             <% end %>
-            <span class="text-sm font-mono opacity-60">{@paper["published_year"]}年</span>
+            <span class="year-tag">{@paper["published_year"]}年</span>
           </div>
 
           <h1 class="text-3xl md:text-4xl font-black leading-tight">{@paper["title"]}</h1>
@@ -96,16 +96,16 @@ defmodule AiSaga.Pages.Paper.Slug do
         </div>
 
         <%!-- 锚点导航 --%>
-        <nav class="sticky top-0 z-10 bg-white border-2 border-black p-3 flex flex-wrap gap-2">
+        <nav class="sticky top-0 z-10 card p-3 flex flex-wrap gap-2">
           <%= if @paper["prev_paradigm"] do %>
-            <a href="#history" class="px-3 py-1.5 text-sm bg-[rgb(255,222,0)]/20 hover:bg-[rgb(255,222,0)] border border-black transition-colors">📜 历史视角</a>
+            <a href="#history" class="badge badge-yellow hover:bg-yellow-300 transition-colors">📜 历史视角</a>
           <% end %>
-          <a href="#paradigm-shift" class="px-3 py-1.5 text-sm bg-[rgb(111,194,255)]/20 hover:bg-[rgb(111,194,255)] border border-black transition-colors">🔄 范式变迁</a>
+          <a href="#paradigm-shift" class="badge badge-blue hover:bg-blue-300 transition-colors">🔄 范式变迁</a>
           <%= if @paper["author_destinies"] do %>
-            <a href="#people" class="px-3 py-1.5 text-sm bg-[rgb(255,160,160)]/20 hover:bg-[rgb(255,160,160)] border border-black transition-colors">👤 人物视角</a>
+            <a href="#people" class="badge" style="background: rgba(255,160,160,0.2); border-color: var(--md-black);">👤 人物视角</a>
           <% end %>
           <%= if @paper["subsequent_impact"] do %>
-            <a href="#impact" class="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 border border-black transition-colors">📈 后续影响</a>
+            <a href="#impact" class="badge badge-gray hover:bg-gray-200 transition-colors">📈 后续影响</a>
           <% end %>
         </nav>
 

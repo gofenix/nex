@@ -18,23 +18,275 @@ defmodule AiSaga.Layouts do
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
         <style>
           :root {
+            /* MotherDuck Brand Colors */
             --md-bg: rgb(244, 239, 234);
             --md-yellow: rgb(255, 222, 0);
+            --md-yellow-light: rgba(255, 222, 0, 0.1);
             --md-dark: rgb(56, 56, 56);
             --md-black: rgb(0, 0, 0);
             --md-blue: rgb(111, 194, 255);
+            --md-blue-light: rgba(111, 194, 255, 0.1);
+            --md-red: rgb(255, 100, 100);
+            --md-red-light: rgba(255, 100, 100, 0.1);
+            --md-white: rgb(255, 255, 255);
+            --md-gray-50: rgb(249, 250, 251);
+            --md-gray-100: rgb(243, 244, 246);
+            --md-gray-200: rgb(229, 231, 235);
+            --md-gray-600: rgb(75, 85, 99);
           }
           body {
             background-color: var(--md-bg);
             font-family: 'Inter', sans-serif;
             color: var(--md-dark);
           }
-          .md-shadow { box-shadow: var(--md-dark) -8px 8px 0px 0px; }
-          .md-shadow-sm { box-shadow: var(--md-dark) -4px 4px 0px 0px; }
+          /* Shadow Utilities */
+          .md-shadow { box-shadow: var(--md-black) -8px 8px 0px 0px; }
+          .md-shadow-sm { box-shadow: var(--md-black) -4px 4px 0px 0px; }
           .md-shadow-yellow { box-shadow: var(--md-yellow) -6px 6px 0px 0px; }
+          .md-shadow-blue { box-shadow: var(--md-blue) -6px 6px 0px 0px; }
+          /* Border Utilities */
           .md-border { border: 2px solid var(--md-black); }
           .md-border-sm { border: 1px solid var(--md-black); }
+          /* Card Components */
+          .card {
+            background: var(--md-white);
+            border: 2px solid var(--md-black);
+            box-shadow: var(--md-black) -4px 4px 0px 0px;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+          }
+          .card:hover {
+            transform: translate(1px, 1px);
+            box-shadow: var(--md-black) -3px 3px 0px 0px;
+          }
+          .card-yellow {
+            background: var(--md-yellow);
+            border: 2px solid var(--md-black);
+            box-shadow: var(--md-black) -6px 6px 0px 0px;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+          }
+          .card-yellow:hover {
+            transform: translate(1px, 1px);
+            box-shadow: var(--md-black) -5px 5px 0px 0px;
+            background: rgb(255, 230, 50);
+          }
+          .card-blue {
+            background: var(--md-blue);
+            border: 2px solid var(--md-black);
+            box-shadow: var(--md-black) -4px 4px 0px 0px;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+          }
+          .card-blue:hover {
+            transform: translate(1px, 1px);
+            box-shadow: var(--md-black) -3px 3px 0px 0px;
+            background: rgb(140, 210, 255);
+          }
+          /* Badge Components */
+          .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            font-family: 'Space Mono', monospace;
+            border: 1px solid var(--md-black);
+          }
+          .badge-yellow {
+            background: var(--md-yellow);
+            color: var(--md-black);
+          }
+          .badge-blue {
+            background: var(--md-blue);
+            color: var(--md-black);
+          }
+          .badge-black {
+            background: var(--md-black);
+            color: var(--md-white);
+          }
+          .badge-gray {
+            background: var(--md-gray-100);
+            color: var(--md-dark);
+            border-color: var(--md-dark);
+          }
+          /* Stat Box */
+          .stat-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            border: 2px solid var(--md-black);
+            text-align: center;
+          }
+          .stat-box .number {
+            font-size: 1.5rem;
+            font-weight: 900;
+            line-height: 1.2;
+          }
+          .stat-box .label {
+            font-size: 0.75rem;
+            opacity: 0.6;
+            margin-top: 0.25rem;
+          }
+          .stat-yellow { background: var(--md-yellow-light); }
+          .stat-blue { background: var(--md-blue-light); }
+          .stat-black { background: var(--md-black); color: var(--md-white); }
+          .stat-black .label { opacity: 0.8; }
+          /* Year Tag */
+          .year-tag {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.875rem;
+            opacity: 0.6;
+          }
+          /* Icon Box */
+          .icon-box {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 2.5rem;
+            height: 2.5rem;
+            background: var(--md-gray-100);
+            border: 2px solid var(--md-black);
+            font-size: 1.25rem;
+          }
+          .icon-box-yellow {
+            background: var(--md-yellow);
+          }
+          .icon-box-blue {
+            background: var(--md-blue);
+          }
+          /* Section Title */
+          .section-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.5rem;
+            font-weight: 900;
+            margin-bottom: 1.5rem;
+          }
+          /* Page Header */
+          .page-header {
+            text-align: center;
+            padding: 2rem 0;
+          }
+          .page-header h1 {
+            font-size: 2.25rem;
+            font-weight: 900;
+            margin-bottom: 0.75rem;
+          }
+          .page-header p {
+            font-size: 1.125rem;
+            opacity: 0.6;
+            max-width: 36rem;
+            margin: 0 auto 1rem;
+          }
+          .page-header .meta {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.875rem;
+            opacity: 0.4;
+          }
+          /* Empty State */
+          .empty-state {
+            text-align: center;
+            padding: 3rem;
+            background: var(--md-gray-50);
+            border: 2px solid var(--md-black);
+          }
+          .empty-state p {
+            font-size: 1.125rem;
+            opacity: 0.6;
+          }
+          .empty-state .hint {
+            font-size: 0.875rem;
+            opacity: 0.4;
+            margin-top: 0.5rem;
+          }
+          /* Back Link */
+          .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-family: 'Space Mono', monospace;
+            font-size: 0.875rem;
+            opacity: 0.6;
+            transition: opacity 0.15s ease;
+          }
+          .back-link:hover {
+            opacity: 1;
+          }
+          /* Form Inputs */
+          .md-input {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            border: 2px solid var(--md-black);
+            background: var(--md-white);
+            font-family: 'Inter', sans-serif;
+            outline: none;
+          }
+          .md-input:focus {
+            box-shadow: 0 0 0 3px var(--md-yellow-light);
+          }
+          /* Button */
+          .md-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.75rem 1.5rem;
+            font-weight: 700;
+            border: 2px solid var(--md-black);
+            transition: transform 0.15s ease, background 0.15s ease;
+          }
+          .md-btn:hover {
+            transform: translate(1px, 1px);
+          }
+          .md-btn-primary {
+            background: var(--md-yellow);
+          }
+          .md-btn-primary:hover {
+            background: rgb(255, 230, 50);
+          }
+          .md-btn-secondary {
+            background: var(--md-white);
+          }
+          .md-btn-secondary:hover {
+            background: var(--md-gray-100);
+          }
+          .md-btn-dark {
+            background: var(--md-black);
+            color: var(--md-white);
+            border-color: var(--md-black);
+          }
+          .md-btn-dark:hover {
+            background: var(--md-dark);
+          }
           .font-mono { font-family: 'Space Mono', monospace; }
+          /* Timeline */
+          .timeline-line {
+            position: absolute;
+            left: 2rem;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: var(--md-black);
+          }
+          @media (min-width: 768px) {
+            .timeline-line {
+              left: 50%;
+              transform: translateX(-50%);
+            }
+          }
+          .timeline-dot {
+            position: absolute;
+            left: 2rem;
+            width: 1rem;
+            height: 1rem;
+            background: var(--md-yellow);
+            border: 2px solid var(--md-black);
+            z-index: 10;
+          }
+          @media (min-width: 768px) {
+            .timeline-dot {
+              left: 50%;
+              transform: translateX(-50%);
+            }
+          }
         </style>
       </head>
       <body class="min-h-screen">

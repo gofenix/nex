@@ -81,12 +81,12 @@ defmodule AiSaga.Pages.Author.Slug do
   def render(assigns) do
     ~H"""
     <div class="max-w-4xl mx-auto space-y-8">
-      <a href="/author" class="inline-flex items-center gap-2 text-sm font-mono opacity-60 hover:opacity-100">
+      <a href="/author" class="back-link">
         ← 返回人物列表
       </a>
 
       <%!-- 头部信息卡片 --%>
-      <header class="bg-white border-2 border-black p-6 md:p-8 md-shadow">
+      <header class="card p-6 md:p-8">
         <div class="flex flex-col md:flex-row md:items-start gap-6">
           <div class="flex-shrink-0">
             <div class="w-24 h-24 bg-[rgb(255,222,0)] border-2 border-black flex items-center justify-center text-5xl">
@@ -111,22 +111,22 @@ defmodule AiSaga.Pages.Author.Slug do
 
             <%!-- 影响力指标 --%>
             <div class="flex flex-wrap gap-4 pt-4 border-t border-gray-200">
-              <div class="text-center px-4 py-2 bg-[rgb(255,222,0)]/20 border border-black">
-                <div class="text-2xl font-black">{@author["influence_score"] || 50}</div>
-                <div class="text-xs opacity-60">影响力分数</div>
+              <div class="stat-box stat-yellow">
+                <div class="number">{@author["influence_score"] || 50}</div>
+                <div class="label">影响力分数</div>
               </div>
-              <div class="text-center px-4 py-2 bg-[rgb(111,194,255)]/20 border border-black">
-                <div class="text-2xl font-black">{@stats.total_papers}</div>
-                <div class="text-xs opacity-60">发表论文</div>
+              <div class="stat-box stat-blue">
+                <div class="number">{@stats.total_papers}</div>
+                <div class="label">发表论文</div>
               </div>
-              <div class="text-center px-4 py-2 bg-[rgb(255,160,160)]/20 border border-black">
-                <div class="text-2xl font-black">{@stats.total_citations}</div>
-                <div class="text-xs opacity-60">总引用数</div>
+              <div class="stat-box stat-blue">
+                <div class="number">{@stats.total_citations}</div>
+                <div class="label">总引用数</div>
               </div>
               <%= if @stats.paradigm_shifts > 0 do %>
-                <div class="text-center px-4 py-2 bg-black text-white border border-black">
-                  <div class="text-2xl font-black">{@stats.paradigm_shifts}</div>
-                  <div class="text-xs opacity-80">范式突破</div>
+                <div class="stat-box stat-black">
+                  <div class="number">{@stats.paradigm_shifts}</div>
+                  <div class="label">范式突破</div>
                 </div>
               <% end %>
             </div>
@@ -136,8 +136,8 @@ defmodule AiSaga.Pages.Author.Slug do
 
       <%!-- 合作者网络 --%>
       <%= if length(@collaborators) > 0 do %>
-        <section class="bg-white border-2 border-black p-6">
-          <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+        <section class="card p-6">
+          <h2 class="section-title text-xl">
             <span>🤝</span> 主要合作者
           </h2>
           <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -158,19 +158,19 @@ defmodule AiSaga.Pages.Author.Slug do
 
       <%!-- 论文列表 --%>
       <section>
-        <h2 class="text-2xl font-bold mb-6 flex items-center gap-2">
+        <h2 class="section-title text-2xl">
           <span>📝</span> 发表论文
           <span class="text-sm font-normal opacity-60">({@stats.total_papers} 篇)</span>
         </h2>
         <div class="space-y-4">
           <%= for paper <- @papers do %>
-            <a href={"/paper/#{paper["slug"]}"} class="block bg-white p-5 border-2 border-black md-shadow-sm hover:translate-x-1 hover:translate-y-1 transition-transform">
+            <a href={"/paper/#{paper["slug"]}"} class="card block p-5">
               <div class="flex items-start justify-between gap-4">
                 <div class="flex-1">
-                  <div class="flex items-center gap-2 mb-2">
-                    <span class="font-mono text-sm opacity-60">{paper["published_year"]}</span>
+                  <div class="flex items-center gap-3 mb-2">
+                    <span class="year-tag">{paper["published_year"]}</span>
                     <%= if paper["is_paradigm_shift"] == 1 do %>
-                      <span class="px-2 py-0.5 bg-[rgb(255,222,0)] border border-black text-xs font-mono">范式突破</span>
+                      <span class="badge badge-yellow">范式突破</span>
                     <% end %>
                   </div>
                   <h3 class="font-bold mb-2 line-clamp-2">{paper["title"]}</h3>

@@ -80,10 +80,10 @@ defmodule AiSaga.Pages.Index do
           从感知机到Transformer，一起探索人工智能的演进之路。
         </p>
         <div class="flex gap-4 justify-center">
-          <a href="/paper" class="px-8 py-4 bg-black text-white font-bold hover:bg-gray-800 transition-colors">
+          <a href="/paper" class="md-btn md-btn-primary">
             浏览论文 →
           </a>
-          <a href="/paradigm" class="px-8 py-4 bg-white border-2 border-black font-bold hover:bg-gray-50 transition-colors">
+          <a href="/paradigm" class="md-btn md-btn-secondary">
             探索范式
           </a>
         </div>
@@ -136,12 +136,12 @@ defmodule AiSaga.Pages.Index do
           <% end %>
         </div>
         <%= if @daily do %>
-          <a href={"/paper/#{@daily["slug"]}"} class="block bg-[rgb(255,222,0)] p-8 border-2 border-black md-shadow hover:translate-x-1 hover:translate-y-1 transition-transform">
+          <a href={"/paper/#{@daily["slug"]}"} class="card-yellow block p-8">
             <div class="flex items-center gap-3 mb-3">
-              <span class="px-3 py-1 bg-black text-white text-sm font-mono">精选</span>
-              <span class="text-sm opacity-60"><%= @daily["published_year"] %></span>
+              <span class="badge badge-black">精选</span>
+              <span class="year-tag"><%= @daily["published_year"] %></span>
               <%= if @daily["is_paradigm_shift"] do %>
-                <span class="px-2 py-0.5 bg-red-500 text-white text-xs">范式突破</span>
+                <span class="badge badge-yellow">范式突破</span>
               <% end %>
             </div>
             <h3 class="text-2xl font-bold mb-3"><%= @daily["title"] %></h3>
@@ -157,15 +157,14 @@ defmodule AiSaga.Pages.Index do
       <!-- 关键范式时间线（简化版） -->
       <section>
         <div class="flex items-center justify-between mb-6">
-          <div class="flex items-center gap-3">
-            <span class="text-2xl">📅</span>
-            <h2 class="text-2xl font-bold">范式演进</h2>
-          </div>
+          <h2 class="section-title !mb-0">
+            <span>📅</span> 范式演进
+          </h2>
           <a href="/paradigm" class="text-sm underline opacity-60 hover:opacity-100">查看全部 →</a>
         </div>
         <div class="grid md:grid-cols-5 gap-3">
           <%= for paradigm <- @paradigms do %>
-            <a href={"/paradigm/#{paradigm["slug"]}"} class="block bg-white p-4 border-2 border-black hover:bg-gray-50 text-center">
+            <a href={"/paradigm/#{paradigm["slug"]}"} class="card block p-4 text-center hover:bg-gray-50">
               <div class="text-2xl mb-2">
                 <%= case paradigm["slug"] do %>
                   <% "perceptron" -> %> 🧠
@@ -177,7 +176,7 @@ defmodule AiSaga.Pages.Index do
                 <% end %>
               </div>
               <h3 class="font-bold text-sm mb-1"><%= paradigm["name"] %></h3>
-              <span class="text-xs opacity-60 font-mono">
+              <span class="year-tag">
                 <%= paradigm["start_year"] %>
               </span>
             </a>
@@ -188,17 +187,16 @@ defmodule AiSaga.Pages.Index do
       <!-- 最新收录 -->
       <section>
         <div class="flex items-center justify-between mb-6">
-          <div class="flex items-center gap-3">
-            <span class="text-2xl">📝</span>
-            <h2 class="text-2xl font-bold">最新收录</h2>
-          </div>
+          <h2 class="section-title !mb-0">
+            <span>📝</span> 最新收录
+          </h2>
           <a href="/paper" class="text-sm underline opacity-60 hover:opacity-100">查看全部 →</a>
         </div>
         <div class="grid md:grid-cols-2 gap-4">
           <%= for paper <- @recent do %>
-            <a href={"/paper/#{paper["slug"]}"} class="block bg-white p-5 border-2 border-black md-shadow-sm hover:translate-x-1 hover:translate-y-1 transition-transform">
-              <div class="flex items-center gap-2 mb-2">
-                <span class="font-mono text-sm opacity-60"><%= paper["published_year"] %></span>
+            <a href={"/paper/#{paper["slug"]}"} class="card block p-5">
+              <div class="flex items-center gap-3 mb-2">
+                <span class="year-tag"><%= paper["published_year"] %></span>
                 <%= if paper["is_paradigm_shift"] do %>
                   <span class="w-2 h-2 bg-[rgb(255,222,0)]"></span>
                 <% end %>
@@ -211,18 +209,17 @@ defmodule AiSaga.Pages.Index do
       </section>
 
       <!-- AI生成 -->
-      <section class="bg-black text-white p-8 border-2 border-black">
-        <div class="flex items-center gap-3 mb-4">
-          <span class="text-2xl">🎲</span>
-          <h2 class="text-2xl font-bold">AI自动生成论文解读</h2>
-        </div>
-        <p class="text-sm opacity-70 mb-4">
+      <section class="card-black text-white p-8" style="background: var(--md-black); color: var(--md-white);">
+        <h2 class="section-title !mb-4">
+          <span>🎲</span> AI自动生成论文解读
+        </h2>
+        <p class="text-sm opacity-70 mb-6">
           基于已有 <%= length(@all_papers) %> 篇论文的知识库，AI将从最新研究中发现价值，并生成三视角深度解读。
         </p>
         <button
           hx-post="/api/generate_paper"
           hx-swap="outerHTML"
-          class="px-6 py-3 bg-[rgb(255,222,0)] text-black border-2 border-white font-bold hover:bg-yellow-300 transition-colors"
+          class="md-btn md-btn-primary border-white"
         >
           开始生成
         </button>
@@ -231,16 +228,15 @@ defmodule AiSaga.Pages.Index do
 
       <!-- 范式变迁时刻 -->
       <section>
-        <div class="flex items-center gap-3 mb-6">
-          <span class="text-2xl">🌟</span>
-          <h2 class="text-2xl font-bold">范式突破时刻</h2>
-        </div>
+        <h2 class="section-title">
+          <span>🌟</span> 范式突破时刻
+        </h2>
         <div class="grid md:grid-cols-2 gap-4">
           <%= for paper <- @shifts do %>
-            <a href={"/paper/#{paper["slug"]}"} class="block bg-[rgb(111,194,255)]/20 p-5 border-2 border-black md-shadow-sm hover:translate-x-1 hover:translate-y-1 transition-transform">
+            <a href={"/paper/#{paper["slug"]}"} class="card-blue block p-5">
               <div class="flex items-center gap-2 mb-2">
-                <span class="px-2 py-0.5 bg-black text-white text-xs">范式突破</span>
-                <span class="font-mono text-sm opacity-60"><%= paper["published_year"] %></span>
+                <span class="badge badge-black">范式突破</span>
+                <span class="year-tag"><%= paper["published_year"] %></span>
               </div>
               <h3 class="font-bold mb-2 line-clamp-2"><%= paper["title"] %></h3>
               <p class="text-sm opacity-70 line-clamp-2"><%= paper["shift_trigger"] %></p>
