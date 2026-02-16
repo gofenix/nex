@@ -4,7 +4,7 @@ defmodule AiSaga.Pages.Paper.Index do
   def mount(_params) do
     {:ok, papers} =
       NexBase.from("papers")
-      |> NexBase.order(:published_year, :desc)
+      |> NexBase.order(:created_at, :desc)
       |> NexBase.run()
 
     %{
