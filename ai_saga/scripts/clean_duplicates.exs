@@ -1,6 +1,10 @@
 # 清理重复论文的脚本
 # 运行: cd ai_saga && elixir scripts/clean_duplicates.exs
 
+# 初始化环境
+Nex.Env.init()
+NexBase.init(url: Nex.Env.get(:database_url), start: true)
+
 # 使用 NexBase 查询和删除重复论文
 # 保留每个 arxiv_id 最早创建的记录
 

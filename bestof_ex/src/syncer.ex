@@ -258,29 +258,21 @@ defmodule BestofEx.Syncer do
   defp record_star_snapshots do
     today = Date.utc_today()
 
-    case NexBase.sql("SELECT id, stars FROM bestofex_projects") do
-      {:ok, projects} ->
-        Enum.each(projects, fn p ->
-          # Upsert: insert or update today's snapshot
-          case NexBase.sql(
-                 "SELECT id FROM bestofex_project_stats WHERE project_id = $1 AND recorded_at = $2",
-                 [p["id"], today]
-               ) do
-            {:ok, []} ->
-              NexBase.from("bestofex_project_stats")
-              |> NexBase.insert(%{project_id: p["id"], stars: p["stars"], recorded_at: today})
-              |> NexBase.run()
-
-            {:ok, [existing | _]} ->
-              NexBase.from("bestofex_project_stats")
-              |> NexBase.eq(:id, existing["id"])
-              |> NexBase.update(%{stars: p["stars"]})
-              |> NexBase.run()
-          end
-        end)
-
-      _ ->
+    # Use PostgreSQL's ON CONFLICT for efficient upsert
+    case NexBase.sql("""
+      INSERT INTO bestofex_project_stats (project_id, stars, recorded_at)
+      SELECT id, stars, $1
+      FROM bestofex_projects
+      ON CONFLICT (project_id, recorded_at)
+      DO UPDATE SET stars = EXCLUDED.stars
+    """, [today]) do
+      {:ok, _} ->
+        Logger.info("[Syncer] Recorded star snapshots for all projects")
         :ok
+
+      {:error, reason} ->
+        Logger.error("[Syncer] Failed to record snapshots: #{inspect(reason)}")
+        :error
     end
   end
 end

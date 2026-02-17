@@ -12,7 +12,7 @@ defmodule AiSaga.HFClient do
   def get_trending_papers(limit \\ 20) do
     url = "#{@base_url}?limit=#{limit}"
 
-    case Req.get(url) do
+    case Req.get(url, receive_timeout: 30_000) do
       {:ok, %{status: 200, body: body}} ->
         {:ok, parse_papers(body)}
 
@@ -30,7 +30,7 @@ defmodule AiSaga.HFClient do
   def get_papers_by_date(date, limit \\ 20) do
     url = "#{@base_url}?date=#{date}&limit=#{limit}"
 
-    case Req.get(url) do
+    case Req.get(url, receive_timeout: 30_000) do
       {:ok, %{status: 200, body: body}} ->
         {:ok, parse_papers(body)}
 

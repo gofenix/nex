@@ -226,12 +226,28 @@ defmodule AiSaga.PaperGenerator do
   defp infer_paradigm_id(year) do
     year_int = String.to_integer(year)
 
-    cond do
-      year_int < 1970 -> 1
-      year_int < 1990 -> 2
-      year_int < 2012 -> 3
-      year_int < 2017 -> 4
-      true -> 5
+    # 从数据库动态获取范式，根据年份范围匹配
+    {:ok, paradigms} =
+      NexBase.from("aisaga_paradigms")
+      |> NexBase.order(:start_year, :asc)
+      |> NexBase.run()
+
+    # 找到匹配的范式：发表年份 >= start_year 且（无 end_year 或 <= end_year）
+    matching =
+      Enum.find(paradigms, fn p ->
+        start_year = p["start_year"] || 0
+        end_year = p["end_year"]
+
+        year_int >= start_year && (is_nil(end_year) || year_int <= end_year)
+      end)
+
+    case matching do
+      nil ->
+        # 如果没有匹配，返回最新的范式（最后一个）
+        List.last(paradigms)["id"]
+
+      paradigm ->
+        paradigm["id"]
     end
   end
 

@@ -12,7 +12,7 @@ defmodule AiSaga.ArxivClient do
   def get_paper_by_id(arxiv_id) do
     url = "#{@base_url}?id_list=#{arxiv_id}&max_results=1"
 
-    case Req.get(url, headers: [{"Accept", "application/atom+xml"}]) do
+    case Req.get(url, headers: [{"Accept", "application/atom+xml"}], receive_timeout: 30_000) do
       {:ok, %{status: 200, body: body}} ->
         {:ok, parse_atom_feed(body)}
 

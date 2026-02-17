@@ -8,7 +8,13 @@ defmodule BestofEx.Application do
   @impl true
   def start(_type, _args) do
     Nex.Env.init()
-    NexBase.init(url: Nex.Env.get(:database_url))
+    NexBase.init(
+      url: Nex.Env.get(:database_url),
+      ssl: true,
+      pool_size: 10,
+      queue_target: 5000,
+      queue_interval: 1000
+    )
 
     children = [
       {NexBase.Repo, []},

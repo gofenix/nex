@@ -23,7 +23,6 @@ defmodule AiSaga.MixProject do
     [
       {:nex_core, "~> 0.3.3"},
       {:nex_base, "~> 0.3.2"},
-      {:ecto_sqlite3, "~> 0.17"},
       {:jason, "~> 1.4"},
       {:req, "~> 0.5"},
       {:earmark, "~> 1.4"},

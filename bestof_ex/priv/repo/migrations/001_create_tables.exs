@@ -56,7 +56,11 @@ CREATE TABLE IF NOT EXISTS bestofex_project_tags (
 # Create indexes
 NexBase.query!("CREATE INDEX IF NOT EXISTS idx_bestofex_projects_stars ON bestofex_projects(stars DESC)", [])
 NexBase.query!("CREATE INDEX IF NOT EXISTS idx_bestofex_projects_updated_at ON bestofex_projects(updated_at DESC)", [])
+NexBase.query!("CREATE INDEX IF NOT EXISTS idx_bestofex_projects_added_at ON bestofex_projects(added_at DESC)", [])
 NexBase.query!("CREATE INDEX IF NOT EXISTS idx_bestofex_project_stats_project_recorded ON bestofex_project_stats(project_id, recorded_at DESC)", [])
 NexBase.query!("CREATE UNIQUE INDEX IF NOT EXISTS idx_bestofex_projects_full_name ON bestofex_projects(full_name)", [])
+NexBase.query!("CREATE INDEX IF NOT EXISTS idx_bestofex_tags_slug ON bestofex_tags(slug)", [])
+NexBase.query!("CREATE INDEX IF NOT EXISTS idx_bestofex_project_tags_project_id ON bestofex_project_tags(project_id)", [])
+NexBase.query!("CREATE INDEX IF NOT EXISTS idx_bestofex_project_tags_tag_id ON bestofex_project_tags(tag_id)", [])
 
 IO.puts("Migrations completed!")

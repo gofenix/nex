@@ -7,7 +7,8 @@ defmodule AiSaga.Application do
     conn = NexBase.init(url: Nex.Env.get(:database_url))
 
     children = [
-      {NexBase.Repo, conn}
+      {NexBase.Repo, conn},
+      {AiSaga.Scheduler, []}
     ]
 
     Supervisor.start_link(children, strategy: :one_for_one, name: AiSaga.Supervisor)

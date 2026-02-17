@@ -19,7 +19,18 @@ content = File.read!(markdown_file)
 
 # 解析Markdown内容
 # 假设AI按照固定格式返回，我们需要提取各个部分
-sections = parse_markdown_sections(content)
+parse_markdown_sections = fn content ->
+  content
+  |> String.split(~r/\n##\s+/)
+  |> Enum.drop(1)  # 去掉第一个空字符串
+  |> Enum.map(fn section ->
+    [title | lines] = String.split(section, "\n", parts: 2)
+    {String.trim(title), String.trim(List.first(lines) || "")}
+  end)
+  |> Map.new()
+end
+
+sections = parse_markdown_sections.(content)
 
 IO.puts("解析到以下部分:")
 Enum.each(sections, fn {key, _} -> IO.puts("  - #{key}") end)
@@ -46,16 +57,3 @@ NexBase.from("aisaga_papers")
 |> NexBase.run()
 
 IO.puts("✅ 论文 #{slug} 已更新到数据库！")
-
-# 辅助函数：解析Markdown章节
-defp parse_markdown_sections(content) do
-  # 简单的解析逻辑，根据 ## 标题分割
-  content
-  |> String.split(~r/\n##\s+/)
-  |> Enum.drop(1)  # 去掉第一个空字符串
-  |> Enum.map(fn section ->
-    [title | lines] = String.split(section, "\n", parts: 2)
-    {String.trim(title), String.trim(List.first(lines) || "")}
-  end)
-  |> Map.new()
-end
