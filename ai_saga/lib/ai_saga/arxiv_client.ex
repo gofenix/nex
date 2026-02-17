@@ -64,8 +64,10 @@ defmodule AiSaga.ArxivClient do
   end
 
   defp parse_entry(entry) do
+    raw_id = extract_tag(entry, "id")
+
     %{
-      arxiv_id: extract_tag(entry, "id"),
+      arxiv_id: clean_arxiv_id(raw_id),
       title: extract_tag(entry, "title"),
       authors: extract_authors(entry),
       abstract: extract_tag(entry, "summary"),
@@ -74,6 +76,16 @@ defmodule AiSaga.ArxivClient do
       categories: extract_categories(entry),
       pdf_url: extract_pdf_url(entry)
     }
+  end
+
+  # 从 URL 中提取纯净的 arXiv ID
+  defp clean_arxiv_id(nil), do: nil
+  defp clean_arxiv_id(url) when is_binary(url) do
+    # 从 http://arxiv.org/abs/2005.14165v4 提取 2005.14165
+    case Regex.run(~r/(\d{4}\.\d{4,5})(?:v\d+)?/, url) do
+      [_, id] -> id
+      _ -> url
+    end
   end
 
   defp extract_tag(entry, tag) do

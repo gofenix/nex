@@ -17,25 +17,21 @@ defmodule AiSaga.OpenAIClient do
       clean_arxiv_id(c.id) in existing_ids
     end)
 
-    # 如果没有可用候选，返回错误
-    if length(filtered_candidates) == 0 do
-      {:error, "没有可用的候选论文（所有候选都已存在）"}
-    else
-      prompt = build_recommendation_prompt(papers_summary, filtered_candidates)
+    # 使用统一的推荐prompt
+    prompt = build_recommendation_prompt(papers_summary, filtered_candidates)
 
-      with {:ok, response} <- call_openai(prompt),
-           recommendation = parse_recommendation(response),
-           recommendation = normalize_recommendation(recommendation, filtered_candidates, response) do
-        if recommendation.arxiv_id in existing_ids do
-          # AI 仍然推荐了已存在的，返回错误
-          {:error, "AI 推荐了已存在的论文: #{recommendation.arxiv_id}"}
-        else
-          {:ok, recommendation}
-        end
+    with {:ok, response} <- call_openai(prompt),
+         recommendation = parse_recommendation(response),
+         recommendation = normalize_recommendation(recommendation, filtered_candidates, response) do
+      if recommendation.arxiv_id in existing_ids do
+        # AI 仍然推荐了已存在的，返回错误
+        {:error, "AI 推荐了已存在的论文: #{recommendation.arxiv_id}"}
       else
-        {:error, reason} ->
-          {:error, reason}
+        {:ok, recommendation}
       end
+    else
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -54,8 +50,9 @@ defmodule AiSaga.OpenAIClient do
     end
   end
 
-  # 构建推荐Prompt（使用统计摘要，固定大小）
-  defp build_recommendation_prompt(papers_summary, hf_candidates) do
+  # 构建推荐Prompt（统一处理HuggingFace候选和经典论文）
+  # 注意：hf_candidates 应该是已经过滤掉已收录论文的列表
+  defp build_recommendation_prompt(papers_summary, filtered_candidates) do
     # 构建范式统计字符串
     paradigm_str = Enum.map_join(papers_summary.paradigm_summaries, "\n", fn p ->
       status = if p.count == 0, do: "⚠️ 空白", else: "#{p.count}篇"
@@ -70,12 +67,17 @@ defmodule AiSaga.OpenAIClient do
       "无"
     end
 
-    candidates_str = Enum.map_join(hf_candidates, "\n", fn p ->
-      "- #{p.title} (#{p.published_at})\n  arXiv ID: #{p.id}\n  作者: #{Enum.join(p.authors, ", ")}\n  影响力: #{p.influence_score}"
-    end)
+    # 构建HuggingFace候选列表（已过滤，可能为空）
+    candidates_str = if length(filtered_candidates) > 0 do
+      Enum.map_join(filtered_candidates, "\n", fn p ->
+        "- #{p.title} (#{p.published_at})\n  arXiv ID: #{p.id}\n  作者: #{Enum.join(p.authors, ", ")}\n  影响力: #{p.influence_score}"
+      end)
+    else
+      "（当前无新增候选）"
+    end
 
     """
-    你是AI历史专家。请基于我们的论文收藏现状，从HuggingFace热门候选中推荐下一篇应该添加的重要论文。
+    你是AI历史专家。请基于我们的论文收藏现状，推荐下一篇应该添加的重要论文。
 
     【我们已有的论文分布】（共#{papers_summary.total_count}篇）
     #{paradigm_str}
@@ -88,6 +90,15 @@ defmodule AiSaga.OpenAIClient do
     【HuggingFace热门候选】
     #{candidates_str}
 
+    【推荐策略】
+    1. 优先从HuggingFace热门候选中推荐（如果有的话）
+    2. 如果候选为空或都已收录，请从AI历史上的经典论文中推荐，包括但不限于：
+       - Transformer架构及其变体
+       - 预训练语言模型（BERT、GPT系列、LLaMA等）
+       - 计算机视觉经典（ResNet、VGG、AlexNet、YOLO等）
+       - 优化与训练技术（Adam、Batch Normalization、Dropout等）
+       - 强化学习里程碑（DQN、AlphaGo、PPO等）
+
     请从以下角度思考：
     1. 历史视角：哪些范式是空白？时间线上还有哪些重要节点？
     2. 范式变迁：哪些论文能填补空白或推动范式演进？
@@ -97,7 +108,7 @@ defmodule AiSaga.OpenAIClient do
     标题: [论文标题]
     作者: [主要作者]
     年份: [发表年份]
-    arXiv ID: [如 1706.03762，必须是候选列表中的有效ID]
+    arXiv ID: [如 1706.03762，必须是有效的arXiv ID]
     推荐理由: [为什么选这篇？它如何填补空白或推动历史？]
     """
   end

@@ -49,11 +49,34 @@ defmodule AiSaga.HFClient do
     # 从daily_papers列表中查找
     case get_trending_papers(100) do
       {:ok, papers} ->
-        paper = Enum.find(papers, fn p -> p.id == arxiv_id end)
-        if paper, do: {:ok, paper}, else: {:error, "Paper not found"}
+        case Enum.find(papers, fn p -> p.id == arxiv_id end) do
+          nil ->
+            # 如果在HuggingFace找不到，返回默认数据
+            {:ok,
+             %{
+               id: arxiv_id,
+               title: "",
+               authors: [],
+               published_at: "",
+               influence_score: 0,
+               discussion_count: 0
+             }}
 
-      {:error, reason} ->
-        {:error, reason}
+          paper ->
+            {:ok, paper}
+        end
+
+      {:error, _reason} ->
+        # HuggingFace API失败时也返回默认数据
+        {:ok,
+         %{
+           id: arxiv_id,
+           title: "",
+           authors: [],
+           published_at: "",
+           influence_score: 0,
+           discussion_count: 0
+         }}
     end
   end
 
@@ -85,6 +108,7 @@ defmodule AiSaga.HFClient do
 
   # 提取作者名称列表
   defp extract_authors(nil), do: []
+
   defp extract_authors(authors) when is_list(authors) do
     Enum.map(authors, fn author ->
       case author do
@@ -94,5 +118,6 @@ defmodule AiSaga.HFClient do
       end
     end)
   end
+
   defp extract_authors(_), do: []
 end

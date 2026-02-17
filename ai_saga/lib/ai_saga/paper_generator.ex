@@ -30,45 +30,51 @@ defmodule AiSaga.PaperGenerator do
   """
   def get_papers_summary do
     # 获取所有范式
-    {:ok, paradigms} = NexBase.from("paradigms")
-    |> NexBase.order(:start_year, :asc)
-    |> NexBase.run()
-
-    # 获取每范式的论文数量和代表性工作
-    paradigm_summaries = Enum.map(paradigms, fn paradigm ->
-      {:ok, papers} = NexBase.from("papers")
-      |> NexBase.eq(:paradigm_id, paradigm["id"])
-      |> NexBase.order(:published_year, :asc)
+    {:ok, paradigms} =
+      NexBase.from("paradigms")
+      |> NexBase.order(:start_year, :asc)
       |> NexBase.run()
 
-      count = length(papers)
+    # 获取每范式的论文数量和代表性工作
+    paradigm_summaries =
+      Enum.map(paradigms, fn paradigm ->
+        {:ok, papers} =
+          NexBase.from("papers")
+          |> NexBase.eq(:paradigm_id, paradigm["id"])
+          |> NexBase.order(:published_year, :asc)
+          |> NexBase.run()
 
-      # 每范式取1-2篇代表性工作
-      representatives = papers
-      |> Enum.take(2)
-      |> Enum.map(fn p -> "#{p["published_year"]}#{p["title"]}" end)
+        count = length(papers)
 
-      %{
-        name: paradigm["name"],
-        start_year: paradigm["start_year"],
-        end_year: paradigm["end_year"],
-        count: count,
-        representatives: representatives
-      }
-    end)
+        # 每范式取1-2篇代表性工作
+        representatives =
+          papers
+          |> Enum.take(2)
+          |> Enum.map(fn p -> "#{p["published_year"]}#{p["title"]}" end)
+
+        %{
+          name: paradigm["name"],
+          start_year: paradigm["start_year"],
+          end_year: paradigm["end_year"],
+          count: count,
+          representatives: representatives
+        }
+      end)
 
     # 获取年份范围和已有论文的 arXiv ID
-    {:ok, all_papers} = NexBase.from("papers")
-    |> NexBase.select([:published_year, :arxiv_id, :title])
-    |> NexBase.order(:published_year, :asc)
-    |> NexBase.run()
+    {:ok, all_papers} =
+      NexBase.from("papers")
+      |> NexBase.select([:published_year, :arxiv_id, :title])
+      |> NexBase.order(:published_year, :asc)
+      |> NexBase.run()
 
     years = Enum.map(all_papers, & &1["published_year"])
 
     # 收集所有已有的 arXiv ID（过滤掉 nil）
-    existing_arxiv_ids = all_papers
-    |> Enum.map(& &1["arxiv_id"])
-    |> Enum.filter(& &1 != nil)
+    existing_arxiv_ids =
+      all_papers
+      |> Enum.map(& &1["arxiv_id"])
+      |> Enum.filter(&(&1 != nil))
 
     summary = %{
       paradigm_summaries: paradigm_summaries,
@@ -87,21 +93,24 @@ defmodule AiSaga.PaperGenerator do
     year = String.slice(published_date, 0, 4) |> String.to_integer()
 
     # 获取前后3年的论文
-    {:ok, papers} = NexBase.from("papers")
-    |> NexBase.gte(:published_year, year - 3)
-    |> NexBase.lte(:published_year, year + 3)
-    |> NexBase.order(:published_year, :asc)
-    |> NexBase.run()
-
-    # 添加范式信息
-    papers_with_paradigm = Enum.map(papers, fn paper ->
-      {:ok, [paradigm]} = NexBase.from("paradigms")
-      |> NexBase.eq(:id, paper["paradigm_id"])
-      |> NexBase.single()
+    {:ok, papers} =
+      NexBase.from("papers")
+      |> NexBase.gte(:published_year, year - 3)
+      |> NexBase.lte(:published_year, year + 3)
+      |> NexBase.order(:published_year, :asc)
       |> NexBase.run()
 
-      Map.put(paper, "paradigm", paradigm)
-    end)
+    # 添加范式信息
+    papers_with_paradigm =
+      Enum.map(papers, fn paper ->
+        {:ok, [paradigm]} =
+          NexBase.from("paradigms")
+          |> NexBase.eq(:id, paper["paradigm_id"])
+          |> NexBase.single()
+          |> NexBase.run()
+
+        Map.put(paper, "paradigm", paradigm)
+      end)
 
     {:ok, papers_with_paradigm}
   end
@@ -110,50 +119,73 @@ defmodule AiSaga.PaperGenerator do
   保存论文到数据库
   """
   def save_paper(arxiv_paper, analysis, recommendation) do
-    # 生成slug
-    author_part = List.first(arxiv_paper.authors) |> String.downcase() |> String.split(" ") |> List.last()
-    year = String.slice(arxiv_paper.published, 0, 4)
-    keyword = extract_keyword(arxiv_paper.title)
-    base_slug = "#{author_part}-#{year}-#{keyword}"
-    slug = ensure_unique_slug(base_slug)
+    # 标准化新论文标题
+    normalized_new_title = normalize_title(arxiv_paper.title)
 
-    # 确定范式ID
-    paradigm_id = infer_paradigm_id(year)
+    # 获取所有已有论文的标题
+    {:ok, existing_papers} =
+      NexBase.from("papers")
+      |> NexBase.select([:title, :slug])
+      |> NexBase.run()
 
-    # 构建论文数据
-    paper_data = %{
-      title: arxiv_paper.title,
-      slug: slug,
-      abstract: analysis.chinese_abstract || arxiv_paper.abstract,
-      arxiv_id: recommendation.arxiv_id,
-      published_year: String.to_integer(year),
-      published_month: String.slice(arxiv_paper.published, 5, 2) |> String.to_integer(),
-      url: arxiv_paper.pdf_url || "https://arxiv.org/abs/#{recommendation.arxiv_id}",
-      categories: Enum.join(arxiv_paper.categories, ","),
-      citations: 0,
-      paradigm_id: paradigm_id,
-      is_paradigm_shift: 0,
-      shift_trigger: nil,
+    # 检查是否有相同标题（标准化后比较）
+    duplicate =
+      Enum.find(existing_papers, fn p ->
+        normalize_title(p["title"]) == normalized_new_title
+      end)
 
-      # 三视角内容
-      prev_paradigm: analysis.prev_paradigm,
-      core_contribution: analysis.core_contribution,
-      core_mechanism: analysis.core_mechanism,
-      why_it_wins: analysis.why_it_wins,
-      challenge: analysis.challenge,
-      solution: analysis.solution,
-      impact: analysis.impact,
-      subsequent_impact: analysis.subsequent_impact,
-      author_destinies: analysis.author_destinies,
-      history_context: analysis.history_context
-    }
-
-    with {:ok, _} <- NexBase.from("papers") |> NexBase.insert(paper_data) |> NexBase.run(),
-         {:ok, inserted} <- get_paper_by_slug(slug),
-         :ok <- insert_paper_authors(inserted["id"], arxiv_paper.authors) do
-      {:ok, slug}
+    if duplicate do
+      # 发现重复，返回错误
+      {:error, "论文已存在: #{duplicate["slug"]}"}
     else
-      {:error, reason} -> {:error, reason}
+      # 没有重复，继续插入
+      # 生成slug
+      author_part =
+        List.first(arxiv_paper.authors) |> String.downcase() |> String.split(" ") |> List.last()
+
+      year = String.slice(arxiv_paper.published, 0, 4)
+      keyword = extract_keyword(arxiv_paper.title)
+      base_slug = "#{author_part}-#{year}-#{keyword}"
+      slug = ensure_unique_slug(base_slug)
+
+      # 确定范式ID
+      paradigm_id = infer_paradigm_id(year)
+
+      # 构建论文数据
+      paper_data = %{
+        title: arxiv_paper.title,
+        slug: slug,
+        abstract: analysis.chinese_abstract || arxiv_paper.abstract,
+        arxiv_id: recommendation.arxiv_id,
+        published_year: String.to_integer(year),
+        published_month: String.slice(arxiv_paper.published, 5, 2) |> String.to_integer(),
+        url: arxiv_paper.pdf_url || "https://arxiv.org/abs/#{recommendation.arxiv_id}",
+        categories: Enum.join(arxiv_paper.categories, ","),
+        citations: 0,
+        paradigm_id: paradigm_id,
+        is_paradigm_shift: 0,
+        shift_trigger: nil,
+
+        # 三视角内容
+        prev_paradigm: analysis.prev_paradigm,
+        core_contribution: analysis.core_contribution,
+        core_mechanism: analysis.core_mechanism,
+        why_it_wins: analysis.why_it_wins,
+        challenge: analysis.challenge,
+        solution: analysis.solution,
+        impact: analysis.impact,
+        subsequent_impact: analysis.subsequent_impact,
+        author_destinies: analysis.author_destinies,
+        history_context: analysis.history_context
+      }
+
+      with {:ok, _} <- NexBase.from("papers") |> NexBase.insert(paper_data) |> NexBase.run(),
+           {:ok, inserted} <- get_paper_by_slug(slug),
+           :ok <- insert_paper_authors(inserted["id"], arxiv_paper.authors) do
+        {:ok, slug}
+      else
+        {:error, reason} -> {:error, reason}
+      end
     end
   end
 
@@ -171,7 +203,10 @@ defmodule AiSaga.PaperGenerator do
   defp ensure_unique_slug(base_slug, suffix \\ 0) do
     candidate = if suffix == 0, do: base_slug, else: "#{base_slug}-#{suffix}"
 
-    case NexBase.from("papers") |> NexBase.eq(:slug, candidate) |> NexBase.single() |> NexBase.run() do
+    case NexBase.from("papers")
+         |> NexBase.eq(:slug, candidate)
+         |> NexBase.single()
+         |> NexBase.run() do
       {:ok, []} -> candidate
       {:ok, [_paper]} -> ensure_unique_slug(base_slug, suffix + 1)
       {:error, _} -> candidate
@@ -181,6 +216,7 @@ defmodule AiSaga.PaperGenerator do
   # 根据年份推断范式ID
   defp infer_paradigm_id(year) do
     year_int = String.to_integer(year)
+
     cond do
       year_int < 1970 -> 1
       year_int < 1990 -> 2
@@ -194,7 +230,10 @@ defmodule AiSaga.PaperGenerator do
   defp find_or_create_author(name) do
     slug = name |> String.downcase() |> String.replace(" ", "-")
 
-    case NexBase.from("authors") |> NexBase.eq(:slug, slug) |> NexBase.single() |> NexBase.run() do
+    case NexBase.from("authors")
+         |> NexBase.eq(:slug, slug)
+         |> NexBase.single()
+         |> NexBase.run() do
       {:ok, [author]} ->
         {:ok, author["id"]}
 
@@ -219,7 +258,11 @@ defmodule AiSaga.PaperGenerator do
       with {:ok, author_id} <- find_or_create_author(author_name),
            {:ok, _} <-
              NexBase.from("paper_authors")
-             |> NexBase.insert(%{paper_id: paper_id, author_id: author_id, author_order: index + 1})
+             |> NexBase.insert(%{
+               paper_id: paper_id,
+               author_id: author_id,
+               author_order: index + 1
+             })
              |> NexBase.run() do
         {:cont, :ok}
       else
@@ -249,5 +292,16 @@ defmodule AiSaga.PaperGenerator do
       {:ok, []} -> {:error, "author insert succeeded but author lookup failed"}
       {:error, reason} -> {:error, reason}
     end
+  end
+
+  # 标准化论文标题（用于去重比较）
+  defp normalize_title(title) do
+    title
+    |> String.downcase()
+    # 移除标点符号
+    |> String.replace(~r/[^\p{L}\p{N}\s]/u, "")
+    # 多个空格合并为一个
+    |> String.replace(~r/\s+/, " ")
+    |> String.trim()
   end
 end

@@ -34,7 +34,13 @@ defmodule AiSaga.Pages.Index do
     key_paradigms =
       paradigms
       |> Enum.filter(fn p ->
-        p["slug"] in ["perceptron", "symbolic-ai", "connectionism", "deep-learning", "transformers"]
+        p["slug"] in [
+          "perceptron",
+          "symbolic-ai",
+          "connectionism",
+          "deep-learning",
+          "transformers"
+        ]
       end)
 
     {:ok, recent} =
@@ -210,20 +216,16 @@ defmodule AiSaga.Pages.Index do
 
       <!-- AI生成 -->
       <section class="card-black text-white p-8" style="background: var(--md-black); color: var(--md-white);">
-        <h2 class="section-title !mb-4">
+        <h2 class="section-title !mb-4" style="color: var(--md-white);">
           <span>🎲</span> AI自动生成论文解读
         </h2>
         <p class="text-sm opacity-70 mb-6">
           基于已有 <%= length(@all_papers) %> 篇论文的知识库，AI将从最新研究中发现价值，并生成三视角深度解读。
         </p>
-        <button
-          hx-post="/api/generate_paper"
-          hx-swap="outerHTML"
-          class="md-btn md-btn-primary border-white"
-        >
-          开始生成
-        </button>
-        <div id="generate-result" class="mt-4"></div>
+
+        <a href="/generate" class="md-btn md-btn-primary border-white">
+          开始生成 →
+        </a>
       </section>
 
       <!-- 范式变迁时刻 -->
