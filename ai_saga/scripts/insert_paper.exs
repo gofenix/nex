@@ -40,7 +40,7 @@ paper_data = %{
 }
 
 # 插入数据库
-NexBase.from("papers")
+NexBase.from("aisaga_papers")
 |> NexBase.eq(:slug, slug)
 |> NexBase.update(paper_data)
 |> NexBase.run()

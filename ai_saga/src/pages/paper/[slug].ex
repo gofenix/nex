@@ -3,19 +3,19 @@ defmodule AiSaga.Pages.Paper.Slug do
 
   def mount(%{"slug" => slug}) do
     {:ok, [paper]} =
-      NexBase.from("papers")
+      NexBase.from("aisaga_papers")
       |> NexBase.eq(:slug, slug)
       |> NexBase.single()
       |> NexBase.run()
 
     {:ok, [paradigm]} =
-      NexBase.from("paradigms")
+      NexBase.from("aisaga_paradigms")
       |> NexBase.eq(:id, paper["paradigm_id"])
       |> NexBase.single()
       |> NexBase.run()
 
     {:ok, author_links} =
-      NexBase.from("paper_authors")
+      NexBase.from("aisaga_paper_authors")
       |> NexBase.eq(:paper_id, paper["id"])
       |> NexBase.order(:author_order, :asc)
       |> NexBase.run()
@@ -25,7 +25,7 @@ defmodule AiSaga.Pages.Paper.Slug do
     authors =
       if length(author_ids) > 0 do
         {:ok, all_authors} =
-          NexBase.from("authors")
+          NexBase.from("aisaga_authors")
           |> NexBase.in_list(:id, author_ids)
           |> NexBase.run()
 

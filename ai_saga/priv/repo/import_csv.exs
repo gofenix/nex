@@ -18,7 +18,7 @@ end
 
 # Import paradigms
 IO.puts("Importing paradigms...")
-NexBase.query!(conn, "DELETE FROM paradigms", [])
+NexBase.query!(conn, "DELETE FROM aisaga_paradigms", [])
 paradigms = read_csv.("/tmp/paradigms.csv")
 Enum.each(paradigms, fn p ->
   record = %{
@@ -31,13 +31,13 @@ Enum.each(paradigms, fn p ->
     revolution: p["revolution"],
     created_at: p["created_at"]
   }
-  NexBase.from(conn, "paradigms") |> NexBase.insert(record) |> NexBase.run()
+  NexBase.from(conn, "aisaga_paradigms") |> NexBase.insert(record) |> NexBase.run()
 end)
 IO.puts("Imported #{length(paradigms)} paradigms")
 
 # Import authors
 IO.puts("\nImporting authors...")
-NexBase.query!(conn, "DELETE FROM authors", [])
+NexBase.query!(conn, "DELETE FROM aisaga_authors", [])
 authors = read_csv.("/tmp/authors.csv")
 Enum.each(authors, fn a ->
   record = %{
@@ -49,13 +49,13 @@ Enum.each(authors, fn a ->
     first_paper_year: (if a["first_paper_year"] != "" and a["first_paper_year"] != "NULL", do: String.to_integer(a["first_paper_year"]), else: nil),
     influence_score: (if a["influence_score"] != "", do: String.to_integer(a["influence_score"]), else: 0)
   }
-  NexBase.from(conn, "authors") |> NexBase.insert(record) |> NexBase.run()
+  NexBase.from(conn, "aisaga_authors") |> NexBase.insert(record) |> NexBase.run()
 end)
 IO.puts("Imported #{length(authors)} authors")
 
 # Import papers
 IO.puts("\nImporting papers...")
-NexBase.query!(conn, "DELETE FROM papers", [])
+NexBase.query!(conn, "DELETE FROM aisaga_papers", [])
 papers = read_csv.("/tmp/papers.csv")
 IO.puts("Found #{length(papers)} papers in CSV")
 
@@ -119,7 +119,7 @@ Enum.each(papers, fn p ->
       author_destinies: (if p["author_destinies"] != "" and p["author_destinies"] != "NULL", do: p["author_destinies"], else: nil)
     }
 
-    NexBase.from(conn, "papers") |> NexBase.insert(record) |> NexBase.run()
+    NexBase.from(conn, "aisaga_papers") |> NexBase.insert(record) |> NexBase.run()
   rescue
     e ->
       IO.puts("Error importing paper #{p["slug"]}: #{inspect(e)}")
@@ -129,7 +129,7 @@ IO.puts("Imported papers")
 
 # Import paper_authors
 IO.puts("\nImporting paper_authors...")
-NexBase.query!(conn, "DELETE FROM paper_authors", [])
+NexBase.query!(conn, "DELETE FROM aisaga_paper_authors", [])
 paper_authors = read_csv.("/tmp/paper_authors.csv")
 Enum.each(paper_authors, fn pa ->
   record = %{
@@ -141,15 +141,15 @@ Enum.each(paper_authors, fn pa ->
       val -> String.to_integer(val)
     end
   }
-  NexBase.from(conn, "paper_authors") |> NexBase.insert(record) |> NexBase.run()
+  NexBase.from(conn, "aisaga_paper_authors") |> NexBase.insert(record) |> NexBase.run()
 end)
 IO.puts("Imported #{length(paper_authors)} paper_authors")
 
 # Verify
 IO.puts("\n✅ Import complete!")
-{:ok, pg_papers} = conn |> NexBase.from("papers") |> NexBase.run()
-{:ok, pg_authors} = conn |> NexBase.from("authors") |> NexBase.run()
-{:ok, pg_paradigms} = conn |> NexBase.from("paradigms") |> NexBase.run()
+{:ok, pg_papers} = conn |> NexBase.from("aisaga_papers") |> NexBase.run()
+{:ok, pg_authors} = conn |> NexBase.from("aisaga_authors") |> NexBase.run()
+{:ok, pg_paradigms} = conn |> NexBase.from("aisaga_paradigms") |> NexBase.run()
 
 IO.puts("Verification:")
 IO.puts("  Papers: #{length(pg_papers)}")

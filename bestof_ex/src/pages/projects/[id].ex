@@ -125,8 +125,8 @@ defmodule BestofEx.Pages.Projects.Show do
 
   defp get_project_tags(id) do
     case NexBase.sql("""
-      SELECT t.name, t.slug FROM tags t
-      JOIN project_tags pt ON pt.tag_id = t.id
+      SELECT t.name, t.slug FROM bestofex_tags t
+      JOIN bestofex_project_tags pt ON pt.tag_id = t.id
       WHERE pt.project_id = $1
       ORDER BY t.name
     """, [String.to_integer(id)]) do

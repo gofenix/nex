@@ -3,7 +3,7 @@ defmodule AiSaga.Pages.Author.Index do
 
   def mount(_params) do
     {:ok, authors} =
-      NexBase.from("authors")
+      NexBase.from("aisaga_authors")
       |> NexBase.select([:name, :slug, :bio, :affiliation, :influence_score, :first_paper_year])
       |> NexBase.order(:influence_score, :desc)
       |> NexBase.run()
@@ -14,7 +14,7 @@ defmodule AiSaga.Pages.Author.Index do
     # 计算统计数据
     total_authors = length(authors)
     {:ok, [%{"count" => total_papers}]} =
-      NexBase.sql("SELECT COUNT(*) as count FROM papers")
+      NexBase.sql("SELECT COUNT(*) as count FROM aisaga_papers")
 
     %{
       title: "重要人物",

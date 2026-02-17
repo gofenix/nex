@@ -87,7 +87,7 @@ defmodule BestofEx.Pages.Projects.Index do
     end
 
     tag_join = if tag do
-      "JOIN project_tags pt ON pt.project_id = p.id JOIN tags t ON t.id = pt.tag_id AND t.slug = '#{tag}'"
+      "JOIN bestofex_project_tags pt ON pt.project_id = p.id JOIN bestofex_tags t ON t.id = pt.tag_id AND t.slug = '#{tag}'"
     else
       ""
     end
@@ -100,7 +100,7 @@ defmodule BestofEx.Pages.Projects.Index do
 
     {:ok, rows} = NexBase.sql("""
       SELECT p.id, p.name, p.description, p.repo_url, p.homepage_url, p.stars, p.avatar_url
-      FROM projects p
+      FROM bestofex_projects p
       #{tag_join}
       WHERE 1=1 #{search_clause}
       #{order_clause}
@@ -119,8 +119,8 @@ defmodule BestofEx.Pages.Projects.Index do
 
       {:ok, tag_rows} = NexBase.sql("""
         SELECT pt.project_id, t.name, t.slug
-        FROM tags t
-        JOIN project_tags pt ON pt.tag_id = t.id
+        FROM bestofex_tags t
+        JOIN bestofex_project_tags pt ON pt.tag_id = t.id
         WHERE pt.project_id IN (#{placeholders})
         ORDER BY t.name
       """, ids)

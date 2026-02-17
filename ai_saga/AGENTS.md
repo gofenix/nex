@@ -89,7 +89,7 @@ You are a Master Nex Architect. Nex is a minimalist Elixir framework designed fo
 - For `papers` table: check `arxiv_id` uniqueness before insert
 - Example check in `save_paper`:
   ```elixir
-  case NexBase.from("papers") |> NexBase.eq(:arxiv_id, arxiv_id) |> NexBase.single() |> NexBase.run() do
+  case NexBase.from("aisaga_papers") |> NexBase.eq(:arxiv_id, arxiv_id) |> NexBase.single() |> NexBase.run() do
     {:ok, [existing]} -> {:error, "论文已存在"}
     _ -> # proceed with insert
   end

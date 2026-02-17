@@ -39,8 +39,8 @@ defmodule BestofEx.Pages.Tags.Index do
   defp list_tags_with_counts do
     case NexBase.sql("""
       SELECT t.id, t.name, t.slug, COUNT(pt.project_id) as count
-      FROM tags t
-      LEFT JOIN project_tags pt ON pt.tag_id = t.id
+      FROM bestofex_tags t
+      LEFT JOIN bestofex_project_tags pt ON pt.tag_id = t.id
       GROUP BY t.id, t.name, t.slug
       ORDER BY count DESC, t.name ASC
     """) do

@@ -10,7 +10,7 @@ defmodule AiSaga.Pages.Search do
 
     # 获取所有范式用于筛选
     {:ok, paradigms} =
-      NexBase.from("paradigms")
+      NexBase.from("aisaga_paradigms")
       |> NexBase.order(:start_year, :asc)
       |> NexBase.run()
 
@@ -33,11 +33,11 @@ defmodule AiSaga.Pages.Search do
     # 基础查询
     base_query =
       if query != "" do
-        NexBase.from("papers")
+        NexBase.from("aisaga_papers")
         |> NexBase.select([:title, :slug, :abstract, :published_year, :is_paradigm_shift, :citations])
         |> NexBase.ilike(:title, "%#{query}%")
       else
-        NexBase.from("papers")
+        NexBase.from("aisaga_papers")
         |> NexBase.select([:title, :slug, :abstract, :published_year, :is_paradigm_shift, :citations])
       end
 
@@ -45,7 +45,7 @@ defmodule AiSaga.Pages.Search do
     query_with_paradigm =
       if paradigm_slug != "" do
         # 先获取范式ID
-        case NexBase.from("paradigms") |> NexBase.select([:id]) |> NexBase.eq(:slug, paradigm_slug) |> NexBase.single() |> NexBase.run() do
+        case NexBase.from("aisaga_paradigms") |> NexBase.select([:id]) |> NexBase.eq(:slug, paradigm_slug) |> NexBase.single() |> NexBase.run() do
           {:ok, [paradigm]} ->
             base_query |> NexBase.eq(:paradigm_id, paradigm["id"])
           _ ->

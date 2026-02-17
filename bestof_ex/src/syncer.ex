@@ -98,7 +98,7 @@ defmodule BestofEx.Syncer do
   def update_stars do
     Logger.info("[Syncer] Starting daily star update...")
 
-    case NexBase.sql("SELECT id, full_name FROM projects WHERE full_name IS NOT NULL") do
+    case NexBase.sql("SELECT id, full_name FROM bestofex_projects WHERE full_name IS NOT NULL") do
       {:ok, projects} ->
         updated =
           projects
@@ -189,7 +189,7 @@ defmodule BestofEx.Syncer do
   defp auto_tag_all do
     Logger.info("[Syncer] Auto-tagging projects...")
 
-    case NexBase.sql("SELECT id, full_name FROM projects WHERE full_name IS NOT NULL") do
+    case NexBase.sql("SELECT id, full_name FROM bestofex_projects WHERE full_name IS NOT NULL") do
       {:ok, projects} ->
         projects
         |> Enum.each(fn project ->
@@ -241,7 +241,7 @@ defmodule BestofEx.Syncer do
     # Link project to tag (ignore duplicate)
     if tag_id do
       case NexBase.sql(
-             "SELECT id FROM project_tags WHERE project_id = $1 AND tag_id = $2",
+             "SELECT id FROM bestofex_project_tags WHERE project_id = $1 AND tag_id = $2",
              [project_id, tag_id]
            ) do
         {:ok, []} ->
@@ -258,21 +258,21 @@ defmodule BestofEx.Syncer do
   defp record_star_snapshots do
     today = Date.utc_today()
 
-    case NexBase.sql("SELECT id, stars FROM projects") do
+    case NexBase.sql("SELECT id, stars FROM bestofex_projects") do
       {:ok, projects} ->
         Enum.each(projects, fn p ->
           # Upsert: insert or update today's snapshot
           case NexBase.sql(
-                 "SELECT id FROM project_stats WHERE project_id = $1 AND recorded_at = $2",
+                 "SELECT id FROM bestofex_project_stats WHERE project_id = $1 AND recorded_at = $2",
                  [p["id"], today]
                ) do
             {:ok, []} ->
-              NexBase.from("project_stats")
+              NexBase.from("bestofex_project_stats")
               |> NexBase.insert(%{project_id: p["id"], stars: p["stars"], recorded_at: today})
               |> NexBase.run()
 
             {:ok, [existing | _]} ->
-              NexBase.from("project_stats")
+              NexBase.from("bestofex_project_stats")
               |> NexBase.eq(:id, existing["id"])
               |> NexBase.update(%{stars: p["stars"]})
               |> NexBase.run()

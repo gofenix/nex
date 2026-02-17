@@ -7,7 +7,7 @@
 # 查找所有重复的 arxiv_id（排除 null）
 {:ok, duplicates} = NexBase.sql("""
   SELECT arxiv_id, COUNT(*) as count
-  FROM papers
+  FROM aisaga_papers
   WHERE arxiv_id IS NOT NULL
   GROUP BY arxiv_id
   HAVING COUNT(*) > 1
@@ -28,7 +28,7 @@ Enum.each(duplicates, fn dup ->
     # 获取该 arxiv_id 的所有记录
     {:ok, papers} = NexBase.sql("""
       SELECT id, slug, created_at
-      FROM papers
+      FROM aisaga_papers
       WHERE arxiv_id = $1
       ORDER BY created_at ASC
     """, [arxiv_id])
@@ -43,10 +43,10 @@ Enum.each(duplicates, fn dup ->
       IO.puts("  删除: id=#{id}, slug=#{paper["slug"]}")
 
       # 先删除 paper_authors 关联
-      {:ok, _} = NexBase.sql("DELETE FROM paper_authors WHERE paper_id = $1", [id])
+      {:ok, _} = NexBase.sql("DELETE FROM aisaga_paper_authors WHERE paper_id = $1", [id])
 
       # 再删除论文
-      {:ok, _} = NexBase.sql("DELETE FROM papers WHERE id = $1", [id])
+      {:ok, _} = NexBase.sql("DELETE FROM aisaga_papers WHERE id = $1", [id])
     end)
 
     IO.puts("")

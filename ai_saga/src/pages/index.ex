@@ -3,13 +3,13 @@ defmodule AiSaga.Pages.Index do
 
   def mount(_params) do
     {:ok, paradigms} =
-      NexBase.from("paradigms")
+      NexBase.from("aisaga_paradigms")
       |> NexBase.order(:start_year, :asc)
       |> NexBase.run()
 
     # 如果没有设置今日推荐，随机获取一篇高影响力论文
     {:ok, daily_candidates} =
-      NexBase.from("papers")
+      NexBase.from("aisaga_papers")
       |> NexBase.eq(:is_daily_pick, 1)
       |> NexBase.single()
       |> NexBase.run()
@@ -22,7 +22,7 @@ defmodule AiSaga.Pages.Index do
       else
         # 随机获取一篇高影响力论文作为今日推荐
         {:ok, candidates} =
-          NexBase.from("papers")
+          NexBase.from("aisaga_papers")
           |> NexBase.order(:citations, :desc)
           |> NexBase.limit(10)
           |> NexBase.run()
@@ -44,17 +44,17 @@ defmodule AiSaga.Pages.Index do
       end)
 
     {:ok, recent} =
-      NexBase.from("papers")
+      NexBase.from("aisaga_papers")
       |> NexBase.select([:title, :slug, :abstract, :published_year, :is_paradigm_shift])
       |> NexBase.order(:published_year, :desc)
       |> NexBase.limit(4)
       |> NexBase.run()
 
     {:ok, [%{"count" => paper_count}]} =
-      NexBase.sql("SELECT COUNT(*) as count FROM papers")
+      NexBase.sql("SELECT COUNT(*) as count FROM aisaga_papers")
 
     {:ok, shifts} =
-      NexBase.from("papers")
+      NexBase.from("aisaga_papers")
       |> NexBase.select([:title, :slug, :published_year, :shift_trigger])
       |> NexBase.eq(:is_paradigm_shift, 1)
       |> NexBase.order(:published_year, :asc)

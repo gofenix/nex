@@ -31,13 +31,13 @@ defmodule AiSaga.PaperGenerator do
   def get_papers_summary do
     # 获取所有范式
     {:ok, paradigms} =
-      NexBase.from("paradigms")
+      NexBase.from("aisaga_paradigms")
       |> NexBase.order(:start_year, :asc)
       |> NexBase.run()
 
     # 一次获取所有论文的关键字段（避免 N+1）
     {:ok, all_papers} =
-      NexBase.from("papers")
+      NexBase.from("aisaga_papers")
       |> NexBase.select([:published_year, :arxiv_id, :title, :paradigm_id])
       |> NexBase.order(:published_year, :asc)
       |> NexBase.run()
@@ -95,7 +95,7 @@ defmodule AiSaga.PaperGenerator do
 
     # 获取前后3年的论文
     {:ok, papers} =
-      NexBase.from("papers")
+      NexBase.from("aisaga_papers")
       |> NexBase.gte(:published_year, year - 3)
       |> NexBase.lte(:published_year, year + 3)
       |> NexBase.order(:published_year, :asc)
@@ -106,7 +106,7 @@ defmodule AiSaga.PaperGenerator do
 
     {:ok, paradigms} =
       if length(paradigm_ids) > 0 do
-        NexBase.from("paradigms")
+        NexBase.from("aisaga_paradigms")
         |> NexBase.in_list(:id, paradigm_ids)
         |> NexBase.run()
       else
@@ -133,7 +133,7 @@ defmodule AiSaga.PaperGenerator do
 
     # 获取所有已有论文的标题
     {:ok, existing_papers} =
-      NexBase.from("papers")
+      NexBase.from("aisaga_papers")
       |> NexBase.select([:title, :slug])
       |> NexBase.run()
 
@@ -239,7 +239,7 @@ defmodule AiSaga.PaperGenerator do
   defp find_or_create_author(name) do
     slug = name |> String.downcase() |> String.replace(" ", "-")
 
-    case NexBase.from("authors")
+    case NexBase.from("aisaga_authors")
          |> NexBase.eq(:slug, slug)
          |> NexBase.single()
          |> NexBase.run() do
@@ -266,7 +266,7 @@ defmodule AiSaga.PaperGenerator do
     Enum.reduce_while(Enum.with_index(authors), :ok, fn {author_name, index}, _acc ->
       with {:ok, author_id} <- find_or_create_author(author_name),
            {:ok, _} <-
-             NexBase.from("paper_authors")
+             NexBase.from("aisaga_paper_authors")
              |> NexBase.insert(%{
                paper_id: paper_id,
                author_id: author_id,

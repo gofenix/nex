@@ -2,9 +2,9 @@
 Nex.Env.init()
 NexBase.init(url: Nex.Env.get(:database_url), start: true)
 
-# Create projects table
+# Create bestofex_projects table
 NexBase.query!("""
-CREATE TABLE IF NOT EXISTS projects (
+CREATE TABLE IF NOT EXISTS bestofex_projects (
   id SERIAL PRIMARY KEY,
   name TEXT NOT NULL,
   full_name TEXT,
@@ -23,40 +23,40 @@ CREATE TABLE IF NOT EXISTS projects (
 )
 """, [])
 
-# Create project_stats table
+# Create bestofex_project_stats table
 NexBase.query!("""
-CREATE TABLE IF NOT EXISTS project_stats (
+CREATE TABLE IF NOT EXISTS bestofex_project_stats (
   id SERIAL PRIMARY KEY,
-  project_id INTEGER NOT NULL REFERENCES projects(id),
+  project_id INTEGER NOT NULL REFERENCES bestofex_projects(id),
   stars INTEGER NOT NULL,
   recorded_at TIMESTAMP NOT NULL,
   UNIQUE(project_id, recorded_at)
 )
 """, [])
 
-# Create tags table
+# Create bestofex_tags table
 NexBase.query!("""
-CREATE TABLE IF NOT EXISTS tags (
+CREATE TABLE IF NOT EXISTS bestofex_tags (
   id SERIAL PRIMARY KEY,
   name TEXT NOT NULL,
   slug TEXT NOT NULL UNIQUE
 )
 """, [])
 
-# Create project_tags table
+# Create bestofex_project_tags table
 NexBase.query!("""
-CREATE TABLE IF NOT EXISTS project_tags (
+CREATE TABLE IF NOT EXISTS bestofex_project_tags (
   id SERIAL PRIMARY KEY,
-  project_id INTEGER NOT NULL REFERENCES projects(id),
-  tag_id INTEGER NOT NULL REFERENCES tags(id),
+  project_id INTEGER NOT NULL REFERENCES bestofex_projects(id),
+  tag_id INTEGER NOT NULL REFERENCES bestofex_tags(id),
   UNIQUE(project_id, tag_id)
 )
 """, [])
 
 # Create indexes
-NexBase.query!("CREATE INDEX IF NOT EXISTS idx_projects_stars ON projects(stars DESC)", [])
-NexBase.query!("CREATE INDEX IF NOT EXISTS idx_projects_updated_at ON projects(updated_at DESC)", [])
-NexBase.query!("CREATE INDEX IF NOT EXISTS idx_project_stats_project_recorded ON project_stats(project_id, recorded_at DESC)", [])
-NexBase.query!("CREATE UNIQUE INDEX IF NOT EXISTS idx_projects_full_name ON projects(full_name)", [])
+NexBase.query!("CREATE INDEX IF NOT EXISTS idx_bestofex_projects_stars ON bestofex_projects(stars DESC)", [])
+NexBase.query!("CREATE INDEX IF NOT EXISTS idx_bestofex_projects_updated_at ON bestofex_projects(updated_at DESC)", [])
+NexBase.query!("CREATE INDEX IF NOT EXISTS idx_bestofex_project_stats_project_recorded ON bestofex_project_stats(project_id, recorded_at DESC)", [])
+NexBase.query!("CREATE UNIQUE INDEX IF NOT EXISTS idx_bestofex_projects_full_name ON bestofex_projects(full_name)", [])
 
 IO.puts("Migrations completed!")

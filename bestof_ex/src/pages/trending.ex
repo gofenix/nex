@@ -54,19 +54,19 @@ defmodule BestofEx.Pages.Trending do
   end
 
   defp list_trending(period) do
-    days = case period do
-      "week" -> "-7 days"
-      "month" -> "-30 days"
-      _ -> "-1 days"
+    interval = case period do
+      "week" -> "7 days"
+      "month" -> "30 days"
+      _ -> "1 day"
     end
 
     {:ok, rows} = NexBase.sql("""
       SELECT p.id, p.name, p.description, p.repo_url, p.homepage_url, p.stars, p.avatar_url,
              COALESCE(p.stars - ps.stars, 0) AS star_delta
-      FROM projects p
-      LEFT JOIN project_stats ps
+      FROM bestofex_projects p
+      LEFT JOIN bestofex_project_stats ps
         ON ps.project_id = p.id
-        AND ps.recorded_at = date('now', '#{days}')
+        AND ps.recorded_at = CURRENT_DATE - INTERVAL '#{interval}'
       ORDER BY COALESCE(p.stars - ps.stars, 0) DESC, p.stars DESC
       LIMIT 20
     """)
@@ -84,8 +84,8 @@ defmodule BestofEx.Pages.Trending do
 
       {:ok, tag_rows} = NexBase.sql("""
         SELECT pt.project_id, t.name, t.slug
-        FROM tags t
-        JOIN project_tags pt ON pt.tag_id = t.id
+        FROM bestofex_tags t
+        JOIN bestofex_project_tags pt ON pt.tag_id = t.id
         WHERE pt.project_id IN (#{placeholders})
         ORDER BY t.name
       """, ids)

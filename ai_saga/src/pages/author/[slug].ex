@@ -3,14 +3,14 @@ defmodule AiSaga.Pages.Author.Slug do
 
   def mount(%{"slug" => slug}) do
     {:ok, [author]} =
-      NexBase.from("authors")
+      NexBase.from("aisaga_authors")
       |> NexBase.eq(:slug, slug)
       |> NexBase.single()
       |> NexBase.run()
 
     # 获取作者的论文
     {:ok, links} =
-      NexBase.from("paper_authors")
+      NexBase.from("aisaga_paper_authors")
       |> NexBase.eq(:author_id, author["id"])
       |> NexBase.order(:author_order, :asc)
       |> NexBase.run()
@@ -20,7 +20,7 @@ defmodule AiSaga.Pages.Author.Slug do
     papers =
       if length(paper_ids) > 0 do
         {:ok, all_papers} =
-          NexBase.from("papers")
+          NexBase.from("aisaga_papers")
           |> NexBase.in_list(:id, paper_ids)
           |> NexBase.run()
 
@@ -34,7 +34,7 @@ defmodule AiSaga.Pages.Author.Slug do
     collaborators =
       if length(paper_ids) > 0 do
         {:ok, all_links} =
-          NexBase.from("paper_authors")
+          NexBase.from("aisaga_paper_authors")
           |> NexBase.in_list(:paper_id, paper_ids)
           |> NexBase.neq(:author_id, author["id"])
           |> NexBase.run()
@@ -43,7 +43,7 @@ defmodule AiSaga.Pages.Author.Slug do
 
         if length(collaborator_ids) > 0 do
           {:ok, collab_authors} =
-            NexBase.from("authors")
+            NexBase.from("aisaga_authors")
             |> NexBase.in_list(:id, collaborator_ids)
             |> NexBase.run()
 

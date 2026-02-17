@@ -17,7 +17,7 @@ paradigms = [
 ]
 
 Enum.each(paradigms, fn p ->
-  NexBase.from("paradigms")
+  NexBase.from("aisaga_paradigms")
   |> NexBase.insert(p)
   |> NexBase.run()
 end)
@@ -37,17 +37,17 @@ authors = [
 ]
 
 Enum.each(authors, fn a ->
-  NexBase.from("authors")
+  NexBase.from("aisaga_authors")
   |> NexBase.insert(a)
   |> NexBase.run()
 end)
 
 # Get paradigm IDs
-{:ok, paradigm_list} = NexBase.from("paradigms") |> NexBase.run()
+{:ok, paradigm_list} = NexBase.from("aisaga_paradigms") |> NexBase.run()
 p_id = fn name -> Enum.find(paradigm_list, fn p -> p["name"] == name end)["id"] end
 
 # Get author IDs
-{:ok, author_list} = NexBase.from("authors") |> NexBase.run()
+{:ok, author_list} = NexBase.from("aisaga_authors") |> NexBase.run()
 a_id = fn name -> Enum.find(author_list, fn a -> a["name"] == name end)["id"] end
 
 # Insert Papers with rich metadata
@@ -235,7 +235,7 @@ papers = [
 ]
 
 Enum.each(papers, fn p ->
-  NexBase.from("papers")
+  NexBase.from("aisaga_papers")
   |> NexBase.insert(p)
   |> NexBase.run()
 end)
@@ -254,10 +254,10 @@ paper_author_links = [
 ]
 
 Enum.each(paper_author_links, fn link ->
-  {:ok, [p]} = NexBase.from("papers") |> NexBase.eq(:slug, link.paper) |> NexBase.single() |> NexBase.run()
-  {:ok, [author]} = NexBase.from("authors") |> NexBase.eq(:name, link.author) |> NexBase.single() |> NexBase.run()
+  {:ok, [p]} = NexBase.from("aisaga_papers") |> NexBase.eq(:slug, link.paper) |> NexBase.single() |> NexBase.run()
+  {:ok, [author]} = NexBase.from("aisaga_authors") |> NexBase.eq(:name, link.author) |> NexBase.single() |> NexBase.run()
 
-  NexBase.from("paper_authors")
+  NexBase.from("aisaga_paper_authors")
   |> NexBase.insert(%{paper_id: p["id"], author_id: author["id"], author_order: link.order})
   |> NexBase.run()
 end)

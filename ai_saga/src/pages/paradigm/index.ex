@@ -3,14 +3,14 @@ defmodule AiSaga.Pages.Paradigm.Index do
 
   def mount(_params) do
     {:ok, paradigms} =
-      NexBase.from("paradigms")
+      NexBase.from("aisaga_paradigms")
       |> NexBase.order(:start_year, :asc)
       |> NexBase.run()
 
     # 一次查询获取所有范式的统计数据（避免 N+1）
     {:ok, stats} =
       NexBase.sql(
-        "SELECT paradigm_id, COUNT(*) as paper_count, COALESCE(SUM(CASE WHEN is_paradigm_shift = 1 THEN 1 ELSE 0 END), 0) as shift_count, COALESCE(SUM(citations), 0) as total_citations FROM papers GROUP BY paradigm_id"
+        "SELECT paradigm_id, COUNT(*) as paper_count, COALESCE(SUM(CASE WHEN is_paradigm_shift = 1 THEN 1 ELSE 0 END), 0) as shift_count, COALESCE(SUM(citations), 0) as total_citations FROM aisaga_papers GROUP BY paradigm_id"
       )
 
     stats_map = Map.new(stats, fn s -> {s["paradigm_id"], s} end)

@@ -3,14 +3,14 @@ defmodule AiSaga.Pages.Paradigm.Slug do
 
   def mount(%{"slug" => slug}) do
     {:ok, [paradigm]} =
-      NexBase.from("paradigms")
+      NexBase.from("aisaga_paradigms")
       |> NexBase.eq(:slug, slug)
       |> NexBase.single()
       |> NexBase.run()
 
     # 获取该范式的所有论文
     {:ok, papers} =
-      NexBase.from("papers")
+      NexBase.from("aisaga_papers")
       |> NexBase.eq(:paradigm_id, paradigm["id"])
       |> NexBase.order(:published_year, :asc)
       |> NexBase.run()
@@ -21,7 +21,7 @@ defmodule AiSaga.Pages.Paradigm.Slug do
     main_authors =
       if length(paper_ids) > 0 do
         {:ok, links} =
-          NexBase.from("paper_authors")
+          NexBase.from("aisaga_paper_authors")
           |> NexBase.in_list(:paper_id, paper_ids)
           |> NexBase.run()
 
@@ -34,7 +34,7 @@ defmodule AiSaga.Pages.Paradigm.Slug do
 
         if length(author_ids) > 0 do
           {:ok, authors} =
-            NexBase.from("authors")
+            NexBase.from("aisaga_authors")
             |> NexBase.in_list(:id, author_ids)
             |> NexBase.run()
 

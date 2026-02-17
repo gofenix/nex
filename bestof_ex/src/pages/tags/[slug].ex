@@ -78,9 +78,9 @@ defmodule BestofEx.Pages.Tags.Show do
   defp get_tag_projects(slug) do
     case NexBase.sql("""
       SELECT p.id, p.name, p.description, p.stars, p.repo_url, p.homepage_url, p.avatar_url
-      FROM projects p
-      JOIN project_tags pt ON pt.project_id = p.id
-      JOIN tags t ON t.id = pt.tag_id
+      FROM bestofex_projects p
+      JOIN bestofex_project_tags pt ON pt.project_id = p.id
+      JOIN bestofex_tags t ON t.id = pt.tag_id
       WHERE t.slug = $1
       ORDER BY p.stars DESC
     """, [slug]) do

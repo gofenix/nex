@@ -1431,7 +1431,7 @@ Enum.each(papers_data, fn data ->
   slug = data.slug
   update_data = Map.drop(data, [:slug])
 
-  NexBase.from("papers")
+  NexBase.from("aisaga_papers")
   |> NexBase.eq(:slug, slug)
   |> NexBase.update(update_data)
   |> NexBase.run()
