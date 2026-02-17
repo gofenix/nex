@@ -7,21 +7,21 @@ defmodule AiSaga.Pages.Paradigm.Index do
       |> NexBase.order(:start_year, :asc)
       |> NexBase.run()
 
-    # 为每个范式计算统计数据
+    # 一次查询获取所有范式的统计数据（避免 N+1）
+    {:ok, stats} =
+      NexBase.sql(
+        "SELECT paradigm_id, COUNT(*) as paper_count, COALESCE(SUM(CASE WHEN is_paradigm_shift = 1 THEN 1 ELSE 0 END), 0) as shift_count, COALESCE(SUM(citations), 0) as total_citations FROM papers GROUP BY paradigm_id"
+      )
+
+    stats_map = Map.new(stats, fn s -> {s["paradigm_id"], s} end)
+
     paradigms_with_stats =
       Enum.map(paradigms, fn p ->
-        {:ok, papers} =
-          NexBase.from("papers")
-          |> NexBase.eq(:paradigm_id, p["id"])
-          |> NexBase.run()
-
-        shift_count = Enum.count(papers, &(&1["is_paradigm_shift"] == 1))
-        total_citations = Enum.sum(Enum.map(papers, &(&1["citations"] || 0)))
-
+        s = Map.get(stats_map, p["id"], %{"paper_count" => 0, "shift_count" => 0, "total_citations" => 0})
         Map.merge(p, %{
-          "paper_count" => length(papers),
-          "shift_count" => shift_count,
-          "total_citations" => total_citations
+          "paper_count" => s["paper_count"],
+          "shift_count" => s["shift_count"],
+          "total_citations" => s["total_citations"]
         })
       end)
 

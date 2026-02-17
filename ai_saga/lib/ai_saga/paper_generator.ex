@@ -35,18 +35,20 @@ defmodule AiSaga.PaperGenerator do
       |> NexBase.order(:start_year, :asc)
       |> NexBase.run()
 
-    # 获取每范式的论文数量和代表性工作
+    # 一次获取所有论文的关键字段（避免 N+1）
+    {:ok, all_papers} =
+      NexBase.from("papers")
+      |> NexBase.select([:published_year, :arxiv_id, :title, :paradigm_id])
+      |> NexBase.order(:published_year, :asc)
+      |> NexBase.run()
+
+    # 按范式分组计算统计
+    papers_by_paradigm = Enum.group_by(all_papers, & &1["paradigm_id"])
+
     paradigm_summaries =
       Enum.map(paradigms, fn paradigm ->
-        {:ok, papers} =
-          NexBase.from("papers")
-          |> NexBase.eq(:paradigm_id, paradigm["id"])
-          |> NexBase.order(:published_year, :asc)
-          |> NexBase.run()
+        papers = Map.get(papers_by_paradigm, paradigm["id"], [])
 
-        count = length(papers)
-
-        # 每范式取1-2篇代表性工作
         representatives =
           papers
           |> Enum.take(2)
@@ -56,17 +58,10 @@ defmodule AiSaga.PaperGenerator do
           name: paradigm["name"],
           start_year: paradigm["start_year"],
           end_year: paradigm["end_year"],
-          count: count,
+          count: length(papers),
           representatives: representatives
         }
       end)
-
-    # 获取年份范围和已有论文的 arXiv ID
-    {:ok, all_papers} =
-      NexBase.from("papers")
-      |> NexBase.select([:published_year, :arxiv_id, :title])
-      |> NexBase.order(:published_year, :asc)
-      |> NexBase.run()
 
     years = Enum.map(all_papers, & &1["published_year"])
 
@@ -76,11 +71,17 @@ defmodule AiSaga.PaperGenerator do
       |> Enum.map(& &1["arxiv_id"])
       |> Enum.filter(&(&1 != nil))
 
+    # 收集所有已有论文标题
+    existing_titles =
+      all_papers
+      |> Enum.map(fn p -> "#{p["published_year"]}: #{p["title"]}" end)
+
     summary = %{
       paradigm_summaries: paradigm_summaries,
       years: years,
       total_count: length(all_papers),
-      existing_arxiv_ids: existing_arxiv_ids
+      existing_arxiv_ids: existing_arxiv_ids,
+      existing_titles: existing_titles
     }
 
     {:ok, summary}
@@ -100,15 +101,23 @@ defmodule AiSaga.PaperGenerator do
       |> NexBase.order(:published_year, :asc)
       |> NexBase.run()
 
-    # 添加范式信息
+    # 一次获取所有需要的范式（避免 N+1）
+    paradigm_ids = papers |> Enum.map(& &1["paradigm_id"]) |> Enum.uniq()
+
+    {:ok, paradigms} =
+      if length(paradigm_ids) > 0 do
+        NexBase.from("paradigms")
+        |> NexBase.in_list(:id, paradigm_ids)
+        |> NexBase.run()
+      else
+        {:ok, []}
+      end
+
+    paradigm_map = Map.new(paradigms, fn p -> {p["id"], p} end)
+
     papers_with_paradigm =
       Enum.map(papers, fn paper ->
-        {:ok, [paradigm]} =
-          NexBase.from("paradigms")
-          |> NexBase.eq(:id, paper["paradigm_id"])
-          |> NexBase.single()
-          |> NexBase.run()
-
+        paradigm = Map.get(paradigm_map, paper["paradigm_id"], %{})
         Map.put(paper, "paradigm", paradigm)
       end)
 

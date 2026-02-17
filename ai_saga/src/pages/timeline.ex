@@ -4,6 +4,7 @@ defmodule AiSaga.Pages.Timeline do
   def mount(_params) do
     {:ok, papers} =
       NexBase.from("papers")
+      |> NexBase.select([:title, :slug, :abstract, :published_year, :is_paradigm_shift])
       |> NexBase.order(:published_year, :asc)
       |> NexBase.run()
 

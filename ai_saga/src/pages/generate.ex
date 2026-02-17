@@ -94,8 +94,11 @@ defmodule AiSaga.Pages.Generate do
     <script>
       let eventSource = null;
       let hasError = false;
+      let generating = false;
 
       function startGeneration() {
+        generating = true;
+
         // 禁用按钮
         const startBtn = document.getElementById('start-btn');
         startBtn.disabled = true;
@@ -124,6 +127,7 @@ defmodule AiSaga.Pages.Generate do
           if (!hasError) {
             hasError = true;
             eventSource.close();
+            generating = false;
 
             try {
               const result = JSON.parse(e.data);
@@ -160,6 +164,7 @@ defmodule AiSaga.Pages.Generate do
           if (!hasError) {
             hasError = true;
             eventSource.close();
+            generating = false;
             showError('连接中断，请检查网络后重试');
           }
         };

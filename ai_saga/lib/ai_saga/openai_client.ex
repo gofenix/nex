@@ -67,6 +67,13 @@ defmodule AiSaga.OpenAIClient do
       "无"
     end
 
+    # 构建已有论文标题列表
+    existing_titles_str = if Map.has_key?(papers_summary, :existing_titles) and length(papers_summary.existing_titles) > 0 do
+      Enum.join(papers_summary.existing_titles, "\n")
+    else
+      "无"
+    end
+
     # 构建HuggingFace候选列表（已过滤，可能为空）
     candidates_str = if length(filtered_candidates) > 0 do
       Enum.map_join(filtered_candidates, "\n", fn p ->
@@ -82,10 +89,13 @@ defmodule AiSaga.OpenAIClient do
     【我们已有的论文分布】（共#{papers_summary.total_count}篇）
     #{paradigm_str}
 
-    【已收藏的论文 arXiv ID】
+    【已收藏的论文】
+    #{existing_titles_str}
+
+    【已收藏的 arXiv ID】
     #{existing_ids_str}
 
-    ⚠️ 重要：请不要推荐上述已有 arXiv ID 列表中的论文，必须推荐全新的论文。
+    ⚠️ 重要：绝对不要推荐上述已收藏的论文！必须推荐一篇全新的、不在上述列表中的论文。
 
     【HuggingFace热门候选】
     #{candidates_str}

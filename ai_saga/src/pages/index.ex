@@ -45,16 +45,17 @@ defmodule AiSaga.Pages.Index do
 
     {:ok, recent} =
       NexBase.from("papers")
+      |> NexBase.select([:title, :slug, :abstract, :published_year, :is_paradigm_shift])
       |> NexBase.order(:published_year, :desc)
       |> NexBase.limit(4)
       |> NexBase.run()
 
-    {:ok, all_papers} =
-      NexBase.from("papers")
-      |> NexBase.run()
+    {:ok, [%{"count" => paper_count}]} =
+      NexBase.sql("SELECT COUNT(*) as count FROM papers")
 
     {:ok, shifts} =
       NexBase.from("papers")
+      |> NexBase.select([:title, :slug, :published_year, :shift_trigger])
       |> NexBase.eq(:is_paradigm_shift, 1)
       |> NexBase.order(:published_year, :asc)
       |> NexBase.limit(4)
@@ -65,7 +66,7 @@ defmodule AiSaga.Pages.Index do
       paradigms: key_paradigms,
       daily: daily_pick,
       recent: recent,
-      all_papers: all_papers,
+      paper_count: paper_count,
       shifts: shifts
     }
   end
@@ -94,7 +95,7 @@ defmodule AiSaga.Pages.Index do
           </a>
         </div>
         <div class="mt-8 text-sm opacity-40">
-          已收录 <%= length(@all_papers) %> 篇重要论文 · <%= length(@paradigms) %> 个研究范式
+          已收录 <%= @paper_count %> 篇重要论文 · <%= length(@paradigms) %> 个研究范式
         </div>
       </div>
 
@@ -220,7 +221,7 @@ defmodule AiSaga.Pages.Index do
           <span>🎲</span> AI自动生成论文解读
         </h2>
         <p class="text-sm opacity-70 mb-6">
-          基于已有 <%= length(@all_papers) %> 篇论文的知识库，AI将从最新研究中发现价值，并生成三视角深度解读。
+          基于已有 <%= @paper_count %> 篇论文的知识库，AI将从最新研究中发现价值，并生成三视角深度解读。
         </p>
 
         <a href="/generate" class="md-btn md-btn-primary border-white">

@@ -34,16 +34,18 @@ defmodule AiSaga.Pages.Search do
     base_query =
       if query != "" do
         NexBase.from("papers")
+        |> NexBase.select([:title, :slug, :abstract, :published_year, :is_paradigm_shift, :citations])
         |> NexBase.ilike(:title, "%#{query}%")
       else
         NexBase.from("papers")
+        |> NexBase.select([:title, :slug, :abstract, :published_year, :is_paradigm_shift, :citations])
       end
 
     # 范式筛选
     query_with_paradigm =
       if paradigm_slug != "" do
         # 先获取范式ID
-        case NexBase.from("paradigms") |> NexBase.eq(:slug, paradigm_slug) |> NexBase.single() |> NexBase.run() do
+        case NexBase.from("paradigms") |> NexBase.select([:id]) |> NexBase.eq(:slug, paradigm_slug) |> NexBase.single() |> NexBase.run() do
           {:ok, [paradigm]} ->
             base_query |> NexBase.eq(:paradigm_id, paradigm["id"])
           _ ->
@@ -79,13 +81,13 @@ defmodule AiSaga.Pages.Search do
   end
 
   defp maybe_add_year_filter(query, year_str, _op, _field) when year_str == "" or is_nil(year_str), do: query
-  defp maybe_add_year_filter(query, year_str, op, field) do
+  defp maybe_add_year_filter(query, year_str, op, _field) do
     case Integer.parse(year_str) do
       {year, _} ->
         if op == :gte do
-          NexBase.where(query, "#{field} >= ?", [year])
+          NexBase.gte(query, :published_year, year)
         else
-          NexBase.where(query, "#{field} <= ?", [year])
+          NexBase.lte(query, :published_year, year)
         end
       :error ->
         query

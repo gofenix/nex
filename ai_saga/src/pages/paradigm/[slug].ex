@@ -22,7 +22,7 @@ defmodule AiSaga.Pages.Paradigm.Slug do
       if length(paper_ids) > 0 do
         {:ok, links} =
           NexBase.from("paper_authors")
-          |> NexBase.in(:paper_id, paper_ids)
+          |> NexBase.in_list(:paper_id, paper_ids)
           |> NexBase.run()
 
         author_counts =
@@ -35,7 +35,7 @@ defmodule AiSaga.Pages.Paradigm.Slug do
         if length(author_ids) > 0 do
           {:ok, authors} =
             NexBase.from("authors")
-            |> NexBase.in(:id, author_ids)
+            |> NexBase.in_list(:id, author_ids)
             |> NexBase.run()
 
           # 合并统计信息

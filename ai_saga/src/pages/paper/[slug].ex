@@ -20,16 +20,23 @@ defmodule AiSaga.Pages.Paper.Slug do
       |> NexBase.order(:author_order, :asc)
       |> NexBase.run()
 
+    author_ids = Enum.map(author_links, & &1["author_id"])
+
     authors =
-      Enum.map(author_links, fn link ->
-        {:ok, [a]} =
+      if length(author_ids) > 0 do
+        {:ok, all_authors} =
           NexBase.from("authors")
-          |> NexBase.eq(:id, link["author_id"])
-          |> NexBase.single()
+          |> NexBase.in_list(:id, author_ids)
           |> NexBase.run()
 
-        a
-      end)
+        # 按 author_links 的顺序排列
+        Enum.map(author_ids, fn id ->
+          Enum.find(all_authors, fn a -> a["id"] == id end)
+        end)
+        |> Enum.filter(& &1)
+      else
+        []
+      end
 
     %{
       title: paper["title"],

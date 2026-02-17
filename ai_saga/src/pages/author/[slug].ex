@@ -15,25 +15,27 @@ defmodule AiSaga.Pages.Author.Slug do
       |> NexBase.order(:author_order, :asc)
       |> NexBase.run()
 
+    paper_ids = Enum.map(links, & &1["paper_id"])
+
     papers =
-      Enum.map(links, fn link ->
-        {:ok, [p]} =
+      if length(paper_ids) > 0 do
+        {:ok, all_papers} =
           NexBase.from("papers")
-          |> NexBase.eq(:id, link["paper_id"])
-          |> NexBase.single()
+          |> NexBase.in_list(:id, paper_ids)
           |> NexBase.run()
 
-        p
-      end)
+        Enum.sort_by(all_papers, & &1["published_year"], :desc)
+      else
+        []
+      end
 
     # 获取合作者（共同发表论文的其他作者）
-    paper_ids = Enum.map(papers, & &1["id"])
 
     collaborators =
       if length(paper_ids) > 0 do
         {:ok, all_links} =
           NexBase.from("paper_authors")
-          |> NexBase.in(:paper_id, paper_ids)
+          |> NexBase.in_list(:paper_id, paper_ids)
           |> NexBase.neq(:author_id, author["id"])
           |> NexBase.run()
 
@@ -42,7 +44,7 @@ defmodule AiSaga.Pages.Author.Slug do
         if length(collaborator_ids) > 0 do
           {:ok, collab_authors} =
             NexBase.from("authors")
-            |> NexBase.in(:id, collaborator_ids)
+            |> NexBase.in_list(:id, collaborator_ids)
             |> NexBase.run()
 
           # 统计合作次数

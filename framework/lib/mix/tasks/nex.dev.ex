@@ -73,7 +73,7 @@ defmodule Mix.Tasks.Nex.Dev do
     """)
 
     # Start the server
-    {:ok, _} = Bandit.start_link(plug: Nex.Router, port: port)
+    {:ok, _} = Bandit.start_link(plug: Nex.Router, port: port, thousand_island_options: [read_timeout: 300_000])
 
     # Keep the process alive
     Process.sleep(:infinity)

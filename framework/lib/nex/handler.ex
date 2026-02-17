@@ -9,10 +9,11 @@ defmodule Nex.Handler do
   @doc "Handle incoming request"
   def handle(conn) do
     # Register cleanup callback to clear process dictionary after response
-    conn = register_before_send(conn, fn conn ->
-      Nex.Store.clear_process_dictionary()
-      conn
-    end)
+    conn =
+      register_before_send(conn, fn conn ->
+        Nex.Store.clear_process_dictionary()
+        conn
+      end)
 
     try do
       method = conn.method |> String.downcase() |> String.to_atom()
@@ -37,7 +38,10 @@ defmodule Nex.Handler do
       end
     rescue
       e ->
-        Logger.error("Unhandled error: #{inspect(e)}\n#{Exception.format_stacktrace(__STACKTRACE__)}")
+        Logger.error(
+          "Unhandled error: #{inspect(e)}\n#{Exception.format_stacktrace(__STACKTRACE__)}"
+        )
+
         send_error_page(conn, 500, "Internal Server Error", e)
     catch
       kind, reason ->
@@ -48,10 +52,11 @@ defmodule Nex.Handler do
 
   # API handlers
   defp handle_api(conn, method, path) do
-    api_path = case path do
-      ["api" | rest] -> rest
-      _ -> path
-    end
+    api_path =
+      case path do
+        ["api" | rest] -> rest
+        _ -> path
+      end
 
     case Nex.RouteDiscovery.resolve(:api, api_path) do
       {:ok, module, params} ->
@@ -97,6 +102,7 @@ defmodule Nex.Handler do
                 Nex.json(%{data: ...})
               end
           """)
+
           send_json_error(conn, 500, "Internal Server Error: API signature mismatch")
         else
           reraise e, __STACKTRACE__
@@ -120,7 +126,7 @@ defmodule Nex.Handler do
   defp format_sse_chunk(%{event: event, data: data}) do
     encoded = encode_sse_data(data)
     # Ensure multiline data each have data: prefix
-    formatted_data = 
+    formatted_data =
       encoded
       |> String.split("\n")
       |> Enum.map(&"data: #{&1}")
@@ -204,6 +210,7 @@ defmodule Nex.Handler do
 
     send_fn = fn data ->
       chunk = format_sse_chunk(data)
+
       case Plug.Conn.chunk(conn, chunk) do
         {:ok, conn} -> conn
         {:error, :closed} -> throw(:connection_closed)
@@ -215,7 +222,10 @@ defmodule Nex.Handler do
       conn
     rescue
       e ->
-        Logger.error("SSE stream error: #{inspect(e)}\n#{Exception.format_stacktrace(__STACKTRACE__)}")
+        Logger.error(
+          "SSE stream error: #{inspect(e)}\n#{Exception.format_stacktrace(__STACKTRACE__)}"
+        )
+
         conn
     catch
       :connection_closed ->
@@ -312,7 +322,8 @@ defmodule Nex.Handler do
       end
 
     # Add page_id and csrf_token to assigns for template injection
-    assigns = assigns
+    assigns =
+      assigns
       |> Map.put(:_page_id, page_id)
       |> Map.put(:_csrf_token, csrf_token)
 
@@ -347,11 +358,12 @@ defmodule Nex.Handler do
 
       # Automatically inject CSRF token into all POST/PUT/PATCH/DELETE forms
       # This removes the need for manual {csrf_input_tag()} boilerplate
-      final_html = String.replace(
-        html_binary,
-        ~r/(<form\s+[^>]*method=["'](?:post|put|patch|delete)["'][^>]*>)/i,
-        "\\1<input type=\"hidden\" name=\"_csrf_token\" value=\"#{csrf_token}\">"
-      )
+      final_html =
+        String.replace(
+          html_binary,
+          ~r/(<form\s+[^>]*method=["'](?:post|put|patch|delete)["'][^>]*>)/i,
+          "\\1<input type=\"hidden\" name=\"_csrf_token\" value=\"#{csrf_token}\">"
+        )
 
       conn
       |> put_resp_content_type("text/html")
@@ -431,8 +443,9 @@ defmodule Nex.Handler do
     is_htmx = get_req_header(conn, "hx-request") != []
 
     # Check if request expects JSON
-    is_json = match?(["api" | _], conn.path_info) or
-              get_req_header(conn, "accept") |> Enum.any?(&String.contains?(&1, "application/json"))
+    is_json =
+      match?(["api" | _], conn.path_info) or
+        get_req_header(conn, "accept") |> Enum.any?(&String.contains?(&1, "application/json"))
 
     cond do
       is_json ->
@@ -445,17 +458,19 @@ defmodule Nex.Handler do
           <strong>Error #{status}:</strong> #{html_escape(message)}
         </div>
         """
+
         conn
         |> put_resp_content_type("text/html")
         |> send_resp(status, html)
 
       true ->
         # Full error page
-        error_detail = if error && Mix.env() == :dev do
-          "<pre class=\"mt-4 p-4 bg-gray-800 text-green-400 rounded overflow-auto text-sm\">#{html_escape(inspect(error, pretty: true))}</pre>"
-        else
-          ""
-        end
+        error_detail =
+          if error && Mix.env() == :dev do
+            "<pre class=\"mt-4 p-4 bg-gray-800 text-green-400 rounded overflow-auto text-sm\">#{html_escape(inspect(error, pretty: true))}</pre>"
+          else
+            ""
+          end
 
         html = """
         <!DOCTYPE html>
@@ -531,9 +546,14 @@ defmodule Nex.Handler do
         # Parse the referer URL and extract the path
         # e.g., "http://localhost:4000/requests" -> ["requests"]
         uri = URI.parse(referer)
+
         case uri.path do
-          nil -> []
-          "/" -> []
+          nil ->
+            []
+
+          "/" ->
+            []
+
           path ->
             path
             |> String.trim_leading("/")
@@ -561,33 +581,39 @@ defmodule Nex.Handler do
     """
 
     # Only add live reload script in dev environment
-    live_reload_script = if Nex.Reloader.enabled?() do
-      """
-        // Live reload via WebSocket (dev only)
-        (function() {
-          const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-          const ws = new WebSocket(protocol + '//' + window.location.host + '/nex/live-reload-ws');
+    live_reload_script =
+      if Nex.Reloader.enabled?() do
+        """
+          // Live reload via WebSocket (dev only)
+          (function() {
+            var pendingReload = false;
+            function connect() {
+              const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+              const ws = new WebSocket(protocol + '//' + window.location.host + '/nex/live-reload-ws');
 
-          ws.onmessage = function(event) {
-            const data = JSON.parse(event.data);
-            if (data.reload) {
-              console.log('[Nex] File changed, reloading...');
-              window.location.reload();
+              ws.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                if (data.reload) {
+                  console.log('[Nex] File changed, reloading...');
+                  window.location.reload();
+                }
+              };
+
+              ws.onerror = function() {
+                console.log('[Nex] WebSocket error');
+              };
+
+              ws.onclose = function() {
+                // Reconnect instead of reloading - avoids killing long-running operations
+                setTimeout(function() { connect(); }, 2000);
+              };
             }
-          };
-
-          ws.onerror = function() {
-            console.log('[Nex] WebSocket error');
-          };
-
-          ws.onclose = function() {
-            setTimeout(function() { window.location.reload(); }, 1000);
-          };
-        })();
-      """
-    else
-      ""
-    end
+            connect();
+          })();
+        """
+      else
+        ""
+      end
 
     base_script <> live_reload_script <> "</script>"
   end
