@@ -9,13 +9,8 @@ primary_region = 'nrt'
 [build]
 
 [env]
-  DATABASE_URL = 'sqlite:///data/bestof_ex.db'
   HOST = '0.0.0.0'
   PORT = '4000'
-
-[[mounts]]
-  source = 'bestof_data'
-  destination = '/data'
 
 [http_service]
   internal_port = 4000

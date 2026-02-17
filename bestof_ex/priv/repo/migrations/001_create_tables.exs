@@ -2,10 +2,10 @@
 Nex.Env.init()
 NexBase.init(url: Nex.Env.get(:database_url), start: true)
 
-# Create projects table (includes fields from migrations 001, 002, 003)
+# Create projects table
 NexBase.query!("""
 CREATE TABLE IF NOT EXISTS projects (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   name TEXT NOT NULL,
   full_name TEXT,
   description TEXT,
@@ -14,22 +14,22 @@ CREATE TABLE IF NOT EXISTS projects (
   avatar_url TEXT,
   stars INTEGER DEFAULT 0,
   open_issues INTEGER DEFAULT 0,
-  pushed_at TEXT,
+  pushed_at TIMESTAMP,
   license TEXT,
-  last_commit_at TEXT,
-  added_at TEXT DEFAULT CURRENT_TIMESTAMP,
-  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-  updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+  last_commit_at TIMESTAMP,
+  added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )
 """, [])
 
 # Create project_stats table
 NexBase.query!("""
 CREATE TABLE IF NOT EXISTS project_stats (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   project_id INTEGER NOT NULL REFERENCES projects(id),
   stars INTEGER NOT NULL,
-  recorded_at TEXT NOT NULL,
+  recorded_at TIMESTAMP NOT NULL,
   UNIQUE(project_id, recorded_at)
 )
 """, [])
@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS project_stats (
 # Create tags table
 NexBase.query!("""
 CREATE TABLE IF NOT EXISTS tags (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   name TEXT NOT NULL,
   slug TEXT NOT NULL UNIQUE
 )
@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS tags (
 # Create project_tags table
 NexBase.query!("""
 CREATE TABLE IF NOT EXISTS project_tags (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   project_id INTEGER NOT NULL REFERENCES projects(id),
   tag_id INTEGER NOT NULL REFERENCES tags(id),
   UNIQUE(project_id, tag_id)

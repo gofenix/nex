@@ -348,7 +348,6 @@ defmodule AiSaga.Layouts do
             <a href="/timeline" class="block text-sm font-medium hover:underline">时间线</a>
             <a href="/author" class="block text-sm font-medium hover:underline">人物</a>
             <a href="/search" class="block text-sm font-medium hover:underline">搜索</a>
-            <a href="/generate" class="block text-sm font-bold" style="color: var(--md-blue);">✨ AI 生成</a>
           </div>
         </nav>
         <main class="max-w-4xl mx-auto px-6 py-8">
