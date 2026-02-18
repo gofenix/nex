@@ -46,7 +46,7 @@ defmodule AiSaga.Pages.Index do
     {:ok, recent} =
       NexBase.from("aisaga_papers")
       |> NexBase.select([:title, :slug, :abstract, :published_year, :is_paradigm_shift])
-      |> NexBase.order(:published_year, :desc)
+      |> NexBase.order(:created_at, :desc)
       |> NexBase.limit(4)
       |> NexBase.run()
 
