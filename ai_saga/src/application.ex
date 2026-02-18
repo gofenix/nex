@@ -4,7 +4,7 @@ defmodule AiSaga.Application do
   @impl true
   def start(_type, _args) do
     Nex.Env.init()
-    conn = NexBase.init(url: Nex.Env.get(:database_url))
+    conn = NexBase.init(url: Nex.Env.get(:database_url), ssl: true, prepare: :unnamed)
 
     children = [
       {NexBase.Repo, conn},

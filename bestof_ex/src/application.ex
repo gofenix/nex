@@ -11,9 +11,8 @@ defmodule BestofEx.Application do
     NexBase.init(
       url: Nex.Env.get(:database_url),
       ssl: true,
-      pool_size: 10,
-      queue_target: 5000,
-      queue_interval: 1000
+      pool_size: 2,
+      prepare: :unnamed
     )
 
     children = [

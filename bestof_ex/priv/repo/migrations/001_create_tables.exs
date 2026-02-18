@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS bestofex_project_stats (
   id SERIAL PRIMARY KEY,
   project_id INTEGER NOT NULL REFERENCES bestofex_projects(id),
   stars INTEGER NOT NULL,
-  recorded_at TIMESTAMP NOT NULL,
+  recorded_at DATE NOT NULL,
   UNIQUE(project_id, recorded_at)
 )
 """, [])
