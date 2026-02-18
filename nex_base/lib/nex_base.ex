@@ -302,8 +302,10 @@ defmodule NexBase do
     repo_mod = resolve_repo(conn)
     sql_str = normalize_placeholders(sql_str, conn.adapter)
     case Ecto.Adapters.SQL.query(repo_mod, sql_str, params) do
-      {:ok, %{rows: rows, columns: columns}} ->
+      {:ok, %{rows: rows, columns: columns}} when is_list(rows) ->
         {:ok, Enum.map(rows, fn row -> columns |> Enum.zip(row) |> Map.new() end)}
+      {:ok, _} ->
+        {:ok, []}
       {:error, _} = err -> err
     end
   end
