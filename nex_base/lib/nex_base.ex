@@ -104,7 +104,7 @@ defmodule NexBase do
   defp build_repo_config(:postgres, url, pool_size, opts) do
     config = [url: url, pool_size: pool_size]
 
-    if opts[:ssl] do
+    config = if opts[:ssl] do
       config ++ [
         ssl: [verify: :verify_none],
         queue_target: 10_000,
@@ -113,6 +113,11 @@ defmodule NexBase do
     else
       config
     end
+
+    # Pass through extra Postgrex options (e.g. prepare: :unnamed for pgBouncer)
+    extra_keys = [:prepare, :queue_target, :queue_interval, :timeout, :connect_timeout]
+    extra = Keyword.take(opts, extra_keys)
+    Keyword.merge(config, extra)
   end
 
   defp build_repo_config(:sqlite, url, pool_size, _opts) do
