@@ -44,6 +44,13 @@ defmodule AiSaga.Pages.Paradigm.Index do
     }
   end
 
+  defp paradigm_icon("perceptron"), do: "🧠"
+  defp paradigm_icon("symbolic-ai"), do: "🔤"
+  defp paradigm_icon("connectionism"), do: "🔗"
+  defp paradigm_icon("deep-learning"), do: "🎯"
+  defp paradigm_icon("transformers"), do: "⚡"
+  defp paradigm_icon(_), do: "📊"
+
   def render(assigns) do
     ~H"""
     <div class="max-w-4xl mx-auto space-y-10">
@@ -57,73 +64,39 @@ defmodule AiSaga.Pages.Paradigm.Index do
         <div class="meta">{@total_paradigms} 个研究范式 · 跨越 {@total_years} 年</div>
       </div>
 
-      <%= if length(@paradigms) > 0 do %>
-        <%!-- 时间线视图 --%>
-        <div class="relative">
-          <%!-- 中心时间线 --%>
+      <div :if={length(@paradigms) > 0} class="relative">
           <div class="timeline-line"></div>
-
           <div class="space-y-8">
-            <%= for {paradigm, index} <- Enum.with_index(@paradigms) do %>
-              <% is_left = rem(index, 2) == 0 %>
-
-              <div class={if is_left, do: "relative flex items-start md:flex-row", else: "relative flex items-start md:flex-row-reverse"}>
-                <%!-- 节点圆点 --%>
+            <div :for={{paradigm, index} <- Enum.with_index(@paradigms)}
+                 class={if rem(index, 2) == 0, do: "relative flex items-start md:flex-row", else: "relative flex items-start md:flex-row-reverse"}>
                 <div class="timeline-dot mt-6"></div>
-
-                <%!-- 年份标签 --%>
-                <div class={if is_left, do: "absolute left-16 md:left-auto md:right-1/2 md:mr-8 top-5 font-mono text-sm font-bold bg-black text-white px-2 py-1", else: "absolute left-16 md:left-1/2 md:ml-8 top-5 font-mono text-sm font-bold bg-black text-white px-2 py-1"}>
+                <div class={if rem(index, 2) == 0, do: "absolute left-16 md:left-auto md:right-1/2 md:mr-8 top-5 font-mono text-sm font-bold bg-black text-white px-2 py-1", else: "absolute left-16 md:left-1/2 md:ml-8 top-5 font-mono text-sm font-bold bg-black text-white px-2 py-1"}>
                   {paradigm["start_year"]}
                 </div>
-
-                <%!-- 内容卡片 --%>
-                <div class={if is_left, do: "ml-20 md:ml-0 md:w-5/12 md:pr-12", else: "ml-20 md:ml-0 md:w-5/12 md:pl-12"}>
+                <div class={if rem(index, 2) == 0, do: "ml-20 md:ml-0 md:w-5/12 md:pr-12", else: "ml-20 md:ml-0 md:w-5/12 md:pl-12"}>
                   <a href={"/paradigm/#{paradigm["slug"]}"} class="card block p-5">
                     <div class="flex items-center gap-3 mb-3">
-                      <span class="text-2xl">
-                        <%= case paradigm["slug"] do %>
-                          <% "perceptron" -> %> 🧠
-                          <% "symbolic-ai" -> %> 🔤
-                          <% "connectionism" -> %> 🔗
-                          <% "deep-learning" -> %> 🎯
-                          <% "transformers" -> %> ⚡
-                          <% _ -> %> 📊
-                        <% end %>
-                      </span>
+                      <span class="text-2xl">{paradigm_icon(paradigm["slug"])}</span>
                       <h3 class="text-xl font-bold">{paradigm["name"]}</h3>
                     </div>
-
                     <p class="text-sm opacity-70 mb-4 line-clamp-2">{paradigm["description"]}</p>
-
                     <div class="flex flex-wrap gap-2 text-xs font-mono">
                       <span class="badge badge-gray">{paradigm["paper_count"]} 篇论文</span>
-                      <%= if paradigm["shift_count"] > 0 do %>
-                        <span class="badge badge-yellow">{paradigm["shift_count"]} 次突破</span>
-                      <% end %>
+                      <span :if={paradigm["shift_count"] > 0} class="badge badge-yellow">{paradigm["shift_count"]} 次突破</span>
                     </div>
-
-                    <%= if paradigm["crisis"] || paradigm["revolution"] do %>
-                      <div class="mt-3 pt-3 border-t border-gray-200 text-xs">
-                        <%= if paradigm["crisis"] do %>
-                          <span class="text-red-600 mr-3">⚠️ 面临挑战</span>
-                        <% end %>
-                        <%= if paradigm["revolution"] do %>
-                          <span class="text-green-600">🎉 革命突破</span>
-                        <% end %>
+                    <div :if={paradigm["crisis"] || paradigm["revolution"]} class="mt-3 pt-3 border-t border-gray-200 text-xs">
+                        <span :if={paradigm["crisis"]} class="text-red-600 mr-3">⚠️ 面临挑战</span>
+                        <span :if={paradigm["revolution"]} class="text-green-600">🎉 革命突破</span>
                       </div>
-                    <% end %>
                   </a>
                 </div>
               </div>
-            <% end %>
           </div>
         </div>
-      <% else %>
-        <div class="empty-state">
+      <div :if={length(@paradigms) == 0} class="empty-state">
           <p>暂无范式数据</p>
           <p class="hint">请稍后再试</p>
         </div>
-      <% end %>
     </div>
     """
   end

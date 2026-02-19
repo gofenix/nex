@@ -48,9 +48,7 @@ defmodule BestofEx.Pages.Projects.Show do
 
           <!-- Tags -->
           <div :if={@tags != []} class="flex flex-wrap gap-2 mb-6">
-            <%= for tag <- @tags do %>
-              {TagBadge.render(%{name: tag["name"], slug: tag["slug"]})}
-            <% end %>
+            <span :for={tag <- @tags}>{TagBadge.render(%{name: tag["name"], slug: tag["slug"]})}</span>
           </div>
 
           <!-- Meta Info -->

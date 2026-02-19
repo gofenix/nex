@@ -26,33 +26,26 @@ defmodule AiSaga.Pages.Timeline do
         <p>按时间顺序探索人工智能的发展历程</p>
       </div>
 
-      <%= if length(@papers) > 0 do %>
-        <div class="relative">
+      <div :if={length(@papers) > 0} class="relative">
           <div class="timeline-line"></div>
           <div class="space-y-6">
-            <%= for paper <- @papers do %>
-              <div class="relative pl-12">
+            <div :for={paper <- @papers} class="relative pl-12">
                 <div class="timeline-dot top-5"></div>
                 <a href={"/paper/#{paper["slug"]}"} class="card block p-5">
                   <div class="flex items-center gap-3 mb-2">
                     <span class="year-tag font-bold">{paper["published_year"]}</span>
-                    <%= if paper["is_paradigm_shift"] == 1 do %>
-                      <span class="badge badge-yellow">范式变迁</span>
-                    <% end %>
+                    <span :if={paper["is_paradigm_shift"] == 1} class="badge badge-yellow">范式变迁</span>
                   </div>
                   <h3 class="font-bold mb-2">{paper["title"]}</h3>
                   <p class="text-sm opacity-60 line-clamp-2">{paper["abstract"]}</p>
                 </a>
               </div>
-            <% end %>
           </div>
         </div>
-      <% else %>
-        <div class="empty-state">
+      <div :if={length(@papers) == 0} class="empty-state">
           <p>暂无论文数据</p>
           <p class="hint">请稍后再试</p>
         </div>
-      <% end %>
     </div>
     """
   end

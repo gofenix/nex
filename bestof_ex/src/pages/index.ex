@@ -71,9 +71,9 @@ defmodule BestofEx.Pages.Index do
                 <p class="text-sm mt-1">Run <code class="px-1.5 py-0.5 bg-gray-100 rounded text-xs">mix run seeds/import.exs</code> to seed data.</p>
               </div>
 
-              <%= for project <- @hot_projects do %>
+              <div :for={project <- @hot_projects}>
                 {ProjectRow.render(%{project: project, tags: project["tags"] || []})}
-              <% end %>
+              </div>
             </div>
 
             <div class="mt-4 text-right">
@@ -91,9 +91,9 @@ defmodule BestofEx.Pages.Index do
             </div>
 
             <div class="grid grid-cols-1 gap-3">
-              <%= for project <- @featured do %>
+              <div :for={project <- @featured}>
                 {FeaturedCard.render(%{project: project, tag: project["primary_tag"]})}
-              <% end %>
+              </div>
             </div>
           </div>
 
@@ -122,9 +122,9 @@ defmodule BestofEx.Pages.Index do
                 <p>No recent projects yet.</p>
               </div>
 
-              <%= for project <- @recently_added do %>
+              <div :for={project <- @recently_added}>
                 {ProjectRow.render(%{project: project, tags: project["tags"] || []})}
-              <% end %>
+              </div>
             </div>
 
             <div class="mt-4 text-right">
@@ -141,13 +141,11 @@ defmodule BestofEx.Pages.Index do
             </div>
 
             <div class="grid grid-cols-1 gap-2">
-              <%= for tag <- @popular_tags do %>
-                <a href={"/tags/#{tag["slug"]}"}
+              <a :for={tag <- @popular_tags} href={"/tags/#{tag["slug"]}"}
                    class="card-premium flex items-center justify-between p-3 group">
                   <span class="font-medium text-primary text-sm group-hover:underline">{tag["name"]}</span>
                   <span class="badge badge-premium badge-sm">{tag["count"]}</span>
                 </a>
-              <% end %>
             </div>
 
             <div class="mt-3 text-right">
@@ -173,8 +171,7 @@ defmodule BestofEx.Pages.Index do
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          <%= for {project, idx} <- Enum.with_index(@monthly_rankings) do %>
-            <a href={"/projects/#{project["id"]}"}
+          <a :for={{project, idx} <- Enum.with_index(@monthly_rankings)} href={"/projects/#{project["id"]}"}
                class="card-premium p-4 text-center group relative">
               <div class="absolute top-2 left-2 text-xs font-bold text-amber-500">#{idx + 1}</div>
               <div class="flex justify-center mb-3">
@@ -188,7 +185,6 @@ defmodule BestofEx.Pages.Index do
                 +{format_stars(project["star_delta"])}
               </div>
             </a>
-          <% end %>
         </div>
       </div>
     </section>

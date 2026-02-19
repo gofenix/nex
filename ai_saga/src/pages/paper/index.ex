@@ -26,17 +26,13 @@ defmodule AiSaga.Pages.Paper.Index do
         <p class="text-base opacity-60">探索人工智能领域的重要研究成果</p>
       </div>
 
-      <%= if length(@papers) > 0 do %>
-        <div class="space-y-4">
-          <%= for paper <- @papers do %>
-            <a href={"/paper/#{paper["slug"]}"} class="card block p-5">
+      <div :if={length(@papers) > 0} class="space-y-4">
+          <a :for={paper <- @papers} href={"/paper/#{paper["slug"]}"} class="card block p-5">
               <div class="flex items-start justify-between gap-4">
                 <div class="flex-1">
                   <div class="flex items-center gap-3 mb-2">
                     <span class="year-tag">{paper["published_year"]}</span>
-                    <%= if paper["is_paradigm_shift"] == 1 do %>
-                      <span class="badge badge-yellow">范式变迁</span>
-                    <% end %>
+                    <span :if={paper["is_paradigm_shift"] == 1} class="badge badge-yellow">范式变迁</span>
                   </div>
                   <h3 class="font-bold mb-2 line-clamp-2">{paper["title"]}</h3>
                   <p class="text-sm opacity-60 line-clamp-2">{paper["abstract"]}</p>
@@ -44,14 +40,11 @@ defmodule AiSaga.Pages.Paper.Index do
                 <span class="text-sm font-mono opacity-40">{paper["citations"]}</span>
               </div>
             </a>
-          <% end %>
         </div>
-      <% else %>
-        <div class="empty-state">
+      <div :if={length(@papers) == 0} class="empty-state">
           <p>暂无论文数据</p>
           <p class="hint">请稍后再试</p>
         </div>
-      <% end %>
     </div>
     """
   end

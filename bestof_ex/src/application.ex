@@ -1,22 +1,13 @@
 defmodule BestofEx.Application do
-  @moduledoc """
-  The BestofEx application.
-  """
-
   use Application
 
   @impl true
   def start(_type, _args) do
     Nex.Env.init()
-    NexBase.init(
-      url: Nex.Env.get(:database_url),
-      ssl: true,
-      pool_size: 2,
-      prepare: :unnamed
-    )
+    conn = NexBase.init(url: Nex.Env.get(:database_url), ssl: true, prepare: :unnamed)
 
     children = [
-      {NexBase.Repo, []},
+      {NexBase.Repo, conn},
       {BestofEx.Scheduler, []}
     ]
     Supervisor.start_link(children, strategy: :one_for_one, name: BestofEx.Supervisor)

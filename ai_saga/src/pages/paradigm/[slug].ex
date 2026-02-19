@@ -105,7 +105,7 @@ defmodule AiSaga.Pages.Paradigm.Slug do
         <%!-- 时间线和统计 --%>
         <div class="flex flex-wrap items-center gap-4 text-sm">
           <div class="stat-box stat-black">
-            <div class="number">{@paradigm["start_year"]} - <%= if @paradigm["end_year"], do: @paradigm["end_year"], else: "现在" %></div>
+            <div class="number">{@paradigm["start_year"]} - {@paradigm["end_year"] || "现在"}</div>
             <div class="label">持续 {@stats.year_span} 年</div>
           </div>
           <div class="stat-box stat-yellow">
@@ -120,61 +120,50 @@ defmodule AiSaga.Pages.Paradigm.Slug do
 
         <%!-- 危机与革命 --%>
         <div class="grid md:grid-cols-2 gap-4">
-          <%= if @paradigm["crisis"] do %>
-            <div class="bg-red-50 p-5 border-2 border-red-200">
+          <div :if={@paradigm["crisis"]} class="bg-red-50 p-5 border-2 border-red-200">
               <h3 class="font-bold mb-2 text-red-700 flex items-center gap-2">
                 <span>⚠️</span> 危机与挑战
               </h3>
               <p class="opacity-80 text-sm">{@paradigm["crisis"]}</p>
             </div>
-          <% end %>
 
-          <%= if @paradigm["revolution"] do %>
-            <div class="bg-[rgb(255,222,0)] p-5 border-2 border-black">
+          <div :if={@paradigm["revolution"]} class="bg-[rgb(255,222,0)] p-5 border-2 border-black">
               <h3 class="font-bold mb-2 flex items-center gap-2">
                 <span>🎉</span> 革命性突破
               </h3>
               <p class="opacity-80 text-sm">{@paradigm["revolution"]}</p>
             </div>
-          <% end %>
         </div>
       </header>
 
       <%!-- 核心贡献者 --%>
-      <%= if length(@main_authors) > 0 do %>
-        <section class="card p-6">
+      <section :if={length(@main_authors) > 0} class="card p-6">
           <h2 class="section-title text-xl">
             <span>👥</span> 核心贡献者
           </h2>
           <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
-            <%= for author <- @main_authors do %>
-              <a href={"/author/#{author["slug"]}"} class="flex items-center gap-3 p-3 border border-black hover:bg-gray-50 transition-colors">
+            <a :for={author <- @main_authors} href={"/author/#{author["slug"]}"} class="flex items-center gap-3 p-3 border border-black hover:bg-gray-50 transition-colors">
                 <div class="icon-box flex-shrink-0 text-lg">👤</div>
                 <div class="flex-1 min-w-0">
                   <div class="font-bold text-sm truncate">{author["name"]}</div>
                   <div class="text-xs opacity-60">{author["paper_count"]} 篇论文</div>
                 </div>
               </a>
-            <% end %>
           </div>
         </section>
-      <% else %>
-        <div class="empty-state">
+      <div :if={length(@main_authors) == 0} class="empty-state">
           <p>暂无核心贡献者数据</p>
           <p class="hint">该范式下暂无论文作者信息</p>
         </div>
-      <% end %>
 
       <%!-- 范式突破论文 --%>
-      <%= if length(@paradigm_shifts) > 0 do %>
-        <section>
+      <section :if={length(@paradigm_shifts) > 0}>
           <h2 class="section-title text-2xl">
             <span>⚡</span> 范式突破
             <span class="text-sm font-normal opacity-60">({length(@paradigm_shifts)} 篇)</span>
           </h2>
           <div class="space-y-3">
-            <%= for paper <- @paradigm_shifts do %>
-              <a href={"/paper/#{paper["slug"]}"} class="card-yellow block p-5">
+            <a :for={paper <- @paradigm_shifts} href={"/paper/#{paper["slug"]}"} class="card-yellow block p-5">
                 <div class="flex items-start justify-between gap-4">
                   <div class="flex-1">
                     <div class="flex items-center gap-2 mb-2">
@@ -187,21 +176,17 @@ defmodule AiSaga.Pages.Paradigm.Slug do
                   <span class="text-sm font-mono opacity-40">{paper["citations"]} 引用</span>
                 </div>
               </a>
-            <% end %>
           </div>
         </section>
-      <% end %>
 
       <%!-- 该时期重要论文 --%>
-      <%= if length(@normal_papers) > 0 do %>
-        <section>
+      <section :if={length(@normal_papers) > 0}>
           <h2 class="section-title text-2xl">
             <span>📄</span> 重要论文
             <span class="text-sm font-normal opacity-60">({length(@normal_papers)} 篇)</span>
           </h2>
           <div class="space-y-3">
-            <%= for paper <- @normal_papers do %>
-              <a href={"/paper/#{paper["slug"]}"} class="card block p-5">
+            <a :for={paper <- @normal_papers} href={"/paper/#{paper["slug"]}"} class="card block p-5">
                 <div class="flex items-start justify-between gap-4">
                   <div class="flex-1">
                     <div class="flex items-center gap-3 mb-2">
@@ -213,15 +198,12 @@ defmodule AiSaga.Pages.Paradigm.Slug do
                   <span class="text-sm font-mono opacity-40">{paper["citations"]} 引用</span>
                 </div>
               </a>
-            <% end %>
           </div>
         </section>
-      <% else %>
-        <div class="empty-state">
+      <div :if={length(@normal_papers) == 0} class="empty-state">
           <p>暂无论文数据</p>
           <p class="hint">该范式下暂无论文信息</p>
         </div>
-      <% end %>
     </div>
     """
   end

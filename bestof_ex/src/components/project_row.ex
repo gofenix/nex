@@ -43,9 +43,7 @@ defmodule BestofEx.Components.ProjectRow do
         </p>
 
         <div :if={@tags != []} class="flex flex-wrap gap-1.5 mt-2">
-          <%= for tag <- @tags do %>
-            {TagBadge.render(%{name: tag["name"], slug: tag["slug"]})}
-          <% end %>
+          <span :for={tag <- @tags}>{TagBadge.render(%{name: tag["name"], slug: tag["slug"]})}</span>
         </div>
       </div>
 

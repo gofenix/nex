@@ -44,9 +44,9 @@ defmodule BestofEx.Pages.Trending do
             <p>No trending projects for this period.</p>
           </div>
 
-          <%= for {project, idx} <- Enum.with_index(@projects) do %>
+          <div :for={{project, idx} <- Enum.with_index(@projects)}>
             {ProjectRow.render(%{project: project, tags: project["tags"] || [], rank: idx + 1})}
-          <% end %>
+          </div>
         </div>
       </div>
     </div>

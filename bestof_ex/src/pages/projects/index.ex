@@ -40,12 +40,10 @@ defmodule BestofEx.Pages.Projects.Index do
         <!-- Tag Filter Bar -->
         <div class="flex flex-wrap gap-2 mb-6">
           <a href="/projects" class={"badge badge-sm #{if is_nil(@current_tag), do: "bg-primary text-white border-primary", else: "badge-premium"}"}>All</a>
-          <%= for tag <- @tags do %>
-            <a href={"/projects?tag=#{tag["slug"]}"}
+          <a :for={tag <- @tags} href={"/projects?tag=#{tag["slug"]}"}
                class={"badge badge-sm #{if @current_tag == tag["slug"], do: "bg-primary text-white border-primary", else: "badge-premium"}"}>
               {tag["name"]}
             </a>
-          <% end %>
         </div>
 
         <!-- Sort Headers -->
@@ -67,9 +65,9 @@ defmodule BestofEx.Pages.Projects.Index do
             <p>No projects found.</p>
           </div>
 
-          <%= for {project, idx} <- Enum.with_index(@projects) do %>
+          <div :for={{project, idx} <- Enum.with_index(@projects)}>
             {ProjectRow.render(%{project: project, tags: project["tags"] || [], rank: idx + 1})}
-          <% end %>
+          </div>
         </div>
       </div>
     </div>

@@ -18,13 +18,11 @@ defmodule BestofEx.Pages.Tags.Index do
         <h1 class="text-2xl font-bold mb-6 text-gray-900">All Tags</h1>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          <%= for tag <- @tags do %>
-            <a href={"/tags/#{tag["slug"]}"}
+          <a :for={tag <- @tags} href={"/tags/#{tag["slug"]}"}
                class="card-premium flex items-center justify-between p-4">
               <span class="font-semibold text-primary">{tag["name"]}</span>
               <span class="badge badge-premium badge-sm">{tag["count"]} projects</span>
             </a>
-          <% end %>
         </div>
 
         <div :if={Enum.empty?(@tags)} class="text-center py-8 text-gray-500">

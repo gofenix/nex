@@ -103,12 +103,8 @@ defmodule AiSaga.Pages.Author.Slug do
             </div>
 
             <div class="flex flex-wrap items-center gap-4 text-sm">
-              <%= if @author["affiliation"] do %>
-                <span class="px-3 py-1 bg-gray-100 border border-black">{@author["affiliation"]}</span>
-              <% end %>
-              <%= if @author["first_paper_year"] do %>
-                <span class="font-mono opacity-60">首篇论文: {@author["first_paper_year"]}年</span>
-              <% end %>
+              <span :if={@author["affiliation"]} class="px-3 py-1 bg-gray-100 border border-black">{@author["affiliation"]}</span>
+              <span :if={@author["first_paper_year"]} class="font-mono opacity-60">首篇论文: {@author["first_paper_year"]}年</span>
             </div>
 
             <%!-- 影响力指标 --%>
@@ -125,26 +121,22 @@ defmodule AiSaga.Pages.Author.Slug do
                 <div class="number">{@stats.total_citations}</div>
                 <div class="label">总引用数</div>
               </div>
-              <%= if @stats.paradigm_shifts > 0 do %>
-                <div class="stat-box stat-black">
+              <div :if={@stats.paradigm_shifts > 0} class="stat-box stat-black">
                   <div class="number">{@stats.paradigm_shifts}</div>
                   <div class="label">范式突破</div>
                 </div>
-              <% end %>
             </div>
           </div>
         </div>
       </header>
 
       <%!-- 合作者网络 --%>
-      <%= if length(@collaborators) > 0 do %>
-        <section class="card p-6">
+      <section :if={length(@collaborators) > 0} class="card p-6">
           <h2 class="section-title text-xl">
             <span>🤝</span> 主要合作者
           </h2>
           <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
-            <%= for collab <- @collaborators do %>
-              <a href={"/author/#{collab["slug"]}"} class="flex items-center gap-3 p-3 border border-black hover:bg-gray-50 transition-colors">
+            <a :for={collab <- @collaborators} href={"/author/#{collab["slug"]}"} class="flex items-center gap-3 p-3 border border-black hover:bg-gray-50 transition-colors">
                 <div class="w-10 h-10 bg-gray-200 border border-black flex items-center justify-center text-lg">
                   👤
                 </div>
@@ -153,10 +145,8 @@ defmodule AiSaga.Pages.Author.Slug do
                   <div class="text-xs opacity-60">{collab["collab_count"]} 篇合作</div>
                 </div>
               </a>
-            <% end %>
           </div>
         </section>
-      <% end %>
 
       <%!-- 论文列表 --%>
       <section>
@@ -165,15 +155,12 @@ defmodule AiSaga.Pages.Author.Slug do
           <span class="text-sm font-normal opacity-60">({@stats.total_papers} 篇)</span>
         </h2>
         <div class="space-y-4">
-          <%= for paper <- @papers do %>
-            <a href={"/paper/#{paper["slug"]}"} class="card block p-5">
+          <a :for={paper <- @papers} href={"/paper/#{paper["slug"]}"} class="card block p-5">
               <div class="flex items-start justify-between gap-4">
                 <div class="flex-1">
                   <div class="flex items-center gap-3 mb-2">
                     <span class="year-tag">{paper["published_year"]}</span>
-                    <%= if paper["is_paradigm_shift"] == 1 do %>
-                      <span class="badge badge-yellow">范式突破</span>
-                    <% end %>
+                    <span :if={paper["is_paradigm_shift"] == 1} class="badge badge-yellow">范式突破</span>
                   </div>
                   <h3 class="font-bold mb-2 line-clamp-2">{paper["title"]}</h3>
                   <p class="text-sm opacity-60 line-clamp-2">{paper["abstract"]}</p>
@@ -183,7 +170,6 @@ defmodule AiSaga.Pages.Author.Slug do
                 </div>
               </div>
             </a>
-          <% end %>
         </div>
       </section>
     </div>

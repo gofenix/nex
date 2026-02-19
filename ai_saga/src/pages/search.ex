@@ -130,11 +130,9 @@ defmodule AiSaga.Pages.Search do
             <label class="block text-xs font-mono opacity-60 mb-1">研究范式</label>
             <select name="paradigm" class="w-full px-3 py-2 border-2 border-black bg-white focus:outline-none focus:ring-2 focus:ring-[rgb(255,222,0)]">
               <option value="">全部范式</option>
-              <%= for paradigm <- @paradigms do %>
-                <option value={paradigm["slug"]} selected={@paradigm_slug == paradigm["slug"]}>
+              <option :for={paradigm <- @paradigms} value={paradigm["slug"]} selected={@paradigm_slug == paradigm["slug"]}>
                   {paradigm["name"]}
                 </option>
-              <% end %>
             </select>
           </div>
 
@@ -175,41 +173,29 @@ defmodule AiSaga.Pages.Search do
       </form>
 
       <%!-- 搜索结果 --%>
-      <%= if @query != "" or @paradigm_slug != "" or @year_from != "" or @year_to != "" do %>
+      <div :if={@query != "" or @paradigm_slug != "" or @year_from != "" or @year_to != ""}>
         <div class="flex items-center justify-between">
           <p class="text-sm font-mono opacity-60">
-            找到 <%= length(@papers) %> 篇论文
+            找到 {length(@papers)} 篇论文
           </p>
-
-          <%!-- 快速筛选标签 --%>
           <div class="flex gap-2">
-            <%= if @paradigm_slug != "" do %>
-              <% paradigm = Enum.find(@paradigms, fn p -> p["slug"] == @paradigm_slug end) %>
-              <%= if paradigm do %>
-                <span class="px-2 py-1 bg-[rgb(111,194,255)] text-xs border border-black">
-                  {paradigm["name"]}
+            <span :if={@paradigm_slug != "" and Enum.find(@paradigms, fn p -> p["slug"] == @paradigm_slug end)}
+                  class="px-2 py-1 bg-[rgb(111,194,255)] text-xs border border-black">
+                  {(Enum.find(@paradigms, fn p -> p["slug"] == @paradigm_slug end) || %{})["name"]}
                 </span>
-              <% end %>
-            <% end %>
-            <%= if @year_from != "" or @year_to != "" do %>
-              <span class="px-2 py-1 bg-gray-200 text-xs border border-black">
-                <%= @year_from %><%= if @year_from != "" and @year_to != "", do: "-", else: "" %><%= @year_to %>
+            <span :if={@year_from != "" or @year_to != ""} class="px-2 py-1 bg-gray-200 text-xs border border-black">
+                {@year_from}{if @year_from != "" and @year_to != "", do: "-", else: ""}{@year_to}
               </span>
-            <% end %>
           </div>
         </div>
 
-        <%= if length(@papers) > 0 do %>
-          <div class="space-y-4">
-            <%= for paper <- @papers do %>
-              <a href={"/paper/#{paper["slug"]}"} class="card block p-5">
+        <div :if={length(@papers) > 0} class="space-y-4">
+            <a :for={paper <- @papers} href={"/paper/#{paper["slug"]}"} class="card block p-5">
                 <div class="flex items-start justify-between gap-4">
                   <div class="flex-1">
                     <div class="flex items-center gap-3 mb-2">
                       <span class="year-tag">{paper["published_year"]}</span>
-                      <%= if paper["is_paradigm_shift"] == 1 do %>
-                        <span class="badge badge-yellow">范式突破</span>
-                      <% end %>
+                      <span :if={paper["is_paradigm_shift"] == 1} class="badge badge-yellow">范式突破</span>
                     </div>
                     <h2 class="font-bold mb-2 line-clamp-2">{paper["title"]}</h2>
                     <p class="text-sm opacity-60 line-clamp-2 mb-3">{paper["abstract"]}</p>
@@ -219,15 +205,12 @@ defmodule AiSaga.Pages.Search do
                   </div>
                 </div>
               </a>
-            <% end %>
           </div>
-        <% else %>
-          <div class="empty-state">
+        <div :if={length(@papers) == 0} class="empty-state">
             <p>没有找到符合条件的论文</p>
             <p class="hint">请尝试调整搜索条件</p>
           </div>
-        <% end %>
-      <% end %>
+      </div>
     </div>
     """
   end

@@ -70,27 +70,21 @@ defmodule AiSaga.Pages.Paper.Slug do
             <a href={"/paradigm/#{@paradigm["slug"]}"} class="badge badge-blue">
               {@paradigm["name"]}
             </a>
-            <%= if @paper["is_paradigm_shift"] == 1 do %>
-              <span class="badge badge-yellow">
-                ⚡ 范式变迁
-              </span>
-            <% end %>
+            <span :if={@paper["is_paradigm_shift"] == 1} class="badge badge-yellow">
+              ⚡ 范式变迁
+            </span>
             <span class="year-tag">{@paper["published_year"]}年</span>
           </div>
 
           <h1 class="text-3xl md:text-4xl font-black leading-tight">{@paper["title"]}</h1>
 
           <div class="flex flex-wrap gap-2">
-            <%= for author <- @authors do %>
-              <a href={"/author/#{author["slug"]}"} class="text-sm border-b border-black hover:bg-gray-100">{author["name"]}</a>
-            <% end %>
+            <a :for={author <- @authors} href={"/author/#{author["slug"]}"} class="text-sm border-b border-black hover:bg-gray-100">{author["name"]}</a>
           </div>
 
           <div class="flex items-center gap-4 text-sm font-mono opacity-60">
-            <%= if @paper["arxiv_id"] do %>
-              <span>arXiv:{@paper["arxiv_id"]}</span>
-              <span>•</span>
-            <% end %>
+            <span :if={@paper["arxiv_id"]}>arXiv:{@paper["arxiv_id"]}</span>
+            <span :if={@paper["arxiv_id"]}>•</span>
             <span>{@paper["citations"]} citations</span>
             <span>•</span>
             <a href={@paper["url"]} target="_blank" class="hover:underline">查看原文 →</a>
@@ -104,27 +98,18 @@ defmodule AiSaga.Pages.Paper.Slug do
 
         <%!-- 锚点导航 --%>
         <nav class="sticky top-0 z-10 card p-3 flex flex-wrap gap-2">
-          <%= if @paper["prev_paradigm"] do %>
-            <a href="#history" class="badge badge-yellow hover:bg-yellow-300 transition-colors">📜 历史视角</a>
-          <% end %>
+          <a :if={@paper["prev_paradigm"]} href="#history" class="badge badge-yellow hover:bg-yellow-300 transition-colors">📜 历史视角</a>
           <a href="#paradigm-shift" class="badge badge-blue hover:bg-blue-300 transition-colors">🔄 范式变迁</a>
-          <%= if @paper["author_destinies"] do %>
-            <a href="#people" class="badge" style="background: rgba(255,160,160,0.2); border-color: var(--md-black);">👤 人物视角</a>
-          <% end %>
-          <%= if @paper["subsequent_impact"] do %>
-            <a href="#impact" class="badge badge-gray hover:bg-gray-200 transition-colors">📈 后续影响</a>
-          <% end %>
+          <a :if={@paper["author_destinies"]} href="#people" class="badge" style="background: rgba(255,160,160,0.2); border-color: var(--md-black);">👤 人物视角</a>
+          <a :if={@paper["subsequent_impact"]} href="#impact" class="badge badge-gray hover:bg-gray-200 transition-colors">📈 后续影响</a>
         </nav>
 
         <%!-- 三个视角的内容 --%>
         <div class="space-y-6">
 
           <%!-- 一、历史视角：承前启后 --%>
-          <%= if @paper["prev_paradigm"] do %>
-            <section id="history" class="space-y-4 scroll-mt-20">
+          <section :if={@paper["prev_paradigm"]} id="history" class="space-y-4 scroll-mt-20">
               <h2 class="text-2xl font-black border-b-2 border-black pb-2">📜 历史视角：承前启后</h2>
-
-              <%!-- 上一个范式 --%>
               <details class="bg-white border-2 border-black group" open>
                 <summary class="p-4 cursor-pointer font-bold flex items-center justify-between hover:bg-gray-50">
                   <span>📖 上一个范式</span>
@@ -135,11 +120,9 @@ defmodule AiSaga.Pages.Paper.Slug do
                 </div>
               </details>
             </section>
-          <% end %>
 
           <%!-- 核心贡献 --%>
-          <%= if @paper["core_contribution"] do %>
-            <details class="bg-[rgb(255,222,0)] border-2 border-black group" open>
+          <details :if={@paper["core_contribution"]} class="bg-[rgb(255,222,0)] border-2 border-black group" open>
               <summary class="p-4 cursor-pointer font-bold flex items-center justify-between hover:bg-yellow-300">
                 <span>💡 核心贡献</span>
                 <span class="text-xs opacity-60 group-open:rotate-180 transition-transform">▼</span>
@@ -148,11 +131,9 @@ defmodule AiSaga.Pages.Paper.Slug do
                 {Phoenix.HTML.raw(markdown_to_html(@paper["core_contribution"]))}
               </div>
             </details>
-          <% end %>
 
           <%!-- 核心机制 --%>
-          <%= if @paper["core_mechanism"] do %>
-            <details class="bg-white border-2 border-black group" open>
+          <details :if={@paper["core_mechanism"]} class="bg-white border-2 border-black group" open>
               <summary class="p-4 cursor-pointer font-bold flex items-center justify-between hover:bg-gray-50">
                 <span>⚙️ 核心机制</span>
                 <span class="text-xs opacity-60 group-open:rotate-180 transition-transform">▼</span>
@@ -161,11 +142,9 @@ defmodule AiSaga.Pages.Paper.Slug do
                 {Phoenix.HTML.raw(markdown_to_html(@paper["core_mechanism"]))}
               </div>
             </details>
-          <% end %>
 
           <%!-- 为什么赢了 --%>
-          <%= if @paper["why_it_wins"] do %>
-            <details class="bg-[rgb(111,194,255)] border-2 border-black group" open>
+          <details :if={@paper["why_it_wins"]} class="bg-[rgb(111,194,255)] border-2 border-black group" open>
               <summary class="p-4 cursor-pointer font-bold flex items-center justify-between hover:bg-blue-300">
                 <span>🏆 为什么赢了</span>
                 <span class="text-xs opacity-60 group-open:rotate-180 transition-transform">▼</span>
@@ -174,7 +153,6 @@ defmodule AiSaga.Pages.Paper.Slug do
                 {Phoenix.HTML.raw(markdown_to_html(@paper["why_it_wins"]))}
               </div>
             </details>
-          <% end %>
 
           <%!-- 二、范式变迁视角 --%>
           <section id="paradigm-shift" class="space-y-4 scroll-mt-20">
@@ -215,10 +193,8 @@ defmodule AiSaga.Pages.Paper.Slug do
           </section>
 
           <%!-- 三、人的视角 --%>
-          <%= if @paper["author_destinies"] do %>
-            <section id="people" class="space-y-4 scroll-mt-20">
+          <section :if={@paper["author_destinies"]} id="people" class="space-y-4 scroll-mt-20">
               <h2 class="text-2xl font-black border-b-2 border-black pb-2">👤 人的视角：作者去向</h2>
-
               <details class="bg-white border-2 border-black group" open>
                 <summary class="p-4 cursor-pointer font-bold flex items-center justify-between hover:bg-gray-50">
                   <span>👥 作者后续发展</span>
@@ -229,13 +205,10 @@ defmodule AiSaga.Pages.Paper.Slug do
                 </div>
               </details>
             </section>
-          <% end %>
 
           <%!-- 后续影响 --%>
-          <%= if @paper["subsequent_impact"] do %>
-            <section id="impact" class="space-y-4 scroll-mt-20">
+          <section :if={@paper["subsequent_impact"]} id="impact" class="space-y-4 scroll-mt-20">
               <h2 class="text-2xl font-black border-b-2 border-black pb-2">📈 后续影响</h2>
-
               <details class="bg-gray-50 border-2 border-black group" open>
                 <summary class="p-4 cursor-pointer font-bold flex items-center justify-between hover:bg-gray-100">
                   <span>📊 对后续研究的影响</span>
@@ -246,11 +219,9 @@ defmodule AiSaga.Pages.Paper.Slug do
                 </div>
               </details>
             </section>
-          <% end %>
 
           <%!-- 原始历史背景（如果没有新格式） --%>
-          <%= if !@paper["prev_paradigm"] && @paper["history_context"] do %>
-            <details class="bg-gray-50 border-2 border-black group" open>
+          <details :if={!@paper["prev_paradigm"] && @paper["history_context"]} class="bg-gray-50 border-2 border-black group" open>
               <summary class="p-4 cursor-pointer font-bold flex items-center justify-between hover:bg-gray-100">
                 <span>📜 历史背景</span>
                 <span class="text-xs opacity-60 group-open:rotate-180 transition-transform">▼</span>
@@ -259,7 +230,6 @@ defmodule AiSaga.Pages.Paper.Slug do
                 {Phoenix.HTML.raw(markdown_to_html(@paper["history_context"]))}
               </div>
             </details>
-          <% end %>
 
         </div>
       </article>
