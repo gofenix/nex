@@ -95,14 +95,17 @@ DATABASE_URL=postgresql://...
 <div :for={item <- @items}>{item["name"]}</div>
 ```
 
-### DO NOT manually add CSRF tags
+### DO NOT manually add CSRF tags, meta_tag, or hx-headers
 ```elixir
-# WRONG — Nex handles CSRF automatically
+# WRONG — framework handles all of this automatically
+<head>{meta_tag()}</head>
+<body hx-headers={hx_headers()}>
 <form hx-post="/action">
   {csrf_input_tag()}
 </form>
 
-# RIGHT — just write the form
+# RIGHT — framework auto-injects <meta name="csrf-token"> into </head>
+# and HTMX CSRF headers via htmx:configRequest JS listener
 <form hx-post="/action">
   ...
 </form>
@@ -116,6 +119,28 @@ Enum.map(rows, fn row -> Enum.zip(columns, row) |> Map.new() end)
 
 # RIGHT — NexBase.sql/2 returns list of maps directly
 {:ok, rows} = NexBase.sql("SELECT * FROM users WHERE id = $1", [id])
+```
+
+### DO NOT interpolate user input into SQL strings
+```elixir
+# WRONG — SQL injection risk!
+NexBase.sql("SELECT * FROM users WHERE name = '#{name}'", [])
+
+# RIGHT — always use parameterized queries
+NexBase.sql("SELECT * FROM users WHERE name = $1", [name])
+
+# RIGHT — for IN queries, use filter_in/3
+NexBase.from("tags") |> NexBase.filter_in(:project_id, ids) |> NexBase.run()
+```
+
+### DO NOT pass `{NexBase.Repo, []}` — pass the conn struct
+```elixir
+# WRONG — [] is not a valid child spec since NexBase 0.3
+children = [{NexBase.Repo, []}]
+
+# RIGHT — NexBase.init/1 returns a %NexBase.Conn{}, pass it to NexBase.Repo
+conn = NexBase.init(url: Nex.Env.get(:database_url), ssl: true)
+children = [{NexBase.Repo, conn}]
 ```
 
 ---
@@ -142,13 +167,64 @@ Dependencies for example projects:
 defp deps do
   [
     {:nex_core, path: "../../framework"},
-    {:nex_base, "~> 0.3.0"}  # only if project needs database
+    {:nex_base, "~> 0.3"}  # only if project needs database
   ]
 end
 ```
 
 - Do NOT add bandit, jason, plug, etc. — they are transitive deps of nex_core.
 - Do NOT add extra_applications for those deps.
+
+### Correct application startup with NexBase
+```elixir
+defmodule MyApp.Application do
+  use Application
+
+  def start(_type, _args) do
+    Nex.Env.init()
+    conn = NexBase.init(url: Nex.Env.get(:database_url), ssl: true)
+
+    children = [{NexBase.Repo, conn}]
+    Supervisor.start_link(children, strategy: :one_for_one, name: MyApp.Supervisor)
+  end
+end
+```
+
+### Correct minimal layout (no meta_tag or hx-headers needed)
+```elixir
+defmodule MyApp.Layouts do
+  use Nex
+
+  def render(assigns) do
+    ~H"""
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="UTF-8" />
+        <title>{@title}</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://unpkg.com/htmx.org@2"></script>
+      </head>
+      <body hx-boost="true">
+        {raw(@inner_content)}
+      </body>
+    </html>
+    """
+  end
+end
+```
+
+The framework automatically injects:
+- `<meta name="csrf-token">` before `</head>` on every page render
+- CSRF header into every HTMX request via injected JS (`htmx:configRequest` listener)
+
+### Built-in helpers (Nex.Helpers)
+Available automatically in all page/component/layout modules via `use Nex`:
+```elixir
+format_number(12_345)    # => "12.3k"
+format_date(~D[2026-01-15])          # => "Jan 15, 2026"
+time_ago(datetime)       # => "3 hours ago"
+```
 
 ---
 
