@@ -26,5 +26,16 @@ Project structure is the router.
 ### 3. Server-Side State Management (`Nex.Store`)
 Nex provides a page-based state storage mechanism. This is a rethinking of how "ephemeral state" is handled in Web interactions, keeping state synchronized with the user's mental model of the "page lifecycle."
 
-### 4. Smart Error Handling
+### 4. Database Integration (`NexBase`)
+Nex has a companion package, `NexBase`, for database access. It provides a fluent query builder and raw SQL execution for PostgreSQL and SQLite — without requiring you to define a custom `Repo` module.
+
+```elixir
+# Query builder
+NexBase.from("users") |> NexBase.eq(:active, true) |> NexBase.run()
+
+# Raw SQL (returns list of maps)
+NexBase.sql("SELECT * FROM users WHERE id = $1", [id])
+```
+
+### 5. Smart Error Handling
 Nex automatically chooses the best error display based on request intent, ensuring reasonable feedback across asynchronous fragment updates, JSON APIs, or full-page navigation.

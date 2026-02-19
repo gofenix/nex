@@ -12,8 +12,8 @@
 
 ### Q: Why is my `hx-post` button click not responding?
 **A**:
-1.  Check the browser console for CSRF validation failure (403) errors.
-2.  Ensure your Layout includes necessary interaction scripts (like HTMX).
+1.  Check the browser console for CSRF validation failure (403) errors. Nex auto-injects CSRF tokens — make sure you haven't removed the `<head>` or `<body>` tags from your layout.
+2.  Ensure your layout includes the HTMX CDN script (e.g., `<script src="https://unpkg.com/htmx.org@2"></script>`).
 3.  Ensure your defined Action function name matches the path name exactly (e.g., `hx-post="/add"` corresponds to `def add(_params)`).
 
 ### Q: The response returned, but the page didn't update?

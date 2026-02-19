@@ -45,14 +45,18 @@ end
 
 ### `render(assigns)`
 *   **Input**: The `assigns` returned by `mount`.
-*   **Syntax**: Uses the `~H` sigil, supporting standard HTML and HEEx syntax (e.g., `{@var}` interpolation, `<%= if ... %>` control flow).
+*   **Syntax**: Uses the `~H` sigil, supporting standard HTML and HEEx syntax (e.g., `{@var}` interpolation, `:if={condition}` and `:for={item <- list}` directives).
 
 ## 3. Layout Constraints
 
 Nex automatically wraps your page content in the layout defined in `src/layouts.ex`.
 
 **Important Rule**:
-The Layout template must contain a `<body>` tag. Nex's automation scripts (like CSRF protection, hot reload, state tracking) rely on hooks automatically injected before the `</body>` tag.
+The Layout template must contain `<head>` and `<body>` tags. Nex automatically injects:
+- `<meta name="csrf-token">` before `</head>` (enables CSRF protection for HTMX)
+- A JS snippet before `</body>` (configures HTMX headers and page ID tracking)
+
+You do **not** need to add these manually.
 
 ## Exercise: Personal Card
 

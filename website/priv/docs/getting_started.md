@@ -80,11 +80,11 @@ mix deps.get
 
 Nex's directory structure follows "convention over configuration," aiming to eliminate all unnecessary engineering complexity:
 
-*   `src/`: **Core business logic**
+*   `src/`: **Core application code**
     *   `pages/`: Page modules (GET requests, automatically mapped to URLs).
     *   `api/`: JSON API modules.
     *   `components/`: Reusable UI components.
-    *   `layouts.ex`: Global HTML template (must contain a `<body>` tag).
-*   `lib/`: General business logic (e.g., database models, external integrations).
+    *   `layouts.ex`: Global HTML template.
+    *   `application.ex`: OTP application entry point.
 *   `.env`: Environment configuration file (automatically loaded).
 *   `mix.exs`: Project dependency management.

@@ -111,7 +111,7 @@ defmodule NexWebsite.Pages.Index do
           </div>
           <div class="flex-1 w-full">
             <div class="rounded-2xl overflow-hidden shadow-2xl">
-              <%= raw @example_code %>
+              {raw(@example_code)}
             </div>
           </div>
         </div>
@@ -145,7 +145,7 @@ defmodule NexWebsite.Pages.Index do
               <div class="text-3xl">🌊</div>
               <h3 class="text-2xl font-bold">Chatbot SSE</h3>
             </div>
-            <p class="text-claude-muted mb-6 leading-relaxed">Real-time streaming with Server-Sent Events and HTMX SSE extension. Zero-JS streaming.</p>
+            <p class="text-claude-muted mb-6 leading-relaxed">Real-time streaming with Server-Sent Events using native EventSource API. True zero-latency AI streaming.</p>
             <div class="flex gap-3">
               <span class="px-3 py-1 bg-gray-100 rounded-full text-xs font-semibold text-claude-muted">SSE</span>
               <span class="px-3 py-1 bg-gray-100 rounded-full text-xs font-semibold text-claude-muted">Streaming</span>

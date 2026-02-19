@@ -43,7 +43,7 @@ defmodule NexWebsite.Pages.Features do
             Routes are automatically discovered from your file system. Drop a file in <code class="bg-gray-100 px-2 py-1 rounded text-sm">src/pages/</code>, get a route. Support for dynamic routes like <code class="bg-gray-100 px-2 py-1 rounded text-sm">[id]</code> and catch-all <code class="bg-gray-100 px-2 py-1 rounded text-sm">[...path]</code>.
           </p>
           <div class="rounded-xl overflow-hidden shadow-lg">
-            <%= raw @file_routing_code %>
+            {raw(@file_routing_code)}
           </div>
         </section>
 
@@ -53,7 +53,7 @@ defmodule NexWebsite.Pages.Features do
             Every module in Nex uses the same <code class="bg-gray-100 px-2 py-1 rounded text-sm">use Nex</code> statement. Whether it's a Page, API, or UI Component, the framework automatically imports what you need based on the file path.
           </p>
           <div class="rounded-xl overflow-hidden shadow-lg">
-            <%= raw @htmx_action_code %>
+            {raw(@htmx_action_code)}
           </div>
         </section>
 
@@ -96,7 +96,7 @@ defmodule NexWebsite.Pages.Features do
             Real-time streaming is a first-class citizen. Use <code class="bg-gray-100 px-2 py-1 rounded text-sm">Nex.stream/1</code> for live dashboards, chat apps, AI streaming, or progress bars.
           </p>
           <div class="rounded-xl overflow-hidden shadow-lg">
-            <%= raw @sse_stream_code %>
+            {raw(@sse_stream_code)}
           </div>
         </section>
 

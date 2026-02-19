@@ -65,7 +65,8 @@ es.onerror = function() {
 *   **Pros**:
     *   **Extremely Simple**: Intuitive `send` callback pattern, automatic connection lifecycle management.
     *   **AI Friendly**: Perfect for streaming outputs from APIs like OpenAI or Anthropic.
-    *   **Auto Reconnect**: Built-in browser support, no need for manual reconnection logic.
+    *   **Native Browser Support**: `EventSource` is supported in all modern browsers with no extra dependencies.
 *   **Cons**:
     *   **Unidirectional**: Server-to-client only. For bidirectional needs, combine with regular HTMX requests.
+    *   **Always close on `done`**: Always send a `done` event and close the `EventSource` in your client code to prevent reconnect loops.
     *   **Connection Limits**: HTTP/1.1 has concurrent connection limits. It is highly recommended to use HTTP/2 in production.

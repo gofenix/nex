@@ -42,7 +42,7 @@ end
 
 Slots allow you to pass complex HTML content to components.
 
-*   **Default Slot**: Accessed via `{@inner_block}` and rendered using `render_slot/1`.
+*   **Default Slot**: Rendered using `{render_slot(@inner_block)}`.
 *   **Named Slots**: Passed using the `<:slot_name>` syntax and accessed via `{@slot_name}`.
 
 ```elixir
@@ -86,10 +86,12 @@ defmodule MyApp.Layouts do
     <!DOCTYPE html>
     <html>
       <head>
+        <meta charset="UTF-8" />
         <title>{@title}</title>
         <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://unpkg.com/htmx.org@2"></script>
       </head>
-      <body>
+      <body hx-boost="true">
         <nav>...</nav>
         <main>
           {raw(@inner_content)}
@@ -100,6 +102,8 @@ defmodule MyApp.Layouts do
   end
 end
 ```
+
+> **Zero boilerplate**: Nex automatically injects `<meta name="csrf-token">` into `</head>` and the HTMX CSRF configuration script before `</body>`. You do not need to add them manually.
 
 ## 4. Component Reuse Patterns
 

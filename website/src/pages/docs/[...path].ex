@@ -145,6 +145,7 @@ defmodule NexWebsite.Pages.Docs.Path do
       %{
         title: "Advanced",
         items: [
+          %{title: "Database (NexBase)", slug: "database_guide"},
           %{title: "JSON API", slug: "adv_api_guide"},
           %{title: "Components", slug: "adv_component_guide"}
         ]
