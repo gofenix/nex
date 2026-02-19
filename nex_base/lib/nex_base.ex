@@ -102,7 +102,13 @@ defmodule NexBase do
   end
 
   defp build_repo_config(:postgres, url, pool_size, opts) do
-    config = [url: url, pool_size: pool_size]
+    config = [
+      url: url,
+      pool_size: pool_size,
+      # Default to :unnamed to work with Supabase, PgBouncer, and other connection poolers
+      # that do not support named prepared statements. Can be overridden with prepare: :named.
+      prepare: Keyword.get(opts, :prepare, :unnamed)
+    ]
 
     config = if opts[:ssl] do
       config ++ [
@@ -114,8 +120,8 @@ defmodule NexBase do
       config
     end
 
-    # Pass through extra Postgrex options (e.g. prepare: :unnamed for pgBouncer)
-    extra_keys = [:prepare, :queue_target, :queue_interval, :timeout, :connect_timeout]
+    # Pass through extra Postgrex options
+    extra_keys = [:queue_target, :queue_interval, :timeout, :connect_timeout]
     extra = Keyword.take(opts, extra_keys)
     Keyword.merge(config, extra)
   end
@@ -246,10 +252,26 @@ defmodule NexBase do
   @doc """
   Adds an IN filter.
   Note: Named `in_list` to avoid conflict with Kernel.in operator.
+  Prefer `NexBase.filter_in/3` for a more readable alias.
   """
   def in_list(%Query{} = query, column, values) when is_list(values) do
     filter = {:in, column, values}
     %{query | filters: query.filters ++ [filter]}
+  end
+
+  @doc """
+  Adds an IN filter. Alias for `in_list/3` with a friendlier name.
+
+  Always use this instead of string-interpolating IDs into raw SQL — it is
+  fully parameterized and safe against SQL injection.
+
+  ## Examples
+
+      ids = [1, 2, 3]
+      NexBase.from("tags") |> NexBase.filter_in(:project_id, ids) |> NexBase.run()
+  """
+  def filter_in(%Query{} = query, column, values) when is_list(values) do
+    in_list(query, column, values)
   end
 
   @doc """
@@ -292,6 +314,20 @@ defmodule NexBase do
 
   @doc """
   Executes a raw SQL query and returns results as a list of maps.
+
+  ## Security Warning
+
+  **Never interpolate user input directly into the SQL string.** Always use
+  parameterized placeholders (`$1`, `$2`, ...) and pass values as the second argument.
+
+      # WRONG — SQL injection risk!
+      NexBase.sql("SELECT * FROM users WHERE name = '\#{name}'")
+
+      # RIGHT — parameterized, safe
+      NexBase.sql("SELECT * FROM users WHERE name = $1", [name])
+
+  For `IN` queries with a list of IDs, use `NexBase.filter_in/3` instead of
+  building the placeholder string manually.
 
   ## Examples
 

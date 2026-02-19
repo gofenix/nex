@@ -356,13 +356,20 @@ defmodule Nex.Handler do
           _ -> Phoenix.HTML.Safe.to_iodata(html) |> IO.iodata_to_binary()
         end
 
-      # Automatically inject CSRF token into all POST/PUT/PATCH/DELETE forms
-      # This removes the need for manual {csrf_input_tag()} boilerplate
+      # Automatically inject CSRF token into all POST/PUT/PATCH/DELETE forms.
+      # Covers both standard HTML forms (method="post") and HTMX forms (hx-post, hx-put, etc.)
+      # This removes the need for manual {csrf_input_tag()} boilerplate.
+      csrf_input = "<input type=\"hidden\" name=\"_csrf_token\" value=\"#{csrf_token}\">"
+
       final_html =
-        String.replace(
-          html_binary,
-          ~r/(<form\s+[^>]*method=["'](?:post|put|patch|delete)["'][^>]*>)/i,
-          "\\1<input type=\"hidden\" name=\"_csrf_token\" value=\"#{csrf_token}\">"
+        html_binary
+        |> String.replace(
+          ~r/(<form\b[^>]*\bmethod=["'](?:post|put|patch|delete)["'][^>]*>)/i,
+          "\\1#{csrf_input}"
+        )
+        |> String.replace(
+          ~r/(<form\b[^>]*\bhx-(?:post|put|patch|delete)=["'][^"']*["'][^>]*>)/i,
+          "\\1#{csrf_input}"
         )
 
       conn

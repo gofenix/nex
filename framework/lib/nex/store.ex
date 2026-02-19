@@ -29,6 +29,7 @@ defmodule Nex.Store do
   """
 
   use GenServer
+  require Logger
 
   @table :nex_store
   @page_id_key :nex_page_id
@@ -155,7 +156,7 @@ defmodule Nex.Store do
     Enum.each(expired, &:ets.delete(@table, &1))
 
     if length(expired) > 0 do
-      IO.puts("[Nex.Store] Cleaned up #{length(expired)} expired entries")
+      Logger.debug("[Nex.Store] Cleaned up #{length(expired)} expired entries")
     end
   end
 end

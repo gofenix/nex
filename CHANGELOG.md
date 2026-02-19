@@ -5,6 +5,15 @@ All notable changes to the Nex framework will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Nex 0.3.4] - 2026-02-19
+
+### Added
+- **`Nex.Helpers` module**: Common formatting helpers (`format_number/1`, `format_date/1`, `time_ago/1`) automatically imported into all page, component, and layout modules via `use Nex`. Eliminates repeated boilerplate across projects.
+
+### Fixed
+- **CSRF auto-injection now covers HTMX forms**: The automatic CSRF token injection in `Nex.Handler` previously only matched `<form method="post">`. It now also matches `<form hx-post="...">`, `<form hx-put="...">`, `<form hx-patch="...">`, and `<form hx-delete="...">` — the common HTMX pattern that omits the `method` attribute.
+- **`Nex.Store` cleanup logging**: Replaced `IO.puts` with `Logger.debug` so store cleanup messages are suppressed in production by default.
+
 ## [NexBase 0.3.4] - 2026-02-18
 
 ### Fixed

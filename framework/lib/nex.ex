@@ -103,6 +103,7 @@ defmodule Nex do
           import Phoenix.Component, only: [sigil_H: 2, render_slot: 1, render_slot: 2]
           import Phoenix.HTML, only: [raw: 1]
           import Nex.CSRF, only: [csrf_input_tag: 0, hx_headers: 0, meta_tag: 0, get_token: 0]
+          import Nex.Helpers
         end
 
       # Default: treat as page module
@@ -111,6 +112,7 @@ defmodule Nex do
           import Phoenix.Component, only: [sigil_H: 2, render_slot: 1, render_slot: 2]
           import Phoenix.HTML, only: [raw: 1]
           import Nex.CSRF, only: [csrf_input_tag: 0, hx_headers: 0, meta_tag: 0, get_token: 0]
+          import Nex.Helpers
         end
     end
   end
