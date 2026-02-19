@@ -12,7 +12,6 @@ defmodule BestofEx.Layouts do
         <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio"></script>
         <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.23/dist/full.min.css" rel="stylesheet" type="text/css" />
         <script src="https://unpkg.com/htmx.org@2.0.4"></script>
-        {meta_tag()}
         <style>
           /* Bestofex Premium Theme - Refined flat design with depth */
           :root {
@@ -153,7 +152,7 @@ defmodule BestofEx.Layouts do
           }
         </style>
       </head>
-      <body class="min-h-screen flex flex-col" hx-boost="true" hx-headers={hx_headers()}>
+      <body class="min-h-screen flex flex-col" hx-boost="true">
         <!-- Navigation -->
         <nav class="nav-glass sticky top-0 z-50">
           <div class="container mx-auto max-w-6xl px-4 py-3">

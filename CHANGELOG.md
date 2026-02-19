@@ -5,6 +5,14 @@ All notable changes to the Nex framework will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Nex 0.3.5] - 2026-02-19
+
+### Changed
+- **Zero-boilerplate layouts**: Layouts no longer require `{meta_tag()}` or `hx-headers={hx_headers()}`. The framework now handles both automatically:
+  - `<meta name="csrf-token">` is auto-injected into `</head>` on every page render.
+  - HTMX CSRF headers are already handled by the framework's injected JS (`htmx:configRequest` listener). `hx-headers` on `<body>` was always redundant and is no longer needed.
+  - A minimal layout now only needs `hx-boost="true"` on `<body>` (optional, for SPA navigation).
+
 ## [Nex 0.3.4] - 2026-02-19
 
 ### Added

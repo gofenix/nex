@@ -356,6 +356,10 @@ defmodule Nex.Handler do
           _ -> Phoenix.HTML.Safe.to_iodata(html) |> IO.iodata_to_binary()
         end
 
+      # Automatically inject CSRF meta tag into <head>.
+      # This removes the need for manual {meta_tag()} in layouts.
+      csrf_meta = ~s(<meta name="csrf-token" content="#{csrf_token}" />)
+
       # Automatically inject CSRF token into all POST/PUT/PATCH/DELETE forms.
       # Covers both standard HTML forms (method="post") and HTMX forms (hx-post, hx-put, etc.)
       # This removes the need for manual {csrf_input_tag()} boilerplate.
@@ -363,6 +367,7 @@ defmodule Nex.Handler do
 
       final_html =
         html_binary
+        |> String.replace("</head>", "#{csrf_meta}\n</head>", global: false)
         |> String.replace(
           ~r/(<form\b[^>]*\bmethod=["'](?:post|put|patch|delete)["'][^>]*>)/i,
           "\\1#{csrf_input}"

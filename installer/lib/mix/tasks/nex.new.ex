@@ -451,13 +451,13 @@ defmodule Mix.Tasks.Nex.New do
     RUN apk add --no-cache build-base git openssl ncurses-libs
 
     WORKDIR /app
-    
+
     RUN mix local.hex --force && mix local.rebar --force
-    
+
     COPY . .
-    
+
     RUN mix deps.get
-    
+
     EXPOSE 4000
 
     CMD ["mix", "nex.start"]
@@ -551,7 +551,7 @@ defmodule Mix.Tasks.Nex.New do
       ```
 
     ## 12. State Management (Nex.Store)
-    - **Lifecycle**: `Nex.Store` is server-side session state tied to the `page_id`. 
+    - **Lifecycle**: `Nex.Store` is server-side session state tied to the `page_id`.
     - **The Flow**: 1. Receive Intent -> 2. Mutate Store/DB -> 3. THEN render UI with updated data.
 
     ## 13. Locality & Component Promotion
