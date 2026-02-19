@@ -40,12 +40,25 @@ The `send` function supports multiple data formats:
 *   **JSON Object**: `send.(%{id: 1, status: "ok"})` -> `data: {"id":1,"status":"ok"}\n\n`
 *   **Custom Events**: `send.(%{event: "my_event", data: "payload"})` -> `event: my_event\ndata: payload\n\n`
 
-HTMX on the client side can easily integrate with SSE:
-```html
-<div hx-ext="sse" sse-connect="/api/chat_stream" sse-swap="message">
-  Content will be appended here in real-time...
-</div>
+Use the native browser `EventSource` API on the client side:
+```javascript
+var es = new EventSource('/api/chat_stream');
+var done = false;
+
+es.onmessage = function(e) {
+  document.getElementById('output').innerHTML += e.data;
+};
+
+es.addEventListener('done', function(e) {
+  if (!done) { done = true; es.close(); }
+});
+
+es.onerror = function() {
+  if (!done) { done = true; es.close(); }
+};
 ```
+
+> **Avoid the HTMX SSE extension** (`hx-ext="sse"`). It has an auto-reconnect bug that causes infinite loops when the stream ends. Always use the native `EventSource` API instead.
 
 ## 4. Pros and Cons
 

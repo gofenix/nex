@@ -16,7 +16,7 @@ When you access a URL directly via the browser address bar (GET request), Nex pe
     *   Renders the HEEx template using `assigns`.
 5.  **Inject Layout**:
     *   Passes the rendered result as `@inner_content` to `src/layouts.ex`.
-    *   **Automated Injection**: Automatically injects scripts containing CSRF Token and Page ID before the `</body>` tag.
+    *   **Automated Injection**: Automatically injects `<meta name="csrf-token">` before `</head>`, and injects a JS snippet (CSRF + Page ID configuration for HTMX) before `</body>`.
 6.  **Respond to Client**: Returns the full HTML document.
 
 ## 2. Asynchronous Interaction (Action Update)

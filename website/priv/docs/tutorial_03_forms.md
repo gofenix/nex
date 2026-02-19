@@ -37,9 +37,7 @@ defmodule MyApp.Pages.Guestbook do
       </form>
 
       <div id="message-list" class="space-y-4">
-        <%= for msg <- @messages do %>
-          <.message_item name={msg.name} content={msg.content} />
-        <% end %>
+        <.message_item :for={msg <- @messages} name={msg.name} content={msg.content} />
       </div>
     </div>
     """

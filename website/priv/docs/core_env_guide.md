@@ -23,10 +23,10 @@ MAX_RETRY=5
 Read in code:
 ```elixir
 # Get string configuration
-api_key = Nex.Env.get("STRIPE_API_KEY")
+api_key = Nex.Env.get(:stripe_api_key)
 
 # Provide a default value
-retry_count = Nex.Env.get("MAX_RETRY", "3") |> String.to_integer()
+retry_count = Nex.Env.get_integer(:max_retry, 3)
 ```
 
 ## 3. Smart Root Directory Detection

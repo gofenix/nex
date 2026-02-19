@@ -36,15 +36,16 @@ When using **`Nex.stream/1`** for streaming responses (e.g., AI chat), the AI sh
 
 Nex advocates for "Architecture as Rules." When you create a new project with `mix nex.new`, the framework automatically generates a set of core rule files to ensure that AI assistants follow Nex's design philosophy from the very first line of code.
 
-### A. Core Rule Files
-A new project includes the following key files:
-*   **`AGENTS.md`**: **The Supreme Constitution**. Defines the core principles of the framework (LoB, File System Routing, Declarative Interaction, State Management). It is the base reference for all AI tools (Cursor, Windsurf, Claude Code).
-*   **`CLAUDE.md`**: A minimalist entry point for tools like Claude Code, ensuring they prioritize consulting `AGENTS.md`.
+### A. Core Rule File
+Every new project includes `AGENTS.md` — the single source of truth for AI assistants. It defines:
+- Critical anti-patterns to avoid (routing, config, CSRF, SQL injection, etc.)
+- Correct patterns for pages, APIs, layouts, NexBase, SSE
+- Project-specific context and lessons learned
 
 ### B. How to Use These Rules?
-1.  **Unified Source of Truth**: Regardless of which AI tool you use, guide it to first read the **`AGENTS.md`** file in the root directory.
-2.  **Cursor Users**: We recommend placing specific project instructions in the `.cursor/rules/` directory and directing them to reference `AGENTS.md`.
-3.  **Other Tools**: You can directly paste the content of `AGENTS.md` to any AI assistant (Windsurf, GPT-4o, Claude 3.5 Sonnet) as its System Prompt.
+1.  **Unified Source of Truth**: Regardless of which AI tool you use (Cursor, Windsurf, Claude Code, GPT-4o), guide it to first read the **`AGENTS.md`** file in the project root directory.
+2.  **Windsurf / Cursor**: These tools automatically pick up `AGENTS.md` as workspace rules.
+3.  **Other Tools**: Paste the content of `AGENTS.md` directly to any AI assistant as its System Prompt.
 
 ---
 

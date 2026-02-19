@@ -15,11 +15,12 @@ Nex mandates that all non-GET requests must pass CSRF validation.
 
 ### Automated Process
 1.  **Token Generation**: Every time a page is initially rendered, Nex generates a strongly encrypted CSRF Token for the current session.
-2.  **Script Injection**: Nex automatically injects a lightweight JS named `nex_script` at the bottom of the page.
-3.  **Request Interception**: This script automatically listens for all HTMX requests (`htmx:configRequest` event) and puts the Token in the `X-CSRF-Token` request header.
-4.  **Server Validation**: Nex's handler automatically intercepts and validates this header. If validation fails, the request is rejected (403 Forbidden).
+2.  **Meta Tag Injection**: Nex automatically injects `<meta name="csrf-token" content="...">` into `</head>` on every page render.
+3.  **Script Injection**: Nex automatically injects a lightweight JS snippet that listens for all HTMX requests (`htmx:configRequest` event) and puts the Token in the `X-CSRF-Token` request header.
+4.  **Form Token Injection**: Nex automatically injects a hidden `_csrf_token` input into all forms with `method="post/put/patch/delete"` **and** all HTMX forms using `hx-post`, `hx-put`, `hx-patch`, or `hx-delete`.
+5.  **Server Validation**: Nex's handler automatically intercepts and validates this header. If validation fails, the request is rejected (403 Forbidden).
 
-> **Fully Automated**: Nex automatically injects hidden CSRF tokens into all `<form method="post">` (and PUT/PATCH/DELETE) tags on the page, and adds security headers to all asynchronous HTMX requests. Developers do not need to manually write any security-related boilerplate code.
+> **Fully Automated**: Developers do not need to add `{meta_tag()}`, `hx-headers={hx_headers()}`, or `{csrf_input_tag()}` anywhere. Just write your forms and HTMX attributes — Nex handles all security boilerplate automatically.
 
 ## 3. State Isolation (Page ID)
 

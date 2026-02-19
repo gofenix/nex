@@ -32,10 +32,10 @@ defmodule MyApp.Api.Todos do
   # POST /api/todos
   def post(req) do
     # Use req.body to get submitted data
-    case MyApp.Repo.create_todo(req.body) do
-      {:ok, todo} -> 
+    case NexBase.from("todos") |> NexBase.insert(req.body) |> NexBase.run() do
+      {:ok, [todo]} ->
         Nex.json(todo, status: 201)
-      {:error, reason} -> 
+      {:error, reason} ->
         Nex.json(%{error: reason}, status: 422)
     end
   end
