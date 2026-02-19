@@ -191,14 +191,208 @@ defmodule NexWebsite.Layouts do
           .border-subtle {
             border-color: var(--claude-border);
           }
+
+          /* ============================================
+             DOCS PAGE STYLES
+          ============================================ */
+
+          /* Sidebar nav items */
+          .docs-nav-default {
+            color: #555;
+            font-weight: 400;
+          }
+          .docs-nav-default:hover {
+            background: #F5F5F0;
+            color: #1A1A1A;
+          }
+          .docs-nav-active {
+            background: #F0EBF8;
+            color: #7B5FA8;
+            font-weight: 500;
+          }
+
+          /* Docs prose — clean, readable typography */
+          .docs-prose {
+            color: #2D2D2D;
+            font-size: 1rem;
+            line-height: 1.75;
+          }
+
+          .docs-prose h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            color: #111;
+            margin-bottom: 0.5rem;
+            margin-top: 0;
+            line-height: 1.2;
+          }
+
+          .docs-prose h2 {
+            font-size: 1.35rem;
+            font-weight: 650;
+            letter-spacing: -0.02em;
+            color: #111;
+            margin-top: 2.5rem;
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #EBEBEB;
+            line-height: 1.3;
+          }
+
+          .docs-prose h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #222;
+            margin-top: 2rem;
+            margin-bottom: 0.5rem;
+            line-height: 1.4;
+          }
+
+          .docs-prose h4 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #333;
+            margin-top: 1.5rem;
+            margin-bottom: 0.4rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+          }
+
+          .docs-prose p {
+            margin-bottom: 1.1rem;
+            color: #444;
+          }
+
+          .docs-prose a {
+            color: #7B5FA8;
+            text-decoration: underline;
+            text-decoration-color: rgba(123, 95, 168, 0.3);
+            text-underline-offset: 2px;
+            transition: text-decoration-color 0.15s;
+          }
+          .docs-prose a:hover {
+            text-decoration-color: #7B5FA8;
+          }
+
+          .docs-prose ul, .docs-prose ol {
+            padding-left: 1.5rem;
+            margin-bottom: 1.1rem;
+          }
+          .docs-prose ul { list-style-type: disc; }
+          .docs-prose ol { list-style-type: decimal; }
+          .docs-prose li {
+            margin-bottom: 0.35rem;
+            color: #444;
+          }
+          .docs-prose li > ul, .docs-prose li > ol {
+            margin-top: 0.35rem;
+            margin-bottom: 0.35rem;
+          }
+
+          /* Inline code */
+          .docs-prose code {
+            font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace;
+            font-size: 0.85em;
+            font-weight: 500;
+            background: #F0EBF8;
+            color: #6B4FA0;
+            padding: 0.15em 0.45em;
+            border-radius: 4px;
+            border: 1px solid #E0D5F0;
+          }
+
+          /* Code blocks */
+          .docs-prose pre {
+            margin: 1.5rem 0;
+            padding: 0;
+            background: transparent;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid #2A2A2A;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08);
+          }
+          .docs-prose pre code {
+            display: block;
+            padding: 1.25rem 1.5rem;
+            background: #1C1C1E;
+            color: #E8E8E8;
+            font-size: 0.875rem;
+            line-height: 1.65;
+            overflow-x: auto;
+            border: none;
+            border-radius: 0;
+            font-weight: 400;
+          }
+
+          /* Blockquote / callout */
+          .docs-prose blockquote {
+            margin: 1.5rem 0;
+            padding: 0.875rem 1.25rem;
+            background: #FFFBF0;
+            border-left: 3px solid #D4A574;
+            border-radius: 0 8px 8px 0;
+            color: #5A4A30;
+            font-style: normal;
+          }
+          .docs-prose blockquote p {
+            margin: 0;
+            color: #5A4A30;
+          }
+          .docs-prose blockquote strong {
+            color: #3D2E10;
+          }
+
+          /* Tables */
+          .docs-prose table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+            font-size: 0.9rem;
+          }
+          .docs-prose th {
+            text-align: left;
+            padding: 0.6rem 1rem;
+            background: #F5F5F0;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #DDDDD8;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+          }
+          .docs-prose td {
+            padding: 0.6rem 1rem;
+            border-bottom: 1px solid #EBEBEB;
+            color: #444;
+            vertical-align: top;
+          }
+          .docs-prose tr:last-child td { border-bottom: none; }
+          .docs-prose tr:hover td { background: #FAFAF8; }
+
+          /* Strong / em */
+          .docs-prose strong { color: #111; font-weight: 600; }
+          .docs-prose em { color: #555; }
+
+          /* HR */
+          .docs-prose hr {
+            border: none;
+            border-top: 1px solid #EBEBEB;
+            margin: 2rem 0;
+          }
+
+          /* Docs layout: hide global navbar and footer on docs pages */
+          body:has(.docs-layout) #global-nav,
+          body:has(.docs-layout) #global-footer { display: none; }
+          body:has(.docs-layout) > main { padding: 0; margin: 0; }
         </style>
       </head>
       <body hx-boost="true">
-        {NexWebsite.Components.Nav.render(assigns)}
+        <div id="global-nav" class="docs-hide-on-docs">{NexWebsite.Components.Nav.render(assigns)}</div>
         <main>
           {raw(@inner_content)}
         </main>
-        {NexWebsite.Components.Footer.render(assigns)}
+        <div id="global-footer" class="docs-hide-on-docs">{NexWebsite.Components.Footer.render(assigns)}</div>
         <script>
           // Function to highlight all code blocks
           function highlightCode() {
