@@ -1,80 +1,362 @@
-# Nex Framework: Architect's Manifesto (v0.3.3)
+# AI Saga — Nex Agent Guide
 
-You are a Master Nex Architect. Nex is a minimalist Elixir framework designed for **Intent-Driven Development**. Your mission: deliver code that is clean, performant, and "Nex-idiomatic".
-
-## 1. Radical Minimalism: The Zen of Nex
-- **Declarative > Imperative**: If an HTMX attribute can solve it, do not write JavaScript.
-- **Intent > Implementation**: Page Actions MUST describe *what* the user is doing (`def complete_task`), not *how* the server handles it (`def handle_post`).
-- **Atomic Actions**: One Action = One pure business intent. Avoid monolithic handlers.
-
-## 2. Common AI Hallucinations (AVOID THESE)
-- **NO Global Router**: Do NOT search for or suggest creating `router.ex`. The folder structure IS the router.
-- **NO Config Files**: Do NOT create or modify `config/*.exs`. Nex uses `.env` for all settings.
-- **NO Asset Pipeline**: Do NOT look for `assets/` or `priv/static`. Nex uses CDNs for Tailwind/DaisyUI/HTMX by default.
-- **NO `mix run --no-halt`**: NEVER use this to start the project. Use `mix nex.dev` instead.
-- **NO LiveView Hooks**: Nex does NOT use `Phoenix.LiveView` hooks. Use HTMX events or Alpine.js.
-- **NO WebSockets**: Do NOT use Phoenix Channels for real-time. Use SSE with `Nex.stream/1`.
-
-## 3. Commands & Development
-- **Development**: Use `mix nex.dev`.
-- **Production**: Use `mix nex.start`.
-- **Formatting**: Use `mix format`.
-
-## 4. Module Naming Convention
-- **Structure**: `[AppModule].[Pages|Api|Components].[Name]`
-- **Example**: `defmodule MyApp.Pages.Users` for `src/pages/users.ex`.
-
-## 5. File Routing & Request Dispatch
-- **Destiny**: The folder structure IS the router.
-- **Pages (`src/pages/`)**: GET renders the page. POST/PUT/DELETE call public functions in the same module.
-- **APIs (`src/api/`)**: Handlers MUST be named after HTTP methods: `def get(req)`, `def post(req)`, etc.
-
-## 6. Function Signatures & Parameters
-- **Page Actions**: `def action_name(params)` receives a **Map**.
-- **API Handlers**: `def get(req)` receives a **`Nex.Req` struct**.
-
-## 7. Responses & Navigation
-- **Page Actions**: Return `~H"..."` (Partial), `:empty` (No-op), `{:redirect, "/path"}`, or `{:refresh, nil}`.
-- **API Handlers**: Return `%Nex.Response{}` via `Nex.json/2`, `Nex.text/2`, etc.
-
-## 8. Surgical UX (HTMX)
-- **Precision**: Use granular `hx-target`. Return ONLY the minimal HTML snippet required for the update.
-- **Indicators**: Always use `hx-indicator` for network feedback.
-
-## 9. Real-Time & Streaming (SSE)
-- **Helper**: Use `Nex.stream(fn send -> ... end)`.
-- **Chunking**: `send.(data)` accepts String, Map (auto-JSON), or `%{event: "name", data: ...}`.
-
-## 10. Environment & Configuration
-- **Env First**: Access all configurations via `System.get_env("VAR")`.
-- **No Config**: Do not use `Application.get_env` for business logic.
-
-## 11. Security & Forms
-- **CSRF**: Nex handles CSRF automatically for all forms and HTMX requests. Do NOT manually add CSRF tags or headers.
-- **Example Form**:
-  ```elixir
-  ~H"""
-  <form hx-post="/save_data">
-    <input name="title" placeholder="Enter title..." />
-    <button type="submit">Save</button>
-  </form>
-  """
-  ```
-
-## 12. State Management (Nex.Store)
-- **Lifecycle**: `Nex.Store` is server-side session state tied to the `page_id`. 
-- **The Flow**: 1. Receive Intent -> 2. Mutate Store/DB -> 3. THEN render UI with updated data.
-
-## 13. Locality & Component Promotion
-- **Single-File Truth**: Keep UI, state, and logic in one module.
-- **Private Components**: Use `defp widget(assigns)` at the bottom of the file.
-- **Promotion**: Move to `src/components/` ONLY if reused across 3 or more pages.
-
-*Architect's Mantra: surgical precision, semantic intent, local focus, and absolute minimalism.*
+> Nex is a minimalist Elixir web framework. Folder structure = router. No config files. No asset pipeline. CDN-first.
 
 ---
 
-## AI Saga Project: Critical Lessons Learned
+## 0. Critical Anti-Patterns (Read First)
+
+### DO NOT create a router file
+```elixir
+# WRONG — router.ex does not exist in Nex
+# RIGHT — create src/pages/papers.ex and it becomes /papers automatically
+```
+
+### DO NOT use config/*.exs
+```elixir
+# WRONG
+config :ai_saga, key: "value"
+# RIGHT — use .env + Nex.Env
+Nex.Env.get(:key)
+```
+
+### DO NOT use <%= for/if %> in HEEx templates
+```elixir
+# WRONG — syntax error
+<%= for paper <- @papers do %>
+  <div>{paper["title"]}</div>
+<% end %>
+
+# RIGHT — use :for directive
+<div :for={paper <- @papers}>{paper["title"]}</div>
+<div :if={condition}>...</div>
+```
+
+### DO NOT manually add CSRF tokens or hx-headers
+```elixir
+# WRONG — framework handles this automatically
+<head>{meta_tag()}</head>
+<body hx-headers={hx_headers()}>
+<form hx-post="/save">{csrf_input_tag()}</form>
+
+# RIGHT — just write the form, framework injects everything
+<form hx-post="/save">
+  <input name="title" />
+  <button type="submit">Save</button>
+</form>
+```
+
+### DO NOT use mix run --no-halt
+```bash
+# WRONG
+mix run --no-halt
+# RIGHT
+mix nex.dev       # development
+mix nex.start     # production
+```
+
+### DO NOT create a custom Repo
+```elixir
+# WRONG
+defmodule AiSaga.Repo do
+  use Ecto.Repo, otp_app: :ai_saga, adapter: Ecto.Adapters.Postgres
+end
+
+# RIGHT — NexBase provides the Repo internally
+NexBase.from("aisaga_papers") |> NexBase.run()
+```
+
+### DO NOT manually zip SQL columns and rows
+```elixir
+# WRONG
+{:ok, %{rows: rows, columns: cols}} = NexBase.query(sql, [])
+Enum.map(rows, fn row -> Enum.zip(cols, row) |> Map.new() end)
+
+# RIGHT — NexBase.sql/2 returns list of maps directly
+{:ok, rows} = NexBase.sql("SELECT * FROM aisaga_papers WHERE id = $1", [id])
+```
+
+### DO NOT interpolate user input into SQL strings
+```elixir
+# WRONG — SQL injection risk!
+NexBase.sql("SELECT * FROM aisaga_papers WHERE title LIKE '%#{query}%'", [])
+
+# RIGHT — parameterized queries
+NexBase.sql("SELECT * FROM aisaga_papers WHERE title ILIKE $1", ["%#{query}%"])
+
+# RIGHT — for IN queries, use filter_in/3
+NexBase.from("aisaga_papers") |> NexBase.filter_in(:id, ids) |> NexBase.run()
+```
+
+### CRITICAL: This project uses PostgreSQL (Supabase), NOT SQLite
+- Always check `.env` for `DATABASE_URL` to confirm
+- Never assume SQLite based on `data/` directory presence
+
+---
+
+## 1. Project Structure
+
+```
+ai_saga/
+  src/
+    application.ex      # App startup (Nex.Env + NexBase.init)
+    layouts.ex          # HTML layout
+    scheduler.ex        # Background GenServer (periodic tasks)
+    pages/              # File = route
+    api/                # API endpoints
+    components/         # Shared components (3+ page reuse)
+  priv/repo/migrations/ # SQL DDL scripts
+  .env                  # DATABASE_URL, OPENAI_API_KEY, etc.
+  mix.exs
+```
+
+---
+
+## 2. Application Startup
+
+```elixir
+defmodule AiSaga.Application do
+  use Application
+
+  @impl true
+  def start(_type, _args) do
+    Nex.Env.init()
+    conn = NexBase.init(url: Nex.Env.get(:database_url), ssl: true)
+
+    children = [
+      {NexBase.Repo, conn},
+      AiSaga.Scheduler
+    ]
+    Supervisor.start_link(children, strategy: :one_for_one, name: AiSaga.Supervisor)
+  end
+end
+```
+
+---
+
+## 3. Layout (Minimal)
+
+The framework automatically injects `<meta name="csrf-token">` and HTMX CSRF headers.
+You do **not** need `{meta_tag()}` or `hx-headers={hx_headers()}`.
+
+```elixir
+defmodule AiSaga.Layouts do
+  use Nex
+
+  def render(assigns) do
+    ~H"""
+    <!DOCTYPE html>
+    <html lang="zh-CN">
+      <head>
+        <meta charset="UTF-8" />
+        <title>{@title} - AiSaga</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://unpkg.com/htmx.org@2"></script>
+      </head>
+      <body hx-boost="true">
+        {raw(@inner_content)}
+      </body>
+    </html>
+    """
+  end
+end
+```
+
+---
+
+## 4. Page Module Pattern
+
+```elixir
+defmodule AiSaga.Pages.Index do
+  use Nex
+
+  def mount(_params) do
+    %{
+      title: "AI Saga",
+      papers: fetch_recent_papers()
+    }
+  end
+
+  def render(assigns) do
+    ~H"""
+    <div :for={paper <- @papers}>{paper["title"]}</div>
+    <div :if={@papers == []}>No papers yet.</div>
+    """
+  end
+
+  defp fetch_recent_papers do
+    case NexBase.from("aisaga_papers") |> NexBase.order(:created_at, :desc) |> NexBase.limit(20) |> NexBase.run() do
+      {:ok, rows} -> rows
+      _ -> []
+    end
+  end
+end
+```
+
+### File → Route mapping
+| File | Route |
+|------|-------|
+| `src/pages/index.ex` | `GET /` |
+| `src/pages/paper/index.ex` | `GET /paper` |
+| `src/pages/paper/[slug].ex` | `GET /paper/attention-is-all-you-need` |
+| `src/pages/author/[slug].ex` | `GET /author/hinton` |
+
+---
+
+## 5. API Module Pattern
+
+```elixir
+defmodule AiSaga.Api.GeneratePaper do
+  use Nex
+
+  def post(req) do
+    arxiv_id = req.body["arxiv_id"]
+    Nex.html(generate_and_render(arxiv_id))
+  end
+end
+```
+
+### API responses
+- `Nex.json(map)` — JSON response
+- `Nex.html("<div>...</div>")` — HTML fragment (for HTMX)
+- `Nex.stream(fn send -> ... end)` — SSE streaming
+
+---
+
+## 6. NexBase Database Patterns
+
+### Query Builder
+```elixir
+# SELECT with filters
+{:ok, papers} = NexBase.from("aisaga_papers")
+  |> NexBase.eq(:paradigm, "transformer")
+  |> NexBase.order(:year, :desc)
+  |> NexBase.limit(10)
+  |> NexBase.run()
+
+# Duplicate check before insert
+case NexBase.from("aisaga_papers") |> NexBase.eq(:arxiv_id, arxiv_id) |> NexBase.single() |> NexBase.run() do
+  {:ok, [_existing]} -> {:error, "Paper already exists"}
+  _ -> proceed_with_insert()
+end
+```
+
+### Raw SQL (for JOINs and complex queries)
+```elixir
+# Returns {:ok, [%{"col" => val}]} — always string keys
+{:ok, rows} = NexBase.sql("""
+  SELECT p.title, p.year, a.name as author_name
+  FROM aisaga_papers p
+  JOIN aisaga_paper_authors pa ON pa.paper_id = p.id
+  JOIN aisaga_authors a ON a.id = pa.author_id
+  WHERE p.id = $1
+""", [paper_id])
+```
+
+### Scripts (seeds, migrations)
+```elixir
+# At top of script file
+Nex.Env.init()
+NexBase.init(url: Nex.Env.get(:database_url), ssl: true, start: true)
+
+NexBase.query!("CREATE TABLE IF NOT EXISTS aisaga_papers (...)", [])
+```
+
+---
+
+## 7. Built-in Helpers (Nex.Helpers)
+
+Available automatically in all page/component/layout modules:
+
+```elixir
+format_number(12_345)    # => "12.3k"
+format_date(~D[2026-01-15])          # => "Jan 15, 2026"
+format_date("2017-06-12T00:00:00Z")  # => "Jun 12, 2017"
+time_ago(datetime)       # => "3 hours ago", "2 days ago", etc.
+```
+
+---
+
+## 8. SSE Streaming
+
+```elixir
+# API handler
+def get(_req) do
+  Nex.stream(fn send ->
+    send.("Fetching paper...")
+    send.(%{event: "chunk", data: "Processing..."})
+    send.(%{event: "done", data: "success"})
+  end)
+end
+```
+
+```javascript
+// Client — use native EventSource, NOT HTMX SSE extension
+// HTMX SSE has auto-reconnect issues causing infinite loops
+var es = new EventSource('/api/stream');
+var done = false;
+
+es.onmessage = function(e) { appendMessage(e.data); };
+
+es.addEventListener('done', function(e) {
+  if (!done) { done = true; es.close(); updateUI(e.data); }
+});
+
+es.onerror = function() {
+  if (!done) { done = true; es.close(); showError(); }
+};
+```
+
+**Always send `done` event in all code paths:**
+```elixir
+# Success
+send.(%{event: "done", data: "success"})
+# Error
+send.(%{event: "done", data: "error"})
+```
+
+---
+
+## 9. Environment
+
+```bash
+# .env
+DATABASE_URL=postgresql://user:pass@host:5432/db
+OPENAI_API_KEY=sk-...
+```
+
+```elixir
+Nex.Env.init()                    # load .env (call in Application.start/2)
+Nex.Env.get(:database_url)        # => "postgresql://..."
+Nex.Env.get!(:openai_api_key)     # raises if missing
+```
+
+---
+
+## 10. Commands
+
+```bash
+mix nex.dev      # start development server (hot reload)
+mix nex.start    # start production server
+mix format       # format code
+```
+
+---
+
+## 11. Browser Automation
+
+Use `agent-browser` for validation. Run `agent-browser --help` for all commands.
+
+```bash
+agent-browser open http://localhost:4000   # navigate
+agent-browser snapshot -i                  # get interactive elements with refs
+agent-browser click @e1                    # click by ref
+agent-browser fill @e2 "text"              # fill input by ref
+```
+
+---
+
+## 12. Project-Specific Lessons Learned
 
 ### Database & Data Integrity
 

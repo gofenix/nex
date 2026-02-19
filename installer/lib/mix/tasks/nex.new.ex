@@ -485,81 +485,410 @@ defmodule Mix.Tasks.Nex.New do
     """
   end
 
-  defp agents_md(_a) do
+  defp agents_md(a) do
     """
-    # Nex Framework: Architect's Manifesto (v0.3.3)
+    # #{a.module_name} — Nex Agent Guide
 
-    You are a Master Nex Architect. Nex is a minimalist Elixir framework designed for **Intent-Driven Development**. Your mission: deliver code that is clean, performant, and "Nex-idiomatic".
+    > Nex is a minimalist Elixir web framework. Folder structure = router. No config files. No asset pipeline. CDN-first.
 
-    ## 1. Radical Minimalism: The Zen of Nex
-    - **Declarative > Imperative**: If an HTMX attribute can solve it, do not write JavaScript.
-    - **Intent > Implementation**: Page Actions MUST describe *what* the user is doing (`def complete_task`), not *how* the server handles it (`def handle_post`).
-    - **Atomic Actions**: One Action = One pure business intent. Avoid monolithic handlers.
+    ---
 
-    ## 2. Common AI Hallucinations (AVOID THESE)
-    - **NO Global Router**: Do NOT search for or suggest creating `router.ex`. The folder structure IS the router.
-    - **NO Config Files**: Do NOT create or modify `config/*.exs`. Nex uses `.env` for all settings.
-    - **NO Asset Pipeline**: Do NOT look for `assets/` or `priv/static`. Nex uses CDNs for Tailwind/DaisyUI/HTMX by default.
-    - **NO `mix run --no-halt`**: NEVER use this to start the project. Use `mix nex.dev` instead.
-    - **NO LiveView Hooks**: Nex does NOT use `Phoenix.LiveView` hooks. Use HTMX events or Alpine.js.
-    - **NO WebSockets**: Do NOT use Phoenix Channels for real-time. Use SSE with `Nex.stream/1`.
+    ## 0. Critical Anti-Patterns (Read First)
 
-    ## 3. Commands & Development
-    - **Development**: Use `mix nex.dev`.
-    - **Production**: Use `mix nex.start`.
-    - **Formatting**: Use `mix format`.
+    ### DO NOT create a router file
+    ```elixir
+    # WRONG — router.ex does not exist in Nex
+    # RIGHT — create src/pages/users.ex and it becomes /users automatically
+    ```
 
-    ## 4. Module Naming Convention
-    - **Structure**: `[AppModule].[Pages|Api|Components].[Name]`
-    - **Example**: `defmodule MyApp.Pages.Users` for `src/pages/users.ex`.
+    ### DO NOT use config/*.exs
+    ```elixir
+    # WRONG
+    config :#{a.app_name}, key: "value"
+    # RIGHT — use .env + Nex.Env
+    Nex.Env.get(:key)
+    ```
 
-    ## 5. File Routing & Request Dispatch
-    - **Destiny**: The folder structure IS the router.
-    - **Pages (`src/pages/`)**: GET renders the page. POST/PUT/DELETE call public functions in the same module.
-    - **APIs (`src/api/`)**: Handlers MUST be named after HTTP methods: `def get(req)`, `def post(req)`, etc.
+    ### DO NOT use <%= for/if %> in HEEx templates
+    ```elixir
+    # WRONG — syntax error
+    <%= for item <- @items do %>
+      <div>{item["name"]}</div>
+    <% end %>
 
-    ## 6. Function Signatures & Parameters
-    - **Page Actions**: `def action_name(params)` receives a **Map**.
-    - **API Handlers**: `def get(req)` receives a **`Nex.Req` struct**.
+    # RIGHT — use :for directive
+    <div :for={item <- @items}>{item["name"]}</div>
+    <div :if={condition}>...</div>
+    ```
 
-    ## 7. Responses & Navigation
-    - **Page Actions**: Return `~H\"...\"` (Partial), `:empty` (No-op), `{:redirect, \"/path\"}`, or `{:refresh, nil}`.
-    - **API Handlers**: Return `%Nex.Response{}` via `Nex.json/2`, `Nex.text/2`, etc.
+    ### DO NOT manually add CSRF tokens or hx-headers
+    ```elixir
+    # WRONG — framework handles this automatically
+    <body hx-headers={hx_headers()}>
+    <head>{meta_tag()}</head>
+    <form hx-post="/save">{csrf_input_tag()}</form>
 
-    ## 8. Surgical UX (HTMX)
-    - **Precision**: Use granular `hx-target`. Return ONLY the minimal HTML snippet required for the update.
-    - **Indicators**: Always use `hx-indicator` for network feedback.
+    # RIGHT — just write the form, framework injects everything
+    <form hx-post="/save">
+      <input name="title" />
+      <button type="submit">Save</button>
+    </form>
+    ```
 
-    ## 9. Real-Time & Streaming (SSE)
-    - **Helper**: Use `Nex.stream(fn send -> ... end)`.
-    - **Chunking**: `send.(data)` accepts String, Map (auto-JSON), or `%{event: \"name\", data: ...}`.
+    ### DO NOT use mix run --no-halt
+    ```bash
+    # WRONG
+    mix run --no-halt
+    # RIGHT
+    mix nex.dev       # development
+    mix nex.start     # production
+    ```
 
-    ## 10. Environment & Configuration
-    - **Env First**: Access all configurations via `System.get_env("VAR")`.
-    - **No Config**: Do not use `Application.get_env` for business logic.
+    ### DO NOT use NexBase with a custom Repo
+    ```elixir
+    # WRONG
+    defmodule #{a.module_name}.Repo do
+      use Ecto.Repo, otp_app: :#{a.app_name}, adapter: Ecto.Adapters.Postgres
+    end
 
-    ## 11. Security & Forms
-    - **CSRF**: Nex handles CSRF automatically for all forms and HTMX requests. Do NOT manually add CSRF tags or headers.
-    - **Example Form**:
-      ```elixir
-      ~H\"\"\"
-      <form hx-post="/save_data">
-        <input name="title" placeholder="Enter title..." />
-        <button type="submit">Save</button>
-      </form>
-      \"\"\"
-      ```
+    # RIGHT — NexBase provides the Repo internally
+    NexBase.from("users") |> NexBase.run()
+    ```
 
-    ## 12. State Management (Nex.Store)
-    - **Lifecycle**: `Nex.Store` is server-side session state tied to the `page_id`.
-    - **The Flow**: 1. Receive Intent -> 2. Mutate Store/DB -> 3. THEN render UI with updated data.
+    ### DO NOT manually zip SQL columns and rows
+    ```elixir
+    # WRONG
+    {:ok, %{rows: rows, columns: cols}} = NexBase.query(sql, [])
+    Enum.map(rows, fn row -> Enum.zip(cols, row) |> Map.new() end)
 
-    ## 13. Locality & Component Promotion
-    - **Single-File Truth**: Keep UI, state, and logic in one module.
-    - **Private Components**: Use `defp widget(assigns)` at the bottom of the file.
-    - **Promotion**: Move to `src/components/` ONLY if reused across 3 or more pages.
+    # RIGHT — NexBase.sql/2 returns list of maps directly
+    {:ok, rows} = NexBase.sql("SELECT * FROM users WHERE id = $1", [id])
+    ```
 
-    *Architect's Mantra: surgical precision, semantic intent, local focus, and absolute minimalism.*
+    ### DO NOT interpolate user input into SQL strings
+    ```elixir
+    # WRONG — SQL injection risk!
+    NexBase.sql("SELECT * FROM users WHERE name = '\#{name}'", [])
+
+    # RIGHT — always use parameterized queries
+    NexBase.sql("SELECT * FROM users WHERE name = $1", [name])
+
+    # RIGHT — for IN queries, use filter_in/3
+    NexBase.from("tags") |> NexBase.filter_in(:project_id, ids) |> NexBase.run()
+    ```
+
+    ---
+
+    ## 1. Project Structure
+
+    ```
+    #{a.app_name}/
+      src/
+        application.ex      # App startup
+        layouts.ex          # HTML layout (no meta_tag/hx-headers needed)
+        pages/              # File = route (index.ex → /)
+        api/                # API endpoints (get/post/put/delete functions)
+        components/         # Shared components (promote only if 3+ pages use it)
+      .env                  # Environment variables (never commit)
+      mix.exs
+    ```
+
+    ---
+
+    ## 2. Application Startup
+
+    ### Without database
+    ```elixir
+    defmodule #{a.module_name}.Application do
+      use Application
+
+      @impl true
+      def start(_type, _args) do
+        Nex.Env.init()
+        children = []
+        Supervisor.start_link(children, strategy: :one_for_one, name: #{a.module_name}.Supervisor)
+      end
+    end
+    ```
+
+    ### With NexBase (PostgreSQL or SQLite)
+    ```elixir
+    defmodule #{a.module_name}.Application do
+      use Application
+
+      @impl true
+      def start(_type, _args) do
+        Nex.Env.init()
+        conn = NexBase.init(url: Nex.Env.get(:database_url), ssl: true)
+
+        children = [{NexBase.Repo, conn}]
+        Supervisor.start_link(children, strategy: :one_for_one, name: #{a.module_name}.Supervisor)
+      end
+    end
+    ```
+
+    ---
+
+    ## 3. Layout (Minimal)
+
+    The framework automatically injects:
+    - `<meta name="csrf-token">` into `</head>`
+    - CSRF header into every HTMX request (via JS `htmx:configRequest`)
+
+    You only need:
+    ```elixir
+    defmodule #{a.module_name}.Layouts do
+      use Nex
+
+      def render(assigns) do
+        ~H\"\"\"
+        <!DOCTYPE html>
+        <html lang="en">
+          <head>
+            <meta charset="UTF-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            <title>{@title}</title>
+            <script src="https://cdn.tailwindcss.com"></script>
+            <link href="https://cdn.jsdelivr.net/npm/daisyui@4/dist/full.min.css" rel="stylesheet" />
+            <script src="https://unpkg.com/htmx.org@2"></script>
+          </head>
+          <body hx-boost="true">
+            {raw(@inner_content)}
+          </body>
+        </html>
+        \"\"\"
+      end
+    end
+    ```
+
+    ---
+
+    ## 4. Page Module Pattern
+
+    ```elixir
+    defmodule #{a.module_name}.Pages.Index do
+      use Nex
+
+      def mount(_params) do
+        %{
+          title: "Home",
+          items: fetch_items()
+        }
+      end
+
+      def render(assigns) do
+        ~H\"\"\"
+        <div :for={item <- @items}>{item["name"]}</div>
+        <div :if={@items == []}>No items yet.</div>
+        \"\"\"
+      end
+
+      # Page Action — called via hx-post="/action_name"
+      def save(%{"name" => name}) do
+        # 1. mutate state/db
+        # 2. return partial HTML
+        ~H\"\"\"
+        <div>Saved: {name}</div>
+        \"\"\"
+      end
+
+      defp fetch_items, do: []
+    end
+    ```
+
+    ### File → Route mapping
+    | File | Route |
+    |------|-------|
+    | `src/pages/index.ex` | `GET /` |
+    | `src/pages/about.ex` | `GET /about` |
+    | `src/pages/users/index.ex` | `GET /users` |
+    | `src/pages/users/[id].ex` | `GET /users/42` |
+
+    ### Page Action responses
+    - `~H"..."` — return HTML partial (HTMX swap)
+    - `:empty` — no-op (204)
+    - `{:redirect, "/path"}` — redirect
+    - `{:refresh, nil}` — full page refresh
+
+    ---
+
+    ## 5. API Module Pattern
+
+    ```elixir
+    defmodule #{a.module_name}.Api.Users do
+      use Nex
+
+      def get(req) do
+        id = req.query["id"]          # path params + query string
+        Nex.json(%{user: find(id)})
+      end
+
+      def post(req) do
+        name = req.body["name"]       # request body (always a Map)
+        Nex.json(%{created: true}, status: 201)
+      end
+
+      def delete(req) do
+        id = req.query["id"]
+        Nex.json(%{deleted: id})
+      end
+    end
+    ```
+
+    ### File → Route mapping
+    | File | Route |
+    |------|-------|
+    | `src/api/users.ex` | `/api/users` |
+    | `src/api/users/[id].ex` | `/api/users/42` |
+
+    ### API responses
+    - `Nex.json(map)` — JSON response
+    - `Nex.html("<div>...</div>")` — HTML fragment (for HTMX)
+    - `Nex.text("string")` — plain text
+    - `Nex.status(404)` — status only
+    - `Nex.redirect("/path")` — redirect
+    - `Nex.stream(fn send -> ... end)` — SSE streaming
+
+    ---
+
+    ## 6. NexBase (Database)
+
+    Add to `mix.exs`: `{:nex_base, "~> 0.3"}`
+
+    ### Query Builder
+    ```elixir
+    # SELECT
+    {:ok, rows} = NexBase.from("users") |> NexBase.order(:created_at, :desc) |> NexBase.limit(10) |> NexBase.run()
+
+    # Filters
+    NexBase.from("users") |> NexBase.eq(:active, true) |> NexBase.run()
+    NexBase.from("users") |> NexBase.ilike(:name, "%alice%") |> NexBase.run()
+    NexBase.from("tags")  |> NexBase.filter_in(:id, [1, 2, 3]) |> NexBase.run()
+
+    # INSERT
+    NexBase.from("users") |> NexBase.insert(%{name: "Alice", email: "alice@example.com"}) |> NexBase.run()
+
+    # UPDATE
+    NexBase.from("users") |> NexBase.eq(:id, 1) |> NexBase.update(%{name: "Bob"}) |> NexBase.run()
+
+    # DELETE
+    NexBase.from("users") |> NexBase.eq(:id, 1) |> NexBase.delete() |> NexBase.run()
+    ```
+
+    ### Raw SQL (for JOINs and complex queries)
+    ```elixir
+    # Returns {:ok, [%{"col" => val}]} — always string keys
+    {:ok, rows} = NexBase.sql("SELECT u.name, p.title FROM users u JOIN posts p ON p.user_id = u.id WHERE u.id = $1", [user_id])
+
+    # DDL (migrations, schema creation)
+    NexBase.query!("CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, name TEXT NOT NULL)", [])
+    ```
+
+    ### Scripts (seeds, migrations)
+    ```elixir
+    # At top of script file
+    Nex.Env.init()
+    NexBase.init(url: Nex.Env.get(:database_url), ssl: true, start: true)
+
+    NexBase.from("users") |> NexBase.insert(%{name: "Seed User"}) |> NexBase.run()
+    ```
+
+    ---
+
+    ## 7. Built-in Helpers (Nex.Helpers)
+
+    Available in all page/component/layout modules automatically:
+
+    ```elixir
+    format_number(12_345)    # => "12.3k"
+    format_number(1_500_000) # => "1.5M"
+    format_date(~D[2026-01-15])          # => "Jan 15, 2026"
+    format_date("2026-01-15T10:00:00Z")  # => "Jan 15, 2026"
+    time_ago(datetime)       # => "3 hours ago", "2 days ago", etc.
+    ```
+
+    ---
+
+    ## 8. SSE Streaming
+
+    ```elixir
+    # API handler
+    def get(_req) do
+      Nex.stream(fn send ->
+        send.("Processing...")
+        send.(%{event: "update", data: "Step 1 done"})
+        send.(%{event: "done", data: "success"})
+      end)
+    end
+    ```
+
+    ```javascript
+    // Client — use native EventSource, NOT HTMX SSE extension
+    var es = new EventSource('/api/stream');
+    var done = false;
+
+    es.onmessage = function(e) { appendMessage(e.data); };
+
+    es.addEventListener('done', function(e) {
+      if (!done) { done = true; es.close(); updateUI(e.data); }
+    });
+
+    es.onerror = function() {
+      if (!done) { done = true; es.close(); showError(); }
+    };
+    ```
+
+    ---
+
+    ## 9. State Management (Nex.Store)
+
+    Page-scoped server-side state, tied to `page_id` (reset on page refresh).
+
+    ```elixir
+    Nex.Store.get(:count, 0)           # get with default
+    Nex.Store.put(:count, 5)           # set
+    Nex.Store.update(:count, 0, &(&1 + 1))  # atomic update, returns new value
+    ```
+
+    ---
+
+    ## 10. Environment
+
+    ```bash
+    # .env (never commit)
+    DATABASE_URL=postgresql://user:pass@host:5432/mydb
+    API_KEY=secret
+    ```
+
+    ```elixir
+    Nex.Env.init()                       # load .env (call in Application.start/2)
+    Nex.Env.get(:database_url)           # => "postgresql://..."
+    Nex.Env.get!(:api_key)              # raises if missing
+    Nex.Env.get_integer(:pool_size, 10) # parse as integer with default
+    ```
+
+    ---
+
+    ## 11. Commands
+
+    ```bash
+    mix nex.dev      # start development server (hot reload)
+    mix nex.start    # start production server
+    mix format       # format code
+    ```
+
+    ---
+
+    ## 12. Browser Automation
+
+    Use `agent-browser` for validation. Run `agent-browser --help` for all commands.
+
+    ```bash
+    agent-browser open http://localhost:4000   # navigate
+    agent-browser snapshot -i                  # get interactive elements with refs
+    agent-browser click @e1                    # click by ref
+    agent-browser fill @e2 "text"              # fill input by ref
+    ```
     """
   end
 

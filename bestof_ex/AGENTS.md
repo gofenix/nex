@@ -133,18 +133,32 @@ hd(rows)["id"]   # => 1 ✓
 hd(rows).id      # => 1 ✓
 ```
 
-### DO NOT manually add CSRF tags
+### DO NOT manually add CSRF tags or hx-headers
 ```elixir
-# WRONG — Nex handles CSRF automatically
+# WRONG — framework handles all of this automatically
+<head>{meta_tag()}</head>
+<body hx-headers={hx_headers()}>
 <form hx-post="/action">
   {csrf_input_tag()}
-  ...
 </form>
 
-# RIGHT — just write the form, framework injects CSRF
+# RIGHT — just write the form, framework injects everything
 <form hx-post="/action">
-  ...
+  <input name="title" />
+  <button type="submit">Save</button>
 </form>
+```
+
+### DO NOT interpolate user input into SQL strings
+```elixir
+# WRONG — SQL injection risk!
+NexBase.sql("SELECT * FROM projects WHERE name = '#{name}'", [])
+
+# RIGHT — parameterized queries
+NexBase.sql("SELECT * FROM projects WHERE name = $1", [name])
+
+# RIGHT — for IN queries, use filter_in/3
+NexBase.from("project_tags") |> NexBase.filter_in(:project_id, ids) |> NexBase.run()
 ```
 
 ---
@@ -177,8 +191,6 @@ bestof_ex/
 
 ## 2. Application Startup
 
-The entire startup is 3 lines:
-
 ```elixir
 defmodule BestofEx.Application do
   use Application
@@ -186,17 +198,17 @@ defmodule BestofEx.Application do
   @impl true
   def start(_type, _args) do
     Nex.Env.init()
-    NexBase.init(url: Nex.Env.get(:database_url), ssl: true)
+    conn = NexBase.init(url: Nex.Env.get(:database_url), ssl: true)
 
-    children = [{NexBase.Repo, []}]
+    children = [{NexBase.Repo, conn}]
     Supervisor.start_link(children, strategy: :one_for_one, name: BestofEx.Supervisor)
   end
 end
 ```
 
 - `Nex.Env.init()` — loads `.env` file
-- `NexBase.init/1` — configures database (one line, no Repo knowledge needed)
-- `{NexBase.Repo, []}` — starts the connection pool
+- `NexBase.init/1` — returns a `%NexBase.Conn{}`, pass it to `NexBase.Repo`
+- `{NexBase.Repo, conn}` — starts the connection pool
 
 ---
 
@@ -318,6 +330,9 @@ end
 
 ## 5. Layout
 
+The framework automatically injects `<meta name="csrf-token">` and HTMX CSRF headers.
+You do **not** need `{meta_tag()}` or `hx-headers={hx_headers()}`.
+
 ```elixir
 defmodule BestofEx.Layouts do
   use Nex
@@ -328,12 +343,11 @@ defmodule BestofEx.Layouts do
     <html data-theme="bestofex">
     <head>
       <meta charset="utf-8" />
-      {meta_tag()}
       <script src="https://cdn.tailwindcss.com"></script>
       <link href="https://cdn.jsdelivr.net/npm/daisyui@4/dist/full.min.css" rel="stylesheet" />
       <script src="https://unpkg.com/htmx.org@2"></script>
     </head>
-    <body hx-boost="true" hx-headers={hx_headers()}>
+    <body hx-boost="true">
       <nav>...</nav>
       {raw(@inner_content)}
     </body>
@@ -343,10 +357,8 @@ defmodule BestofEx.Layouts do
 end
 ```
 
-- `{meta_tag()}` — required in `<head>`
-- `hx-headers={hx_headers()}` — required on `<body>`
 - `{raw(@inner_content)}` — renders page content
-- `hx-boost="true"` — SPA-like navigation
+- `hx-boost="true"` — SPA-like navigation (optional)
 
 ---
 
@@ -369,7 +381,21 @@ Nex.Env.get_integer(:pool_size, 10)     # Parse as integer
 
 ---
 
-## 7. UI Guidelines
+## 7. Built-in Helpers (Nex.Helpers)
+
+Available automatically in all page/component/layout modules:
+
+```elixir
+format_number(12_345)    # => "12.3k"
+format_number(1_500_000) # => "1.5M"
+format_date(~D[2026-01-15])          # => "Jan 15, 2026"
+format_date("2026-01-15T10:00:00Z")  # => "Jan 15, 2026"
+time_ago(datetime)       # => "3 hours ago", "2 days ago", etc.
+```
+
+---
+
+## 8. UI Guidelines
 
 - **DaisyUI first**: Use `.card`, `.badge`, `.btn`, `.table` etc.
 - **Tailwind for gaps**: Use raw Tailwind only for spacing, flex, grid.
