@@ -104,6 +104,9 @@ defmodule Nex do
           import Phoenix.HTML, only: [raw: 1]
           import Nex.CSRF, only: [csrf_input_tag: 0, hx_headers: 0, meta_tag: 0, get_token: 0]
           import Nex.Helpers
+          alias Nex.Cookie
+          alias Nex.Session
+          alias Nex.Flash
         end
 
       # Default: treat as page module
@@ -113,6 +116,9 @@ defmodule Nex do
           import Phoenix.HTML, only: [raw: 1]
           import Nex.CSRF, only: [csrf_input_tag: 0, hx_headers: 0, meta_tag: 0, get_token: 0]
           import Nex.Helpers
+          alias Nex.Cookie
+          alias Nex.Session
+          alias Nex.Flash
         end
     end
   end

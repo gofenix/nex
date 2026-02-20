@@ -5,6 +5,20 @@ All notable changes to the Nex framework will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Nex 0.3.7] - 2026-02-20
+
+### Added
+- **`Nex.Cookie`**: Cookie read/write API. `Nex.Cookie.put/3`, `Nex.Cookie.delete/2`, `Nex.Cookie.get/2`, `Nex.Cookie.all/0`. Cookies are loaded at request start and applied to the response automatically. Available as `Cookie` alias in all page/component modules via `use Nex`.
+- **`Nex.Session`**: Server-side session storage backed by ETS. Persists across page navigations via a signed `_nex_session` cookie. `Nex.Session.get/2`, `Nex.Session.put/2`, `Nex.Session.update/3`, `Nex.Session.delete/1`, `Nex.Session.clear/0`. Requires `SECRET_KEY_BASE` in production. Available as `Session` alias via `use Nex`.
+- **`Nex.Flash`**: One-time flash messages stored in session. `Nex.Flash.put/2`, `Nex.Flash.pop_all/0`, `Nex.Flash.get/1`, `Nex.Flash.clear/0`. Messages survive one redirect and are cleared after being read. Available as `Flash` alias via `use Nex`.
+- **`Nex.Middleware`**: Plug pipeline support. Configure plugs via `Application.put_env(:nex_core, :plugs, [MyApp.Plugs.Auth])`. Plugs run on every request before routing; halting a plug skips routing entirely.
+- **`Nex.SessionCleaner`**: Background GenServer that cleans up expired session ETS entries every 10 minutes.
+
+### Changed
+- **`use Nex`**: Now automatically aliases `Nex.Cookie`, `Nex.Session`, and `Nex.Flash` in all page/component/layout modules — no manual import needed.
+- **`Nex.Supervisor`**: Added `Nex.SessionCleaner` to the supervision tree. Session ETS table is initialized at supervisor start.
+- **`Nex.Handler`**: Loads cookies and session at request start; persists session cookie and applies pending cookie writes before sending response; runs middleware pipeline before routing.
+
 ## [Nex 0.3.6] - 2026-02-20
 
 ### Added

@@ -8,10 +8,20 @@ defmodule Nex.Handler do
 
   @doc "Handle incoming request"
   def handle(conn) do
+    # Load cookies and session from the request into process dictionary
+    conn = Nex.Cookie.load_from_conn(conn)
+    conn = Nex.Session.load_from_conn(conn)
+
     # Register cleanup callback to clear process dictionary after response
     conn =
       register_before_send(conn, fn conn ->
+        # Persist session cookie and apply pending cookie writes before sending
+        conn = Nex.Session.persist_to_conn(conn)
+        conn = Nex.Cookie.apply_to_conn(conn)
+        # Clear all process state
         Nex.Store.clear_process_dictionary()
+        Nex.Cookie.clear_process_state()
+        Nex.Session.clear_process_state()
         conn
       end)
 
@@ -19,26 +29,34 @@ defmodule Nex.Handler do
       method = conn.method |> String.downcase() |> String.to_atom()
       path = conn.path_info
 
-      cond do
-        # Live reload WebSocket endpoint
-        path == ["nex", "live-reload-ws"] ->
-          WebSockAdapter.upgrade(conn, Nex.LiveReloadSocket, %{}, [])
+      # Run user-configured middleware plugs before routing.
+      # If any plug halts the conn, skip routing entirely.
+      conn = Nex.Middleware.run(conn)
 
-        # Live reload HTTP endpoint (fallback for old clients)
-        path == ["nex", "live-reload"] ->
-          handle_live_reload(conn)
+      if conn.halted do
+        conn
+      else
+        cond do
+          # Live reload WebSocket endpoint
+          path == ["nex", "live-reload-ws"] ->
+            WebSockAdapter.upgrade(conn, Nex.LiveReloadSocket, %{}, [])
 
-        # Static files: /static/* served from priv/static/
-        match?(["static" | _], path) ->
-          serve_static(conn)
+          # Live reload HTTP endpoint (fallback for old clients)
+          path == ["nex", "live-reload"] ->
+            handle_live_reload(conn)
 
-        # API routes: /api/*
-        match?(["api" | _], path) ->
-          handle_api(conn, method, path)
+          # Static files: /static/* served from priv/static/
+          match?(["static" | _], path) ->
+            serve_static(conn)
 
-        # Page routes
-        true ->
-          handle_page(conn, method, path)
+          # API routes: /api/*
+          match?(["api" | _], path) ->
+            handle_api(conn, method, path)
+
+          # Page routes
+          true ->
+            handle_page(conn, method, path)
+        end
       end
     rescue
       e ->
