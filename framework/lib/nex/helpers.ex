@@ -61,6 +61,69 @@ defmodule Nex.Helpers do
   def format_date(_), do: ""
 
   @doc """
+  Truncates a string to the given length, appending an ellipsis if truncated.
+
+  ## Options
+    * `:omission` - String appended when truncated (default: `"..."`)
+
+  ## Examples
+
+      truncate("Hello, world!", 8)              # => "Hello..."
+      truncate("Hello", 10)                     # => "Hello"
+      truncate("Hello, world!", 8, omission: "…") # => "Hello, …"
+      truncate(nil, 10)                         # => ""
+  """
+  def truncate(str, length, opts \\ [])
+  def truncate(nil, _length, _opts), do: ""
+  def truncate(str, length, opts) when is_binary(str) and is_integer(length) do
+    omission = Keyword.get(opts, :omission, "...")
+
+    if String.length(str) <= length do
+      str
+    else
+      truncated_length = max(0, length - String.length(omission))
+      String.slice(str, 0, truncated_length) <> omission
+    end
+  end
+
+  @doc """
+  Returns the singular or plural form of a word based on count.
+
+  ## Examples
+
+      pluralize(1, "item", "items")   # => "1 item"
+      pluralize(5, "item", "items")   # => "5 items"
+      pluralize(0, "item", "items")   # => "0 items"
+  """
+  def pluralize(count, singular, plural) when is_integer(count) do
+    word = if count == 1, do: singular, else: plural
+    "#{count} #{word}"
+  end
+
+  @doc """
+  Builds a CSS class string from a list of values, filtering out falsy entries.
+
+  Accepts strings, `{class, condition}` tuples, and ignores `nil`/`false`.
+
+  ## Examples
+
+      clsx(["btn", "btn-primary"])                    # => "btn btn-primary"
+      clsx(["btn", nil, false, "active"])             # => "btn active"
+      clsx(["btn", {"btn-active", true}, {"hidden", false}])  # => "btn btn-active"
+      clsx([])                                        # => ""
+  """
+  def clsx(list) when is_list(list) do
+    list
+    |> Enum.flat_map(fn
+      {class, true} when is_binary(class) -> [class]
+      {_class, _} -> []
+      class when is_binary(class) and class != "" -> [class]
+      _ -> []
+    end)
+    |> Enum.join(" ")
+  end
+
+  @doc """
   Returns a relative time string from a past datetime.
 
   ## Examples

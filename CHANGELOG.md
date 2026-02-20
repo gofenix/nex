@@ -5,6 +5,19 @@ All notable changes to the Nex framework will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Nex 0.3.6] - 2026-02-20
+
+### Added
+- **Static file serving**: Framework now automatically serves files from `priv/static/` at `/static/*` URLs. Drop a file in `priv/static/` and it is immediately accessible — no `Plug.Static` configuration needed.
+- **`Nex.Helpers` — `truncate/2,3`**: Truncates a string to a given length with configurable omission string (default `"..."`). Available in all page/component modules via `use Nex`.
+- **`Nex.Helpers` — `pluralize/3`**: Returns `"N word"` or `"N words"` based on count. Available in all page/component modules.
+- **`Nex.Helpers` — `clsx/1`**: Builds a CSS class string from a list, filtering out `nil`/`false` and supporting `{class, condition}` tuples. Available in all page/component modules.
+
+### Changed
+- **`Nex.Env` production-safe**: `Nex.Env.init/0` no longer calls `Mix.env()` (unavailable in compiled releases). Now uses `function_exported?(Mix, :env, 0)` guard with `System.get_env("MIX_ENV", "prod")` fallback. All `IO.puts` replaced with `Logger` calls.
+- **CSRF — signed tokens**: `Nex.CSRF` now uses `Phoenix.Token.sign/verify` for cryptographically signed, stateless CSRF tokens. Tokens are verified across request cycles without server-side session storage. Requires `SECRET_KEY_BASE` env var in production (logs a warning if missing, uses a dev-only default).
+- **Dev error page**: Unhandled exceptions in development now render a styled dark-theme error page showing exception type, message, formatted stacktrace (app frames highlighted), and request details (method, path, params, host). Production shows a clean minimal error page unchanged.
+
 ## [Nex 0.3.5] - 2026-02-19
 
 ### Changed

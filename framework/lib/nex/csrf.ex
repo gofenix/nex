@@ -2,33 +2,42 @@ defmodule Nex.CSRF do
   @moduledoc """
   CSRF (Cross-Site Request Forgery) protection for Nex applications.
 
+  Uses **signed tokens** via `Phoenix.Token` — cryptographically verified across
+  request cycles without server-side session storage. Tokens are signed with a
+  secret derived from the application's secret key base.
+
+  ## How it works
+
+  1. On page render (`GET`), `generate_token/0` creates a signed token and stores
+     it in the process dictionary for the current request.
+  2. The token is injected into `<head>` as a `<meta>` tag and into every form
+     automatically by `Nex.Handler`.
+  3. On `POST/PUT/PATCH/DELETE`, `validate/1` verifies the submitted token's
+     cryptographic signature — no session lookup needed.
+
   ## Usage
 
-  In your layout or form, include the CSRF token:
-
-      <form method="post" action="/submit">
-        {Nex.CSRF.csrf_input_tag()}
-        <!-- form fields -->
-      </form>
-
-  Or for HTMX requests, add to the body:
-
-      <body hx-headers={Nex.CSRF.hx_headers()}>
-
-  The framework automatically validates CSRF tokens on POST/PUT/PATCH/DELETE requests.
+  Everything is automatic. You do not need to call these functions manually.
+  The framework handles injection and validation transparently.
   """
+
+  require Logger
 
   @token_key "_csrf_token"
   @header_name "x-csrf-token"
-  @token_length 32
+  @salt "nex.csrf"
+  @max_age 86_400
 
   @doc """
-  Generates a new CSRF token and stores it in the session.
-  Returns the token string.
+  Generates a new signed CSRF token for the current request.
+
+  The token is a `Phoenix.Token`-signed value containing a random nonce.
+  It is stored in the process dictionary so helpers (`csrf_input_tag/0` etc.)
+  can retrieve it without regenerating.
   """
   def generate_token do
-    token = :crypto.strong_rand_bytes(@token_length) |> Base.url_encode64(padding: false)
-    # Store in process dictionary for this request
+    nonce = :crypto.strong_rand_bytes(16) |> Base.url_encode64(padding: false)
+    token = Phoenix.Token.sign(endpoint_or_secret(), @salt, nonce)
     Process.put(:csrf_token, token)
     token
   end
@@ -53,11 +62,6 @@ defmodule Nex.CSRF do
 
   @doc """
   Returns a JSON string for hx-headers attribute with CSRF token.
-  Use this in the body tag for HTMX requests.
-
-  ## Example
-
-      <body hx-headers={Nex.CSRF.hx_headers()}>
   """
   def hx_headers do
     token = get_token()
@@ -73,44 +77,31 @@ defmodule Nex.CSRF do
   end
 
   @doc """
-  Validates the CSRF token from the request.
-  Returns :ok if valid, {:error, reason} otherwise.
+  Validates the CSRF token submitted with a request.
 
-  ## Security Limitation (TODO)
-
-  **Current Implementation**: Since Nex is stateless and does not use server-side sessions,
-  CSRF validation is limited. If no expected token is found in the process dictionary
-  (i.e., the token was not generated during the same request cycle), validation passes
-  and returns `:ok`.
-
-  **Security Impact**: This means that stateless POST requests without a valid token
-  will be accepted. This is a **temporary implementation** to maintain stateless architecture.
-
-  **TODO**: Implement signed token mechanism for stateless CSRF protection.
-  Consider using Phoenix.Token or similar cryptographic signing to validate tokens
-  across request cycles without server-side session storage.
+  Verifies the cryptographic signature of the token using `Phoenix.Token.verify/4`.
+  Returns `:ok` if valid, `{:error, reason}` otherwise.
   """
   def validate(conn) do
-    expected_token = Process.get(:csrf_token)
-
-    # Get token from header or params
     submitted_token = get_submitted_token(conn)
 
-    cond do
-      is_nil(expected_token) ->
-        # No token was generated/stored for this request cycle.
-        # In a stateless architecture without signed tokens, we cannot verify
-        # the token against a previous value. We allow it to proceed.
-        :ok
+    if is_nil(submitted_token) or submitted_token == "" do
+      {:error, :missing_token}
+    else
+      case Phoenix.Token.verify(endpoint_or_secret(), @salt, submitted_token,
+             max_age: @max_age
+           ) do
+        {:ok, _nonce} ->
+          :ok
 
-      is_nil(submitted_token) ->
-        {:error, :missing_token}
+        {:error, :expired} ->
+          Logger.debug("[Nex.CSRF] Token expired")
+          {:error, :invalid_token}
 
-      not secure_compare(expected_token, submitted_token) ->
-        {:error, :invalid_token}
-
-      true ->
-        :ok
+        {:error, reason} ->
+          Logger.debug("[Nex.CSRF] Token invalid: #{inspect(reason)}")
+          {:error, :invalid_token}
+      end
     end
   end
 
@@ -133,21 +124,30 @@ defmodule Nex.CSRF do
   # Private functions
 
   defp get_submitted_token(conn) do
-    # Try header first (for HTMX/AJAX requests)
     case Plug.Conn.get_req_header(conn, @header_name) do
       [token | _] when is_binary(token) and token != "" ->
         token
 
       _ ->
-        # Fall back to form params
         conn.params[@token_key]
     end
   end
 
-  # Constant-time comparison to prevent timing attacks
-  defp secure_compare(a, b) when is_binary(a) and is_binary(b) do
-    byte_size(a) == byte_size(b) and :crypto.hash_equals(a, b)
-  end
+  # Returns the secret key base for signing tokens.
+  # Reads SECRET_KEY_BASE env var, falls back to a deterministic dev secret.
+  # In production, SECRET_KEY_BASE must be set to a strong random value.
+  defp endpoint_or_secret do
+    case System.get_env("SECRET_KEY_BASE") do
+      nil ->
+        Logger.warning(
+          "[Nex.CSRF] SECRET_KEY_BASE not set — using insecure dev default. " <>
+            "Set SECRET_KEY_BASE in production!"
+        )
 
-  defp secure_compare(_, _), do: false
+        "nex_dev_secret_key_base_do_not_use_in_production_replace_with_64_char_random_string"
+
+      secret ->
+        secret
+    end
+  end
 end
