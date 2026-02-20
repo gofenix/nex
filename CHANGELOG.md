@@ -5,6 +5,16 @@ All notable changes to the Nex framework will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Nex 0.3.8] - 2026-02-20
+
+### Added
+- **`Nex.WebSocket`**: User-level WebSocket support. Define a handler module with `use Nex.WebSocket` in `src/api/`, implement `handle_connect/1`, `handle_message/2`, `handle_disconnect/1`, and optionally `initial_state/1`. Automatically routed at `/ws/*` (e.g. `src/api/chat.ex` → `ws://host/ws/chat`). Supports broadcasting via `Nex.WebSocket.broadcast/2` and topic subscriptions via `Nex.WebSocket.subscribe/1`.
+- **`Nex.RateLimit`**: ETS-based sliding window rate limiter. `Nex.RateLimit.check/2` returns `:ok` or `{:error, :rate_limited}`. Configurable via `Application.put_env(:nex_core, :rate_limit, max: 100, window: 60)`.
+- **`Nex.RateLimit.Plug`**: Drop-in Plug middleware for per-IP rate limiting. Adds `X-RateLimit-Limit` and `X-RateLimit-Remaining` response headers. Returns HTTP 429 with JSON body when exceeded.
+
+### Changed
+- **`Nex.Handler`**: Added `/ws/*` routing — WebSocket upgrade requests are dispatched to `src/api/` modules that implement `handle_message/2`.
+
 ## [Nex 0.3.7] - 2026-02-20
 
 ### Added

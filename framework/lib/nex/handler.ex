@@ -49,6 +49,10 @@ defmodule Nex.Handler do
           match?(["static" | _], path) ->
             serve_static(conn)
 
+          # User WebSocket routes: /ws/* → src/api/ modules with `use Nex.WebSocket`
+          match?(["ws" | _], path) ->
+            handle_websocket(conn, path)
+
           # API routes: /api/*
           match?(["api" | _], path) ->
             handle_api(conn, method, path)
@@ -415,6 +419,25 @@ defmodule Nex.Handler do
     conn
     |> put_resp_content_type("application/json")
     |> send_resp(200, Jason.encode!(%{time: last_reload}))
+  end
+
+  # Handle user WebSocket connections: /ws/* → src/api/ modules with `use Nex.WebSocket`
+  # e.g. /ws/chat → MyApp.Api.Chat
+  defp handle_websocket(conn, path) do
+    ws_path = tl(path)
+
+    case Nex.RouteDiscovery.resolve(:api, ws_path) do
+      {:ok, module, params} ->
+        if function_exported?(module, :handle_message, 2) do
+          initial_state = module.initial_state(%{params: params, cookies: Nex.Cookie.all()})
+          WebSockAdapter.upgrade(conn, Nex.WebSocket.Adapter, {module, initial_state}, [])
+        else
+          send_error_page(conn, 404, "Not Found", nil)
+        end
+
+      :error ->
+        send_error_page(conn, 404, "Not Found", nil)
+    end
   end
 
   # Serve static files from priv/static via /static/* URLs.
