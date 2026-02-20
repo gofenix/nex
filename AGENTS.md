@@ -221,10 +221,140 @@ The framework automatically injects:
 ### Built-in helpers (Nex.Helpers)
 Available automatically in all page/component/layout modules via `use Nex`:
 ```elixir
-format_number(12_345)    # => "12.3k"
-format_date(~D[2026-01-15])          # => "Jan 15, 2026"
-time_ago(datetime)       # => "3 hours ago"
+format_number(12_345)        # => "12.3k"
+format_date(~D[2026-01-15])  # => "Jan 15, 2026"
+time_ago(datetime)           # => "3 hours ago"
+truncate("Long text", 10)    # => "Long te..."
+pluralize(3, "item", "items") # => "3 items"
+clsx(["btn", {"btn-active", true}, {"hidden", false}])  # => "btn btn-active"
 ```
+
+### Cookie API (Nex.Cookie)
+Available as `Cookie` alias in all page/component modules via `use Nex`:
+```elixir
+# Write (applied to response automatically)
+Cookie.put(:theme, "dark", max_age: 86_400, http_only: false)
+Cookie.delete(:theme)
+
+# Read (from current request)
+Cookie.get(:theme, "light")
+Cookie.all()  # => %{"theme" => "dark"}
+```
+
+### Session (Nex.Session)
+Server-side ETS session, persisted via signed `_nex_session` cookie. Available as `Session` alias:
+```elixir
+# In mount/1 — read session
+def mount(_params) do
+  user_id = Session.get(:user_id)
+  %{logged_in: user_id != nil}
+end
+
+# In action — write session
+def login(%{"email" => email}) do
+  Session.put(:user_id, 42)
+  Nex.redirect("/dashboard")
+end
+
+def logout(_params) do
+  Session.clear()
+  Nex.redirect("/")
+end
+```
+
+Requires `SECRET_KEY_BASE` env var in production. TTL: 7 days (configurable via `:nex_core, :session_ttl`).
+
+### Flash Messages (Nex.Flash)
+One-time messages stored in session, cleared after being read. Available as `Flash` alias:
+```elixir
+# In action
+Flash.put(:info, "Saved successfully!")
+Flash.put(:error, "Invalid credentials.")
+
+# In mount/1
+def mount(_params) do
+  %{flash: Flash.pop_all()}
+end
+
+# In template
+~H"""
+<%= if @flash[:error] do %>
+  <div class="alert alert-error">{@flash[:error]}</div>
+<% end %>
+"""
+```
+
+### Middleware (Nex.Middleware)
+Plug pipeline that runs before routing. Configure in `application.ex`:
+```elixir
+Application.put_env(:nex_core, :plugs, [
+  MyApp.Plugs.Auth,
+  {Nex.RateLimit.Plug, max: 100, window: 60}
+])
+```
+
+Writing a plug:
+```elixir
+defmodule MyApp.Plugs.Auth do
+  import Plug.Conn
+
+  def init(opts), do: opts
+
+  def call(conn, _opts) do
+    if Nex.Session.get(:user_id) do
+      conn
+    else
+      conn |> put_resp_header("location", "/login") |> send_resp(302, "") |> halt()
+    end
+  end
+end
+```
+
+### WebSocket (Nex.WebSocket)
+Place handler in `src/api/`, use `use Nex.WebSocket`. Routes to `/ws/<path>`:
+```elixir
+defmodule MyApp.Api.Chat do
+  use Nex.WebSocket
+
+  def handle_connect(state) do
+    Nex.WebSocket.subscribe("chat")
+    {:ok, state}
+  end
+
+  def handle_message("ping", state), do: {:reply, "pong", state}
+  def handle_message(msg, state) do
+    Nex.WebSocket.broadcast("chat", msg)
+    {:ok, state}
+  end
+
+  def handle_disconnect(state), do: {:ok, state}
+
+  def initial_state(req), do: %{user_id: req.cookies["_nex_session"]}
+end
+```
+
+Connect from browser: `new WebSocket("ws://localhost:4000/ws/chat")`
+
+### Rate Limiting (Nex.RateLimit)
+```elixir
+# Standalone check
+case Nex.RateLimit.check(ip, max: 10, window: 60) do
+  :ok -> Nex.json(%{ok: true})
+  {:error, :rate_limited} -> Nex.status(429, "Too Many Requests")
+end
+
+# As middleware plug (per-IP, all routes)
+Application.put_env(:nex_core, :plugs, [
+  {Nex.RateLimit.Plug, max: 100, window: 60}
+])
+```
+
+### Static Files
+Place files in `priv/static/`. They are served at `/static/*` automatically:
+- `priv/static/app.css` → `/static/app.css`
+- `priv/static/logo.png` → `/static/logo.png`
+
+No configuration needed.
 
 ---
 
