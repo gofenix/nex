@@ -524,6 +524,34 @@ defmodule Nex.Handler do
     |> send_resp(200, "")
   end
 
+  defp send_action_response(conn, %Nex.Response{status: status, headers: headers, body: body, content_type: ct}) do
+    is_redirect = status in [301, 302, 303, 307, 308]
+    is_htmx = get_req_header(conn, "hx-request") != []
+
+    conn = Enum.reduce(headers, conn, fn {k, v}, c -> put_resp_header(c, k, v) end)
+    conn = if ct, do: put_resp_content_type(conn, ct), else: conn
+
+    cond do
+      is_redirect and is_htmx ->
+        location = Map.get(headers, "location", "/")
+        conn
+        |> put_resp_header("hx-redirect", location)
+        |> send_resp(200, "")
+
+      is_redirect ->
+        send_resp(conn, status, "")
+
+      is_function(body, 1) ->
+        conn = send_chunked(conn, 200)
+        body.(fn chunk -> Plug.Conn.chunk(conn, chunk) end)
+        conn
+
+      true ->
+        body_str = if is_binary(body), do: body, else: Jason.encode!(body)
+        send_resp(conn, status, body_str)
+    end
+  end
+
   defp send_action_response(conn, heex) do
     html = Phoenix.HTML.Safe.to_iodata(heex) |> IO.iodata_to_binary()
 

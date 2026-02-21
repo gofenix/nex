@@ -5,6 +5,11 @@ All notable changes to the Nex framework will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Nex 0.3.9] - 2026-02-21
+
+### Fixed
+- **`Nex.Handler` — `send_action_response/2`**: Page actions returning `%Nex.Response{}` structs (via `Nex.redirect/1`, `Nex.json/2`, `Nex.html/2`, `Nex.text/2`, `Nex.status/2`) now work correctly. Previously crashed with `Protocol.UndefinedError` for `Phoenix.HTML.Safe`. HTMX redirects use `HX-Redirect` header; non-HTMX redirects use standard HTTP 302.
+
 ## [Nex 0.3.8] - 2026-02-20
 
 ### Added
