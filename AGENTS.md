@@ -1,57 +1,89 @@
-# AI Agent Handbook & Principles
+# Nex Framework — AI Agent Guide
 
-## 1. Core Principles
+This guide helps AI coding agents understand the Nex framework to build applications.
 
-### Principle 1: Changelog First
-Every modification to the framework code must be recorded in the changelog to facilitate future framework version releases.
-Check the changelog before and after any modification.
+## 1. Quick Reference
 
-### Principle 2: Framework Modification Policy
-When creating example projects (in `website/` or `examples/`), if you determine that we need to modify the framework code to support them, please let me know. I will evaluate whether to make those changes.
+### Build & Test Commands
 
-### Principle 3: Upgrade Verification
-When upgrading the framework:
-1. Ensure the changelog is actually updated.
-2. Ensure the version number is correctly bumped.
-3. Ensure the installer code (`installer/`) is updated to reflect the change.
+```bash
+# Format code
+mix format
 
-### Principle 4: English Only
-All code, comments, documentation, README files, and commit messages **must be in English**.
-The only exception is `website/priv/docs/zh/` which holds Chinese translations for the documentation site.
+# Run all tests
+mix test
 
----
+# Run single test file
+mix test test/nex_base_test.exs
 
-## 2. Project Context
+# Run single test (by line number)
+mix test test/nex_base_test.exs:14
+
+# Run tests matching pattern
+mix test --trace                    # verbose
+mix test --only filter_name         # run tagged tests
+MIX_ENV=test mix test               # explicit env
+
+# Start dev server
+mix nex.dev
+```
 
 ### Project Structure
 ```
-nex/
-  framework/      # Core package (nex_core) — published to hex.pm
-  installer/      # Project generator (nex_new) — published to hex.pm
-  nex_base/       # Database query builder (nex_base) — PostgreSQL + SQLite, published to hex.pm (independent version)
-  website/        # Official documentation site
-  examples/       # Example projects (counter, todos, bestof_ex, etc.)
-  scripts/        # Release scripts
+my_app/
+├── src/
+│   ├── pages/           # Page routes (auto-routed)
+│   │   ├── index.ex     # GET /
+│   │   ├── users.ex     # GET /users
+│   │   └── users/
+│   │       └── [id].ex  # GET /users/:id
+│   ├── api/             # JSON API routes
+│   │   └── todos.ex     # GET/POST /api/todos
+│   ├── components/      # Reusable components
+│   └── layouts.ex       # HTML layout
+├── priv/static/         # Static files (served at /static/*)
+├── mix.exs
+└── .env               # Environment variables
 ```
-
-### Package Versions
-- `nex_core` + `nex_new`: Synchronized version via `/VERSION` file. Published together with `./scripts/publish_hex.sh`.
-- `nex_base`: Independent version in `nex_base/mix.exs`. Published separately with `./scripts/publish_nex_base.sh`.
-
-### Commit Message Convention
-Follow [Conventional Commits](https://www.conventionalcommits.org/):
-- **Format**: `<type>(<scope>): <subject>`
-- **Strict Rule**: **NO triple backticks (```)** in the commit message.
-- Subject: ≤ 50 chars, imperative mood.
-
-### Developer Experience (DX)
-- **Zero Boilerplate**: Nex handles CSRF automatically. Do NOT manually add CSRF input tags or headers unless specifically requested.
-- **Convention over Configuration**: File paths are routes. Modules use a unified `use Nex` interface.
-- **No config files**: Use `.env` + `Nex.Env` instead of `config/*.exs`.
 
 ---
 
-## 3. Critical Anti-Patterns
+## 2. Code Style Guidelines
+
+### Formatting
+- Use `mix format` — follows Elixir standard
+- `.formatter.exs` at project root with default settings
+
+### Naming Conventions
+- **Modules**: `PascalCase` (e.g., `Nex.Router`, `UserService`)
+- **Functions/variables**: `snake_case` (e.g., `user_id`, `fetch_user`)
+- **Files**: `snake_case.ex` (e.g., `user_service.ex`)
+
+### Types
+- Use `@type` for public API types
+- Use typespecs for function contracts: `@spec function_name(type) :: return_type`
+- Return tuples for errors: `{:ok, result}` or `{:error, reason}`
+
+### Error Handling
+```elixir
+# Pattern match on results
+case some_operation() do
+  {:ok, result} -> handle_success(result)
+  {:error, reason} -> handle_error(reason)
+end
+
+# Never swallow errors with empty catch
+# WRONG: rescue ... -> nil
+```
+
+### Imports
+- Use `alias` for clarity: `alias Nex.Router, as: Router`
+- Group: `import` → `alias` → `use`
+- Avoid wildcard imports in public APIs
+
+---
+
+## 3. Critical Anti-Patterns (Must Avoid)
 
 ### DO NOT create a custom Repo
 ```elixir
@@ -60,310 +92,260 @@ defmodule MyApp.Repo do
   use Ecto.Repo, otp_app: :my_app, adapter: Ecto.Adapters.Postgres
 end
 
-# RIGHT — NexBase provides the Repo internally
-NexBase.from("users") |> NexBase.run()
-```
-
-### DO NOT create a NexBase client object
-```elixir
-# WRONG — client pattern was removed in 0.1.1
-@client NexBase.client()
-@client |> NexBase.from("users") |> NexBase.run()
-
-# RIGHT — call NexBase directly
+# RIGHT — use NexBase directly
 NexBase.from("users") |> NexBase.run()
 ```
 
 ### DO NOT use `config/config.exs`
 ```elixir
-# WRONG — Nex does not use config files
+# WRONG
 config :my_app, MyApp.Repo, url: "..."
 
-# RIGHT — use .env files + Nex.Env
-# .env
-DATABASE_URL=postgresql://...
+# RIGHT — use .env + Nex.Env
+# .env: DATABASE_URL=postgresql://...
+Nex.Env.get(:database_url)
 ```
 
-### DO NOT use `for` comprehension inline in HEEx
-```elixir
-# WRONG — syntax error
-<%= for item <- @items do %>
-  <div>{item["name"]}</div>
-<% end %>
-
-# RIGHT — use :for directive
-<div :for={item <- @items}>{item["name"]}</div>
-```
-
-### DO NOT manually add CSRF tags, meta_tag, or hx-headers
-```elixir
-# WRONG — framework handles all of this automatically
-<head>{meta_tag()}</head>
-<body hx-headers={hx_headers()}>
-<form hx-post="/action">
-  {csrf_input_tag()}
-</form>
-
-# RIGHT — framework auto-injects <meta name="csrf-token"> into </head>
-# and HTMX CSRF headers via htmx:configRequest JS listener
-<form hx-post="/action">
-  ...
-</form>
-```
-
-### DO NOT manually zip SQL columns and rows
+### DO NOT use `for` comprehension in HEEx
 ```elixir
 # WRONG
-{:ok, %{rows: rows, columns: columns}} = NexBase.query(sql, params)
-Enum.map(rows, fn row -> Enum.zip(columns, row) |> Map.new() end)
+<%= for item <- @items do %> <div>{item.name}</div> <% end %>
 
-# RIGHT — NexBase.sql/2 returns list of maps directly
-{:ok, rows} = NexBase.sql("SELECT * FROM users WHERE id = $1", [id])
+# RIGHT — :for directive
+<div :for={item <- @items}>{item.name}</div>
 ```
 
-### DO NOT interpolate user input into SQL strings
+### DO NOT interpolate user input into SQL
 ```elixir
-# WRONG — SQL injection risk!
+# WRONG — SQL injection
 NexBase.sql("SELECT * FROM users WHERE name = '#{name}'", [])
 
-# RIGHT — always use parameterized queries
+# RIGHT — parameterized
 NexBase.sql("SELECT * FROM users WHERE name = $1", [name])
-
-# RIGHT — for IN queries, use filter_in/3
-NexBase.from("tags") |> NexBase.filter_in(:project_id, ids) |> NexBase.run()
 ```
 
-### DO NOT pass `{NexBase.Repo, []}` — pass the conn struct
-```elixir
-# WRONG — [] is not a valid child spec since NexBase 0.3
-children = [{NexBase.Repo, []}]
-
-# RIGHT — NexBase.init/1 returns a %NexBase.Conn{}, pass it to NexBase.Repo
-conn = NexBase.init(url: Nex.Env.get(:database_url), ssl: true)
-children = [{NexBase.Repo, conn}]
-```
+### DO NOT manually add CSRF tags
+The framework auto-injects `<meta name="csrf-token">` and HTMX headers. Do NOT add `{meta_tag()}` or `hx-headers={hx_headers()}` manually.
 
 ---
 
-## 4. Release Process
+## 4. Framework Essentials
 
-### nex_core + nex_new (synchronized)
-1. Update `/VERSION` file.
-2. Update `CHANGELOG.md`, `framework/CHANGELOG.md`, `installer/CHANGELOG.md`.
-3. Run `./scripts/publish_hex.sh`.
+### File-based Routing
+- `src/pages/index.ex` → `GET /`
+- `src/pages/users/[id].ex` → `GET /users/:id` (params: `%{"id" => "42"}`)
+- `src/api/todos.ex` → `/api/todos`
 
-### nex_base (independent)
-1. Update version in `nex_base/mix.exs`.
-2. Update `CHANGELOG.md` (NexBase section).
-3. Run `./scripts/publish_nex_base.sh`.
-
----
-
-## 5. Example Projects
-
-Dependencies for example projects:
+### Page Pattern
 ```elixir
-# Use path dep for nex_core (monorepo), hex dep for nex_base
-defp deps do
-  [
-    {:nex_core, path: "../../framework"},
-    {:nex_base, "~> 0.3"}  # only if project needs database
-  ]
-end
-```
-
-- Do NOT add bandit, jason, plug, etc. — they are transitive deps of nex_core.
-- Do NOT add extra_applications for those deps.
-
-### Correct application startup with NexBase
-```elixir
-defmodule MyApp.Application do
-  use Application
-
-  def start(_type, _args) do
-    Nex.Env.init()
-    conn = NexBase.init(url: Nex.Env.get(:database_url), ssl: true)
-
-    children = [{NexBase.Repo, conn}]
-    Supervisor.start_link(children, strategy: :one_for_one, name: MyApp.Supervisor)
-  end
-end
-```
-
-### Correct minimal layout (no meta_tag or hx-headers needed)
-```elixir
-defmodule MyApp.Layouts do
+defmodule MyApp.Pages.Index do
   use Nex
+
+  def mount(_params) do
+    %{title: "Home", items: fetch_items()}
+  end
 
   def render(assigns) do
     ~H"""
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta charset="UTF-8" />
-        <title>{@title}</title>
-        <script src="https://cdn.tailwindcss.com"></script>
-        <script src="https://unpkg.com/htmx.org@2"></script>
-      </head>
-      <body hx-boost="true">
-        {raw(@inner_content)}
-      </body>
-    </html>
+    <h1>{@title}</h1>
+    <div :for={item <- @items}>{item["name"]}</div>
     """
   end
 end
 ```
 
-The framework automatically injects:
-- `<meta name="csrf-token">` before `</head>` on every page render
-- CSRF header into every HTMX request via injected JS (`htmx:configRequest` listener)
-
-### Built-in helpers (Nex.Helpers)
-Available automatically in all page/component/layout modules via `use Nex`:
+### Application Startup
 ```elixir
-format_number(12_345)        # => "12.3k"
-format_date(~D[2026-01-15])  # => "Jan 15, 2026"
-time_ago(datetime)           # => "3 hours ago"
-truncate("Long text", 10)    # => "Long te..."
-pluralize(3, "item", "items") # => "3 items"
-clsx(["btn", {"btn-active", true}, {"hidden", false}])  # => "btn btn-active"
-```
-
-### Cookie API (Nex.Cookie)
-Available as `Cookie` alias in all page/component modules via `use Nex`:
-```elixir
-# Write (applied to response automatically)
-Cookie.put(:theme, "dark", max_age: 86_400, http_only: false)
-Cookie.delete(:theme)
-
-# Read (from current request)
-Cookie.get(:theme, "light")
-Cookie.all()  # => %{"theme" => "dark"}
-```
-
-### Session (Nex.Session)
-Server-side ETS session, persisted via signed `_nex_session` cookie. Available as `Session` alias:
-```elixir
-# In mount/1 — read session
-def mount(_params) do
-  user_id = Session.get(:user_id)
-  %{logged_in: user_id != nil}
-end
-
-# In action — write session
-def login(%{"email" => email}) do
-  Session.put(:user_id, 42)
-  Nex.redirect("/dashboard")
-end
-
-def logout(_params) do
-  Session.clear()
-  Nex.redirect("/")
+def start(_type, _args) do
+  Nex.Env.init()
+  conn = NexBase.init(url: Nex.Env.get(:database_url), ssl: true)
+  children = [{NexBase.Repo, conn}]
+  Supervisor.start_link(children, strategy: :one_for_one)
 end
 ```
 
-Requires `SECRET_KEY_BASE` env var in production. TTL: 7 days (configurable via `:nex_core, :session_ttl`).
-
-### Flash Messages (Nex.Flash)
-One-time messages stored in session, cleared after being read. Available as `Flash` alias:
+### Built-in Helpers (via `use Nex`)
 ```elixir
-# In action
-Flash.put(:info, "Saved successfully!")
-Flash.put(:error, "Invalid credentials.")
+format_number(12_345)     # => "12.3k"
+format_date(~D[2026-01-15]) # => "Jan 15, 2026"
+time_ago(datetime)        # => "3 hours ago"
+pluralize(3, "item")      # => "3 items"
+```
 
-# In mount/1
-def mount(_params) do
-  %{flash: Flash.pop_all()}
+### Validation (Nex.Validator)
+```elixir
+# Validate params
+case validate(params, %{
+  "name" => [:required, :string],
+  "email" => [:required, :string, :email],
+  "age" => [:number, min: 18]
+}) do
+  {:ok, valid_params} -> # proceed
+  {:error, errors} -> Nex.json(%{errors: errors}, status: 422)
 end
-
-# In template
-~H"""
-<%= if @flash[:error] do %>
-  <div class="alert alert-error">{@flash[:error]}</div>
-<% end %>
-"""
 ```
 
-### Middleware (Nex.Middleware)
-Plug pipeline that runs before routing. Configure in `application.ex`:
+### File Upload (Nex.Upload)
 ```elixir
-Application.put_env(:nex_core, :plugs, [
-  MyApp.Plugs.Auth,
-  {Nex.RateLimit.Plug, max: 100, window: 60}
-])
+# Files are automatically parsed from multipart forms
+def post(req) do
+  case req.body["avatar"] do
+    nil ->
+      Nex.json(%{error: "No file uploaded"}, status: 400)
+
+    upload ->
+      # Validate before saving
+      case validate(upload, max_size: 5_000_000, types: ["image/jpeg", "image/png"]) do
+        :ok ->
+          save(upload, "priv/uploads")
+        {:error, reason} ->
+          Nex.json(%{error: reason}, status: 400)
+      end
+  end
+end
 ```
 
-Writing a plug:
+### Custom Error Pages
 ```elixir
-defmodule MyApp.Plugs.Auth do
-  import Plug.Conn
+# Configure in application.ex
+Application.put_env(:nex_core, :error_page_module, MyApp.ErrorPages)
 
-  def init(opts), do: opts
+# Custom error module
+defmodule MyApp.ErrorPages do
+  def render_error(conn, status, message, error) do
+    # Return custom HTML string
+  end
+end
+```
 
-  def call(conn, _opts) do
-    if Nex.Session.get(:user_id) do
-      conn
-    else
-      conn |> put_resp_header("location", "/login") |> send_resp(302, "") |> halt()
+---
+
+## 5. Common Patterns for AI Agents
+
+### API Endpoint Pattern
+```elixir
+defmodule MyApp.Api.Users do
+  use Nex
+
+  # GET /api/users
+  def get(req) do
+    users = fetch_users()
+    Nex.json(%{data: users})
+  end
+
+  # POST /api/users
+  def post(req) do
+    case validate(req.body, %{
+      "name" => [:required, :string],
+      "email" => [:required, :string, :email]
+    }) do
+      {:ok, params} ->
+        user = create_user(params)
+        Nex.json(%{data: user}, status: 201)
+      {:error, errors} ->
+        Nex.json(%{errors: errors}, status: 422)
     end
   end
 end
 ```
 
-### WebSocket (Nex.WebSocket)
-Place handler in `src/api/`, use `use Nex.WebSocket`. Routes to `/ws/<path>`:
+### HTMX Action Pattern
 ```elixir
-defmodule MyApp.Api.Chat do
-  use Nex.WebSocket
+defmodule MyApp.Pages.Todos do
+  use Nex
 
-  def handle_connect(state) do
-    Nex.WebSocket.subscribe("chat")
-    {:ok, state}
+  def mount(_params) do
+    %{todos: fetch_todos()}
   end
 
-  def handle_message("ping", state), do: {:reply, "pong", state}
-  def handle_message(msg, state) do
-    Nex.WebSocket.broadcast("chat", msg)
-    {:ok, state}
+  def render(assigns) do
+    ~H"""
+    <form hx-post="/add_todo" hx-target="#todos" hx-swap="beforeend">
+      <input type="text" name="title" required />
+      <button>Add</button>
+    </form>
+    <ul id="todos">
+      <li :for={todo <- @todos}>{todo["title"]}</li>
+    </ul>
+    """
   end
 
-  def handle_disconnect(state), do: {:ok, state}
-
-  def initial_state(req), do: %{user_id: req.cookies["_nex_session"]}
+  # HTMX POST handler - returns HTML fragment
+  def add_todo(req) do
+    todo = create_todo(req.body["title"])
+    ~H"<li>{todo["title"]}</li>"
+  end
 end
 ```
 
-Connect from browser: `new WebSocket("ws://localhost:4000/ws/chat")`
-
-### Rate Limiting (Nex.RateLimit)
+### Session & Authentication
 ```elixir
-# Standalone check
-case Nex.RateLimit.check(ip, max: 10, window: 60) do
-  :ok -> Nex.json(%{ok: true})
-  {:error, :rate_limited} -> Nex.status(429, "Too Many Requests")
+# Read session
+def mount(_params) do
+  user_id = Session.get(:user_id)
+  %{logged_in: user_id != nil}
 end
 
-# As middleware plug (per-IP, all routes)
-Application.put_env(:nex_core, :plugs, [
-  {Nex.RateLimit.Plug, max: 100, window: 60}
-])
+# Write session
+def login(req) do
+  Session.put(:user_id, user_id)
+  Nex.redirect("/dashboard")
+end
 ```
 
-### Static Files
-Place files in `priv/static/`. They are served at `/static/*` automatically:
-- `priv/static/app.css` → `/static/app.css`
-- `priv/static/logo.png` → `/static/logo.png`
+### Database Query (with NexBase)
+```elixir
+# Query builder
+{:ok, users} = NexBase.from("users")
+|> NexBase.eq(:active, true)
+|> NexBase.order(:created_at, :desc)
+|> NexBase.limit(10)
+|> NexBase.run()
 
-No configuration needed.
+# Raw SQL
+{:ok, rows} = NexBase.sql("SELECT * FROM users WHERE id = $1", [user_id])
+```
+
+### Streaming Response (AI/LLM)
+```elixir
+def post(req) do
+  message = req.body["message"]
+
+  Nex.stream(fn send ->
+    send.(%{event: "message", data: "Thinking..."})
+    # Stream from AI...
+  end)
+end
+```
 
 ---
 
-## 6. Browser Automation
+## 6. Release Process
 
-Use `agent-browser` for web automation. Run `agent-browser --help` for all commands.
+### nex_core + nex_new (synchronized)
+1. Update `/VERSION` file
+2. Update `CHANGELOG.md`, `framework/CHANGELOG.md`, `installer/CHANGELOG.md`
+3. Run `./scripts/publish_hex.sh`
 
-Core workflow:
-1. `agent-browser open <url>` - Navigate to page
-2. `agent-browser snapshot -i` - Get interactive elements with refs (@e1, @e2)
-3. `agent-browser click @e1` / `fill @e2 "text"` - Interact using refs
-4. Re-snapshot after page changes
+### nex_base (independent)
+1. Update version in `nex_base/mix.exs`
+2. Update `CHANGELOG.md`
+3. Run `./scripts/publish_nex_base.sh`
+
+---
+
+## 7. Commit Convention
+
+Follow [Conventional Commits](https://www.conventionalcommits.org/):
+- Format: `<type>(<scope>): <subject>`
+- Subject: ≤50 chars, imperative mood
+- **NO triple backticks** in commit messages
+
+---
+
+## 8. Additional Rules
+
+- **English Only**: All code, comments, docs, commits in English
+- **Changelog First**: Update changelog before any framework change
+- **No Config Files**: Use `.env` only, never `config/*.exs`
+- **Cursor Rules**: If project has `.cursorrules`, follow it (see `bestof_ex/.cursorrules`)

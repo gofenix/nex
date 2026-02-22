@@ -50,17 +50,31 @@ defmodule Nex.Req do
   | `req.cookies` | `req.cookies` | Identical behavior |
   | `req.method` | `req.method` | Identical behavior |
   """
-  defstruct [
-    # Next.js standard fields
-    :query,       # Path params + query string (Next.js req.query)
-    :body,        # Request body (Next.js req.body)
-    :headers,     # Request headers (Map)
-    :cookies,     # Request cookies (Map)
-    :method,      # HTTP method (String, uppercase)
 
-    # Framework internals
-    :path,        # Request path (String)
-    :private      # Framework internal data (Map)
+  # Types
+  @type method :: :get | :post | :put | :patch | :delete | :head | :options
+  @type params :: %{optional(String.t()) => term()}
+  @type headers :: %{optional(String.t()) => String.t()}
+  @type cookies :: %{optional(String.t()) => String.t()}
+
+  @type t :: %__MODULE__{
+          query: params(),
+          body: params() | %Plug.Upload{},
+          headers: headers(),
+          cookies: cookies(),
+          method: String.t(),
+          path: String.t(),
+          private: map()
+        }
+
+  defstruct [
+    :query,
+    :body,
+    :headers,
+    :cookies,
+    :method,
+    :path,
+    :private
   ]
 
   @doc """
@@ -68,17 +82,20 @@ defmodule Nex.Req do
 
   This function normalizes the Plug.Conn into a Next.js-compatible request object.
   """
+  @spec from_plug_conn(Plug.Conn.t(), params()) :: t()
   def from_plug_conn(%Plug.Conn{} = conn, path_params \\ %{}) do
-    conn = conn
+    conn =
+      conn
       |> Plug.Conn.fetch_query_params()
       |> Plug.Conn.fetch_cookies()
 
     # Normalize body_params: ensure it's always a Map (never Unfetched)
-    body_params = case conn.body_params do
-      %Plug.Conn.Unfetched{} -> %{}
-      params when is_map(params) -> params
-      _ -> %{}
-    end
+    body_params =
+      case conn.body_params do
+        %Plug.Conn.Unfetched{} -> %{}
+        params when is_map(params) -> params
+        _ -> %{}
+      end
 
     # Convert headers list to Map
     headers = Map.new(conn.req_headers)

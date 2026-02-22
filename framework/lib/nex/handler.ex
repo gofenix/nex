@@ -493,11 +493,14 @@ defmodule Nex.Handler do
     page_id = get_page_id_from_request(conn)
     Nex.Store.set_page_id(page_id)
 
+    # Build req struct for page actions (same as API)
+    req = Nex.Req.from_plug_conn(conn, params)
+
     # Use to_existing_atom to prevent atom exhaustion attacks
     case safe_to_existing_atom(action) do
       {:ok, action_atom} ->
         if function_exported?(module, action_atom, 1) do
-          result = apply(module, action_atom, [params])
+          result = apply(module, action_atom, [req])
           send_action_response(conn, result)
         else
           send_resp(conn, 404, "Action not found: #{action}")
@@ -524,7 +527,12 @@ defmodule Nex.Handler do
     |> send_resp(200, "")
   end
 
-  defp send_action_response(conn, %Nex.Response{status: status, headers: headers, body: body, content_type: ct}) do
+  defp send_action_response(conn, %Nex.Response{
+         status: status,
+         headers: headers,
+         body: body,
+         content_type: ct
+       }) do
     is_redirect = status in [301, 302, 303, 307, 308]
     is_htmx = get_req_header(conn, "hx-request") != []
 
@@ -534,6 +542,7 @@ defmodule Nex.Handler do
     cond do
       is_redirect and is_htmx ->
         location = Map.get(headers, "location", "/")
+
         conn
         |> put_resp_header("hx-redirect", location)
         |> send_resp(200, "")
@@ -605,6 +614,21 @@ defmodule Nex.Handler do
   end
 
   defp build_error_page(conn, status, message, error) do
+    case Application.get_env(:nex_core, :error_page_module) do
+      nil ->
+        build_default_error_page(conn, status, message, error)
+
+      module ->
+        try do
+          apply(module, :render_error, [conn, status, message, error])
+        rescue
+          _ ->
+            build_default_error_page(conn, status, message, error)
+        end
+    end
+  end
+
+  defp build_default_error_page(conn, status, message, error) do
     is_dev = dev_env?()
 
     {exception_section, stacktrace_section, request_section} =
@@ -707,10 +731,13 @@ defmodule Nex.Handler do
             line = Keyword.get(info, :line, 0)
             mod_str = inspect(mod)
             fun_str = "#{fun}/#{arity}"
-            is_app = not String.starts_with?(mod_str, "Elixir.Phoenix") and
-                     not String.starts_with?(mod_str, "Elixir.Plug") and
-                     not String.starts_with?(mod_str, "Elixir.Bandit") and
-                     not String.starts_with?(mod_str, "Elixir.Nex.")
+
+            is_app =
+              not String.starts_with?(mod_str, "Elixir.Phoenix") and
+                not String.starts_with?(mod_str, "Elixir.Plug") and
+                not String.starts_with?(mod_str, "Elixir.Bandit") and
+                not String.starts_with?(mod_str, "Elixir.Nex.")
+
             frame_class = if is_app, do: "frame frame-app", else: "frame"
 
             """

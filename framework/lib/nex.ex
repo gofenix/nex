@@ -97,8 +97,8 @@ defmodule Nex do
 
       # Page/Component/Layout modules - need HEEx support
       String.contains?(module_name, ".Pages.") or
-      String.contains?(module_name, ".Components.") or
-      String.ends_with?(module_name, ".Layouts") ->
+        String.contains?(module_name, ".Components.") or
+          String.ends_with?(module_name, ".Layouts") ->
         quote do
           import Phoenix.Component, only: [sigil_H: 2, render_slot: 1, render_slot: 2]
           import Phoenix.HTML, only: [raw: 1]
@@ -123,6 +123,10 @@ defmodule Nex do
     end
   end
 
+  # Response type
+  @type json_data :: map() | list() | String.t()
+  @type response_options :: [status: non_neg_integer(), headers: %{String.t() => String.t()}]
+
   @doc """
   Constructs a JSON response.
 
@@ -130,6 +134,7 @@ defmodule Nex do
     * `:status` - HTTP status code (default: 200)
     * `:headers` - Additional headers (default: %{})
   """
+  @spec json(json_data(), response_options()) :: Response.t()
   def json(data, opts \\ []) do
     status = Keyword.get(opts, :status, 200)
     headers = Keyword.get(opts, :headers, %{})
@@ -145,8 +150,10 @@ defmodule Nex do
   @doc """
   Constructs a text response.
   """
+  @spec text(String.t(), response_options()) :: Response.t()
   def text(text, opts \\ []) do
     status = Keyword.get(opts, :status, 200)
+
     %Response{
       status: status,
       body: text,
@@ -173,8 +180,10 @@ defmodule Nex do
     * `:status` - HTTP status code (default: 200)
     * `:headers` - Additional headers (default: %{})
   """
+  @spec html(String.t(), response_options()) :: Response.t()
   def html(html, opts \\ []) do
     status = Keyword.get(opts, :status, 200)
+
     %Response{
       status: status,
       body: html,
@@ -185,8 +194,10 @@ defmodule Nex do
   @doc """
   Constructs a redirect response.
   """
+  @spec redirect(String.t(), response_options()) :: Response.t()
   def redirect(to, opts \\ []) do
     status = Keyword.get(opts, :status, 302)
+
     %Response{
       status: status,
       body: "",
@@ -198,6 +209,7 @@ defmodule Nex do
   @doc """
   Constructs a response with custom status code.
   """
+  @spec status(non_neg_integer(), String.t()) :: Response.t()
   def status(code, body \\ "") do
     %Response{
       status: code,
@@ -250,6 +262,7 @@ defmodule Nex do
         end)
       end
   """
+  @spec stream((%{event: String.t(), data: term()} | term() -> term())) :: Response.t()
   def stream(callback) when is_function(callback, 1) do
     %Response{
       status: 200,

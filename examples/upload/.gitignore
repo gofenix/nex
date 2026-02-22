@@ -1,0 +1,5 @@
+.env
+/_build
+/deps
+*.ez
+priv/uploads/*

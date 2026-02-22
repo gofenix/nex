@@ -5,6 +5,16 @@ All notable changes to the Nex framework will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Nex 0.4.0] - Unreleased
+
+### Added
+- **`Nex.Validator`**: Params validation for Nex applications. Supports common validators: `:required`, `:string`, `:number`, `:boolean`, `:email`, `:url`, `:min`, `:max`, `:format`, `:in`. Also supports custom validators as functions. Returns `{:ok, params}` or `{:error, errors}`.
+- **`Nex.Upload`**: File upload handling. Files from multipart forms are available in `req.body` as `%Plug.Upload{}` structs. Provides `save/2,3` for saving to disk and `validate/2` for file validation (size, type, extension).
+- **Custom error pages**: Configure custom error page module via `Application.put_env(:nex_core, :error_page_module, MyApp.ErrorPages)`. Custom module must implement `render_error/4` function.
+
+### Changed
+- **`Nex.Handler`**: Now checks for custom error page module before falling back to default error page.
+
 ## [Nex 0.3.9] - 2026-02-21
 
 ### Fixed
