@@ -21,7 +21,7 @@ defmodule TodosApi.MixProject do
 
   defp deps do
     [
-      {:nex_core, path: "../../framework"},
+      {:nex_core, "~> 0.3.9"},
       {:req, "~> 0.5"}
     ]
   end

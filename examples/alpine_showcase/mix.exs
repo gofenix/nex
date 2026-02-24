@@ -21,7 +21,7 @@ defmodule AlpineShowcase.MixProject do
 
   defp deps do
     [
-      {:nex_core, path: "../../framework"},
+      {:nex_core, "~> 0.3.9"},
       {:jason, "~> 1.2"}
     ]
   end

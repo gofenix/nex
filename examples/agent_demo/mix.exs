@@ -12,8 +12,8 @@ defmodule AgentDemo.MixProject do
 
   defp deps do
     [
-      {:nex_agent, path: "../../nex_agent"},
-      {:nex_core, path: "../../framework"}
+      {:nex_agent, "~> 0.1"},
+      {:nex_core, "~> 0.3"}
     ]
   end
 end
