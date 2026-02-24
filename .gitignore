@@ -44,3 +44,6 @@ doc/
 .github/
 .opencode/
 .trae/
+
+# opensrc - source code for packages
+opensrc/

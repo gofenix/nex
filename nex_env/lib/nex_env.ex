@@ -1,4 +1,4 @@
-defmodule NexEnv do
+defmodule Nex.Env do
   @moduledoc """
   Environment variable management.
 
