@@ -21,8 +21,8 @@ defmodule BestofEx.MixProject do
 
   defp deps do
     [
-      {:nex_core, "~> 0.3.3"},
-      {:nex_base, "~> 0.3.4"},
+      {:nex_core, "~> 0.3.9"},
+      {:nex_base, "~> 0.3.9"},
       {:req, "~> 0.5"}
     ]
   end

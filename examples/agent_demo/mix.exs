@@ -12,8 +12,9 @@ defmodule AgentDemo.MixProject do
 
   defp deps do
     [
-      {:nex_agent, "~> 0.1"},
-      {:nex_core, "~> 0.3"}
+      {:nex_agent, "~> 0.3.9"},
+      {:nex_core, "~> 0.3.9"},
+      {:nex_env, "~> 0.3.9"}
     ]
   end
 end
