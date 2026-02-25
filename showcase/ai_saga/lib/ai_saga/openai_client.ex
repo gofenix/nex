@@ -1,31 +1,33 @@
 defmodule AiSaga.OpenAIClient do
   @moduledoc """
-  OpenAI API客户端
-  用于推荐论文和生成三视角分析
+  OpenAI API client
+  Used for paper recommendations and generating three-perspective analysis
   """
 
   defp model, do: System.get_env("OPENAI_MODEL") || "gpt-4o"
   defp base_url, do: System.get_env("OPENAI_BASE_URL") || "https://api.openai.com/v1"
 
   @doc """
-  基于论文统计摘要推荐下一篇论文
+  Recommend next paper based on papers summary
   """
   def recommend_paper(papers_summary, hf_candidates) do
-    # 先过滤掉已存在的论文
+    # First filter out already existing papers
     existing_ids = papers_summary.existing_arxiv_ids || []
-    filtered_candidates = Enum.reject(hf_candidates, fn c ->
-      clean_arxiv_id(c.id) in existing_ids
-    end)
 
-    # 使用统一的推荐prompt
+    filtered_candidates =
+      Enum.reject(hf_candidates, fn c ->
+        clean_arxiv_id(c.id) in existing_ids
+      end)
+
+    # Use unified recommendation prompt
     prompt = build_recommendation_prompt(papers_summary, filtered_candidates)
 
     with {:ok, response} <- call_openai(prompt),
          recommendation = parse_recommendation(response),
          recommendation = normalize_recommendation(recommendation, filtered_candidates, response) do
       if recommendation.arxiv_id in existing_ids do
-        # AI 仍然推荐了已存在的，返回错误
-        {:error, "AI 推荐了已存在的论文: #{recommendation.arxiv_id}"}
+        # AI still recommended an existing paper, return error
+        {:error, "AI recommended existing paper: #{recommendation.arxiv_id}"}
       else
         {:ok, recommendation}
       end
@@ -36,7 +38,7 @@ defmodule AiSaga.OpenAIClient do
   end
 
   @doc """
-  生成论文的三视角分析
+  Generate three-perspective analysis for a paper
   """
   def generate_analysis(relevant_papers, new_paper, hf_data) do
     prompt = build_analysis_prompt(relevant_papers, new_paper, hf_data)
@@ -50,150 +52,157 @@ defmodule AiSaga.OpenAIClient do
     end
   end
 
-  # 构建推荐Prompt（统一处理HuggingFace候选和经典论文）
-  # 注意：hf_candidates 应该是已经过滤掉已收录论文的列表
+  # Build recommendation prompt (handles both HuggingFace candidates and classic papers)
+  # Note: hf_candidates should already be filtered to exclude existing papers
   defp build_recommendation_prompt(papers_summary, filtered_candidates) do
-    # 构建范式统计字符串
-    paradigm_str = Enum.map_join(papers_summary.paradigm_summaries, "\n", fn p ->
-      status = if p.count == 0, do: "⚠️ 空白", else: "#{p.count}篇"
-      "- #{p.name} (#{p.start_year}-#{p.end_year || "现在"}): #{status}"
-    end)
-
-    # 构建已有论文的 arXiv ID 列表
-    existing_ids_str = if length(papers_summary.existing_arxiv_ids) > 0 do
-      papers_summary.existing_arxiv_ids
-      |> Enum.join(", ")
-    else
-      "无"
-    end
-
-    # 构建已有论文标题列表
-    existing_titles_str = if Map.has_key?(papers_summary, :existing_titles) and length(papers_summary.existing_titles) > 0 do
-      Enum.join(papers_summary.existing_titles, "\n")
-    else
-      "无"
-    end
-
-    # 构建HuggingFace候选列表（已过滤，可能为空）
-    candidates_str = if length(filtered_candidates) > 0 do
-      Enum.map_join(filtered_candidates, "\n", fn p ->
-        "- #{p.title} (#{p.published_at})\n  arXiv ID: #{p.id}\n  作者: #{Enum.join(p.authors, ", ")}\n  影响力: #{p.influence_score}"
+    # Build paradigm summary string
+    paradigm_str =
+      Enum.map_join(papers_summary.paradigm_summaries, "\n", fn p ->
+        status = if p.count == 0, do: "⚠️ Empty", else: "#{p.count} papers"
+        "- #{p.name} (#{p.start_year}-#{p.end_year || "present"}): #{status}"
       end)
-    else
-      "（当前无新增候选）"
-    end
+
+    # Build existing papers arXiv ID list
+    existing_ids_str =
+      if length(papers_summary.existing_arxiv_ids) > 0 do
+        papers_summary.existing_arxiv_ids
+        |> Enum.join(", ")
+      else
+        "None"
+      end
+
+    # Build existing papers title list
+    existing_titles_str =
+      if Map.has_key?(papers_summary, :existing_titles) and
+           length(papers_summary.existing_titles) > 0 do
+        Enum.join(papers_summary.existing_titles, "\n")
+      else
+        "None"
+      end
+
+    # Build HuggingFace candidates list (already filtered, may be empty)
+    candidates_str =
+      if length(filtered_candidates) > 0 do
+        Enum.map_join(filtered_candidates, "\n", fn p ->
+          "- #{p.title} (#{p.published_at})\n  arXiv ID: #{p.id}\n  Authors: #{Enum.join(p.authors, ", ")}\n  Influence: #{p.influence_score}"
+        end)
+      else
+        "(No new candidates)"
+      end
 
     """
-    你是AI历史专家。请基于我们的论文收藏现状，推荐下一篇应该添加的重要论文。
+    You are an AI history expert. Based on our current paper collection, recommend the next important paper to add.
 
-    【我们已有的论文分布】（共#{papers_summary.total_count}篇）
+    【Our Paper Distribution】(Total: #{papers_summary.total_count} papers)
     #{paradigm_str}
 
-    【已收藏的论文】
+    【Existing Papers】
     #{existing_titles_str}
 
-    【已收藏的 arXiv ID】
+    【Existing arXiv IDs】
     #{existing_ids_str}
 
-    ⚠️ 重要：绝对不要推荐上述已收藏的论文！必须推荐一篇全新的、不在上述列表中的论文。
+    ⚠️ Important: DO NOT recommend any of the above papers! You must recommend a brand new paper not in the list.
 
-    【HuggingFace热门候选】
+    【HuggingFace Trending Candidates】
     #{candidates_str}
 
-    【推荐策略】
-    1. 优先从HuggingFace热门候选中推荐（如果有的话）
-    2. 如果候选为空或都已收录，请从AI历史上的经典论文中推荐，包括但不限于：
-       - Transformer架构及其变体
-       - 预训练语言模型（BERT、GPT系列、LLaMA等）
-       - 计算机视觉经典（ResNet、VGG、AlexNet、YOLO等）
-       - 优化与训练技术（Adam、Batch Normalization、Dropout等）
-       - 强化学习里程碑（DQN、AlphaGo、PPO等）
+    【Recommendation Strategy】
+    1. Prioritize recommending from HuggingFace candidates (if available)
+    2. If candidates are empty or already added, recommend classic papers from AI history, including but not limited to:
+       - Transformer architectures and variants
+       - Pretrained language models (BERT, GPT series, LLaMA, etc.)
+       - Computer vision classics (ResNet, VGG, AlexNet, YOLO, etc.)
+       - Optimization and training techniques (Adam, Batch Normalization, Dropout, etc.)
+       - Reinforcement learning milestones (DQN, AlphaGo, PPO, etc.)
 
-    请从以下角度思考：
-    1. 历史视角：哪些范式是空白？时间线上还有哪些重要节点？
-    2. 范式变迁：哪些论文能填补空白或推动范式演进？
-    3. 多样性：考虑不同学派、地区、机构的重要工作
+    Please think from these perspectives:
+    1. Historical perspective: Which paradigms are missing? What important nodes are there on the timeline?
+    2. Paradigm shift: Which papers can fill gaps or drive paradigm evolution?
+    3. Diversity: Consider important works from different schools, regions, and institutions
 
-    请推荐1篇论文，格式如下：
-    标题: [论文标题]
-    作者: [主要作者]
-    年份: [发表年份]
-    arXiv ID: [如 1706.03762，必须是有效的arXiv ID]
-    推荐理由: [为什么选这篇？它如何填补空白或推动历史？]
+    Please recommend 1 paper in the following format:
+    Title: [paper title]
+    Authors: [main authors]
+    Year: [publication year]
+    arXiv ID: [e.g. 1706.03762, must be valid arXiv ID]
+    Reason: [why recommend this? How does it fill gaps or drive history?]
     """
   end
 
-  # 构建分析Prompt（使用相关论文，而非全部）
+  # Build analysis prompt (uses relevant papers, not all)
   defp build_analysis_prompt(relevant_papers, new_paper, hf_data) do
-    # 构建相关论文字符串
-    existing_str = Enum.map_join(relevant_papers, "\n", fn p ->
-      "- #{p["published_year"]}: #{p["title"]} [#{p["paradigm"]["name"]}]"
-    end)
+    # Build relevant papers string
+    existing_str =
+      Enum.map_join(relevant_papers, "\n", fn p ->
+        "- #{p["published_year"]}: #{p["title"]} [#{p["paradigm"]["name"]}]"
+      end)
 
-    hf_str = if hf_data do
-      "影响力分数: #{hf_data.influence_score}\n社区讨论: #{hf_data.discussion_count}"
-    else
-      "无HuggingFace数据"
-    end
+    hf_str =
+      if hf_data do
+        "Influence Score: #{hf_data.influence_score}\nCommunity Discussion: #{hf_data.discussion_count}"
+      else
+        "No HuggingFace data"
+      end
 
     """
-    请为以下论文生成详细的三视角分析内容。
+    Please generate detailed three-perspective analysis content for the following paper.
 
-    【相关论文上下文】（前后几年）
+    【Relevant Papers Context】(previous and subsequent years)
     #{existing_str}
 
-    【新论文信息】
-    标题: #{new_paper.title}
-    作者: #{Enum.join(new_paper.authors, ", ")}
-    年份: #{new_paper.published}
-    英文摘要: #{new_paper.abstract}
+    【New Paper Information】
+    Title: #{new_paper.title}
+    Authors: #{Enum.join(new_paper.authors, ", ")}
+    Year: #{new_paper.published}
+    English Abstract: #{new_paper.abstract}
 
-    【HuggingFace数据】
+    【HuggingFace Data】
     #{hf_str}
 
-    请按照以下格式生成内容（全部使用中文，保持学术性和准确性，但要简洁高效）：
+    Please generate content in the following format (all in Chinese, keep it academic and accurate but concise):
 
     ## 中文摘要
-    将英文摘要翻译成100-150字的中文学术摘要，简要概括核心贡献。
+    Translate the English abstract into a 100-150 word Chinese academic summary, briefly summarizing core contributions.
 
     ## 上一个范式
-    描述论文前的主流方法，用表格对比和列表说明困境。
+    Describe the mainstream methods before this paper, with table comparison and list of dilemmas.
 
     ## 核心贡献
-    列出2-3个核心创新点，一句话总结。
+    List 2-3 core innovations, with one-sentence summary.
 
     ## 核心机制
-    核心算法和关键步骤，可用代码块或表格。
+    Core algorithm and key steps, can use code blocks or tables.
 
     ## 为什么赢了
-    与之前方法的对比表格（3个维度）。
+    Comparison table with previous methods (3 dimensions).
 
     ## 当时面临的挑战
-    领域面临的核心问题（2-3点）。
+    Core problems faced by the field (2-3 points).
 
     ## 解决方案
-    论文如何解决（技术要点）。
+    How the paper solves these (technical key points).
 
     ## 深远影响
-    对领域的具体改变和影响。
+    Specific changes and impact on the field.
 
     ## 后续影响
-    后续重要工作和时间线。
+    Subsequent important works and timeline.
 
     ## 作者去向
-    主要作者后续发展（表格）。
+    Main authors' subsequent developments (table).
 
     ## 历史背景
-    论文发表时的时代背景（100字左右）。
+    Historical background when the paper was published (~100 words).
 
-    重要提示：
-    1. 所有内容用中文
-    2. 简洁但专业，不要过度冗长
-    3. 多使用表格、列表组织信息
+    Important notes:
+    1. All content in Chinese
+    2. Concise but professional, don't be overly verbose
+    3. Use tables and lists to organize information
     """
   end
 
-  # 调用OpenAI API
+  # Call OpenAI API
   defp call_openai(prompt) do
     api_key = System.get_env("OPENAI_API_KEY")
 
@@ -211,16 +220,18 @@ defmodule AiSaga.OpenAIClient do
       }
 
       case Req.post(
-        "#{base_url()}/chat/completions",
-        headers: [
-          {"Authorization", "Bearer #{api_key}"},
-          {"Content-Type", "application/json"}
-        ],
-        json: body,
-        receive_timeout: 60_000
-      ) do
+             "#{base_url()}/chat/completions",
+             headers: [
+               {"Authorization", "Bearer #{api_key}"},
+               {"Content-Type", "application/json"}
+             ],
+             json: body,
+             receive_timeout: 60_000
+           ) do
         {:ok, %{status: 200, body: response}} ->
-          content = response["choices"] |> List.first() |> Map.get("message") |> Map.get("content")
+          content =
+            response["choices"] |> List.first() |> Map.get("message") |> Map.get("content")
+
           {:ok, content}
 
         {:ok, %{status: status, body: body}} ->
@@ -232,21 +243,22 @@ defmodule AiSaga.OpenAIClient do
     end
   end
 
-  # 解析推荐结果
+  # Parse recommendation result
   defp parse_recommendation(response) do
     lines = String.split(response, "\n")
 
     %{
-      title: extract_value(lines, "标题:"),
-      authors: extract_value(lines, "作者:"),
-      year: extract_value(lines, "年份:"),
+      title: extract_value(lines, "Title:"),
+      authors: extract_value(lines, "Authors:"),
+      year: extract_value(lines, "Year:"),
       arxiv_id: extract_value(lines, "arXiv ID:"),
-      reason: extract_value(lines, "推荐理由:")
+      reason: extract_value(lines, "Reason:")
     }
   end
 
   defp extract_value(lines, prefix) do
     line = Enum.find(lines, fn l -> String.starts_with?(l, prefix) end)
+
     if line do
       line |> String.replace(prefix, "") |> String.trim()
     else
@@ -317,19 +329,21 @@ defmodule AiSaga.OpenAIClient do
 
   defp valid_arxiv_id?(_), do: false
 
-  # 解析分析结果
+  # Parse analysis result
   defp parse_analysis(response) do
-    # 按##分割各个部分
-    sections = response
-    |> String.split("## ")
-    |> Enum.drop(1)  # 去掉第一个空字符串
-    |> Enum.map(fn section ->
-      case String.split(section, "\n", parts: 2) do
-        [title, content] -> {String.trim(title), String.trim(content)}
-        [title] -> {String.trim(title), ""}
-      end
-    end)
-    |> Map.new()
+    # Split by ## to get sections
+    sections =
+      response
+      |> String.split("## ")
+      # Drop first empty string
+      |> Enum.drop(1)
+      |> Enum.map(fn section ->
+        case String.split(section, "\n", parts: 2) do
+          [title, content] -> {String.trim(title), String.trim(content)}
+          [title] -> {String.trim(title), ""}
+        end
+      end)
+      |> Map.new()
 
     %{
       chinese_abstract: sections["中文摘要"],

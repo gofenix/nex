@@ -1,105 +1,115 @@
 _ = """
- Usage: mix run scripts/add_paper.exs
+Usage: mix run scripts/add_paper.exs
 
- 这个脚本演示如何添加新论文到AiSaga：
- 1. 用户提供论文基本信息
- 2. 生成AI prompt
- 3. 用户将prompt发送给AI（ChatGPT, Claude等）
- 4. 将AI返回的内容保存到数据库
+This script demonstrates how to add a new paper to AiSaga:
+1. User provides basic paper information
+2. Generate AI prompt
+3. User sends prompt to AI (ChatGPT, Claude, etc.)
+4. Save AI-generated content to database
 """
 
-# 示例：添加一篇新论文
+# Example: add a new paper
 paper_info = %{
   title: "Diffusion Models Beat GANs on Image Synthesis",
   authors: ["Prafulla Dhariwal", "Alex Nichol"],
   year: 2021,
   url: "https://arxiv.org/abs/2105.05233",
-  abstract: "We show that diffusion models can achieve image sample quality superior to the current state-of-the-art generative models, including GANs. We achieve this by improving the U-Net architecture and introducing classifier guidance.",
+  abstract:
+    "We show that diffusion models can achieve image sample quality superior to the current state-of-the-art generative models, including GANs. We achieve this by improving the U-Net architecture and introducing classifier guidance.",
   paradigm_id: 5,
   is_paradigm_shift: 1,
-  shift_trigger: "扩散模型超越GAN成为图像生成新范式"
+  shift_trigger: "Diffusion models surpass GANs as new paradigm for image generation"
 }
 
 IO.puts("=" |> String.duplicate(80))
-IO.puts("新论文信息")
+IO.puts("New Paper Information")
 IO.puts("=" |> String.duplicate(80))
-IO.puts("标题: #{paper_info.title}")
-IO.puts("作者: #{Enum.join(paper_info.authors, ", ")}")
-IO.puts("年份: #{paper_info.year}")
-IO.puts("链接: #{paper_info.url}")
+IO.puts("Title: #{paper_info.title}")
+IO.puts("Authors: #{Enum.join(paper_info.authors, ", ")}")
+IO.puts("Year: #{paper_info.year}")
+IO.puts("Link: #{paper_info.url}")
 IO.puts("")
 
-# 生成slug
-author_part = paper_info.authors |> List.first() |> String.downcase() |> String.split(" ") |> List.last()
-keyword = paper_info.title |> String.downcase() |> String.replace(~r/[^a-z0-9\s]/, "") |> String.split() |> Enum.take(3) |> Enum.join("-")
+# Generate slug
+author_part =
+  paper_info.authors |> List.first() |> String.downcase() |> String.split(" ") |> List.last()
+
+keyword =
+  paper_info.title
+  |> String.downcase()
+  |> String.replace(~r/[^a-z0-9\s]/, "")
+  |> String.split()
+  |> Enum.take(3)
+  |> Enum.join("-")
+
 slug = "#{author_part}-#{paper_info.year}-#{keyword}"
 
-# 生成prompt
+# Generate prompt
 prompt = """
-请为以下AI论文生成详细的三视角分析内容：
+Please generate detailed three-perspective analysis content for the following AI paper:
 
-论文标题：#{paper_info.title}
-作者：#{Enum.join(paper_info.authors, ", ")}
-发表年份：#{paper_info.year}
-论文链接：#{paper_info.url}
-摘要：#{paper_info.abstract}
+Paper Title: #{paper_info.title}
+Authors: #{Enum.join(paper_info.authors, ", ")}
+Publication Year: #{paper_info.year}
+Paper Link: #{paper_info.url}
+Abstract: #{paper_info.abstract}
 
-请按照以下格式生成内容（使用Markdown格式）：
+Please generate content in the following format (using Markdown):
 
-## 上一个范式
-描述这篇论文出现之前的主流方法，包括：
-- 主流技术栈（用表格对比组件、贡献、问题）
-- 当时的困境
+## Previous Paradigm
+Describe the mainstream methods before this paper appeared:
+- Main technology stack (compare components, contributions, problems with a table)
+- Challenges at that time
 
-## 核心贡献
-- 突破性洞察（引用关键句子）
-- 2-3个核心创新点
-- 一句话总结
+## Core Contributions
+- Breakthrough insights (cite key sentences)
+- 2-3 core innovations
+- One-sentence summary
 
-## 核心机制
-- 核心公式（用代码块）
-- 步骤拆解（用表格）
-- 关键设计组件
+## Core Mechanism
+- Core formula (using code blocks)
+- Step-by-step breakdown (using tables)
+- Key design components
 
-## 为什么赢了
-- 与之前方法的对比表格
-- 关键优势
+## Why It Won
+- Comparison table with previous methods
+- Key advantages
 
-## 当时面临的挑战
-简洁描述领域面临的核心问题
+## Challenges Faced at the Time
+Briefly describe the core problems faced by the field
 
-## 解决方案
-简洁描述论文如何解决这些问题
+## Solution
+Briefly describe how the paper solved these problems
 
-## 深远影响
-简洁描述对领域的影响
+## Significant Impact
+Briefly describe the impact on the field
 
-## 后续影响
-- 范式转换表格（时代、核心、代表工作）
-- 后续重要工作的时间线
+## Subsequent Impact
+- Paradigm shift table (era, core work, representative work)
+- Timeline of subsequent important work
 
-## 作者去向
-- 表格列出主要作者的后续发展
-- 名言引用（如果有）
+## Author Destinies
+- Table listing main authors' subsequent developments
+- Notable quotes (if any)
 
-## 历史背景
-描述论文发表时的时代背景、研究动机
+## Historical Background
+Describe the historical context and research motivation when the paper was published
 
-请用中文生成，保持学术性和准确性。
+Please generate content in Chinese, maintaining academic accuracy.
 """
 
 IO.puts("=" |> String.duplicate(80))
-IO.puts("AI Prompt (复制到ChatGPT/Claude)")
+IO.puts("AI Prompt (copy to ChatGPT/Claude)")
 IO.puts("=" |> String.duplicate(80))
 IO.puts(prompt)
 IO.puts("")
 
 IO.puts("=" |> String.duplicate(80))
-IO.puts("建议的URL标识: #{slug}")
+IO.puts("Suggested URL Slug: #{slug}")
 IO.puts("=" |> String.duplicate(80))
 IO.puts("")
 
-IO.puts("使用说明:")
-IO.puts("1. 复制上面的Prompt发送给AI（ChatGPT-4, Claude等）")
-IO.puts("2. 将AI返回的内容保存到文件，如: #{slug}.md")
-IO.puts("3. 运行: mix run scripts/insert_paper.exs #{slug} #{slug}.md")
+IO.puts("Usage Instructions:")
+IO.puts("1. Copy the above prompt and send to AI (ChatGPT-4, Claude, etc.)")
+IO.puts("2. Save AI's response to a file, e.g., #{slug}.md")
+IO.puts("3. Run: mix run scripts/insert_paper.exs #{slug} #{slug}.md")

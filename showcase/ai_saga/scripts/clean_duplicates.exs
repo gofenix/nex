@@ -1,55 +1,63 @@
-# 清理重复论文的脚本
-# 运行: cd ai_saga && elixir scripts/clean_duplicates.exs
+# Script to clean duplicate papers
+# Run: cd ai_saga && elixir scripts/clean_duplicates.exs
 
-# 初始化环境
+# Initialize environment
 Nex.Env.init()
 NexBase.init(url: Nex.Env.get(:database_url), start: true)
 
-# 使用 NexBase 查询和删除重复论文
-# 保留每个 arxiv_id 最早创建的记录
+# Use NexBase to query and delete duplicate papers
+# Keep the earliest created record for each arxiv_id
 
-# 查找所有重复的 arxiv_id（排除 null）
-{:ok, duplicates} = NexBase.sql("""
-  SELECT arxiv_id, COUNT(*) as count
-  FROM aisaga_papers
-  WHERE arxiv_id IS NOT NULL
-  GROUP BY arxiv_id
-  HAVING COUNT(*) > 1
-""", [])
+# Find all duplicate arxiv_ids (excluding null)
+{:ok, duplicates} =
+  NexBase.sql(
+    """
+      SELECT arxiv_id, COUNT(*) as count
+      FROM aisaga_papers
+      WHERE arxiv_id IS NOT NULL
+      GROUP BY arxiv_id
+      HAVING COUNT(*) > 1
+    """,
+    []
+  )
 
-IO.puts("找到 #{length(duplicates)} 个重复的 arxiv_id\n")
+IO.puts("Found #{length(duplicates)} duplicate arxiv_ids\n")
 
 Enum.each(duplicates, fn dup ->
   arxiv_id = dup["arxiv_id"]
   count = dup["count"]
 
-  # 跳过 null 值
+  # Skip null values
   if is_nil(arxiv_id) do
-    IO.puts("跳过 null arxiv_id")
+    IO.puts("Skipping null arxiv_id")
   else
-    IO.puts("处理: #{arxiv_id} (共 #{count} 条)")
+    IO.puts("Processing: #{arxiv_id} (#{count} records)")
 
-    # 获取该 arxiv_id 的所有记录
-    {:ok, papers} = NexBase.sql("""
-      SELECT id, slug, created_at
-      FROM aisaga_papers
-      WHERE arxiv_id = $1
-      ORDER BY created_at ASC
-    """, [arxiv_id])
+    # Get all records for this arxiv_id
+    {:ok, papers} =
+      NexBase.sql(
+        """
+          SELECT id, slug, created_at
+          FROM aisaga_papers
+          WHERE arxiv_id = $1
+          ORDER BY created_at ASC
+        """,
+        [arxiv_id]
+      )
 
-    # 保留第一条，删除其他的
+    # Keep the first one, delete the rest
     [keep | to_delete] = papers
 
-    IO.puts("  保留: id=#{keep["id"]}, slug=#{keep["slug"]}")
+    IO.puts("  Keep: id=#{keep["id"]}, slug=#{keep["slug"]}")
 
     Enum.each(to_delete, fn paper ->
       id = paper["id"]
-      IO.puts("  删除: id=#{id}, slug=#{paper["slug"]}")
+      IO.puts("  Delete: id=#{id}, slug=#{paper["slug"]}")
 
-      # 先删除 paper_authors 关联
+      # First delete paper_authors associations
       {:ok, _} = NexBase.sql("DELETE FROM aisaga_paper_authors WHERE paper_id = $1", [id])
 
-      # 再删除论文
+      # Then delete the paper
       {:ok, _} = NexBase.sql("DELETE FROM aisaga_papers WHERE id = $1", [id])
     end)
 
@@ -57,4 +65,4 @@ Enum.each(duplicates, fn dup ->
   end
 end)
 
-IO.puts("✅ 清理完成！")
+IO.puts("✅ Cleanup complete!")

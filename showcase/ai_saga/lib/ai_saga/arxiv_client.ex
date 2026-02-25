@@ -1,13 +1,13 @@
 defmodule AiSaga.ArxivClient do
   @moduledoc """
-  arXiv API客户端
-  获取论文完整信息
+  arXiv API client
+  Fetches complete paper information
   """
 
   @base_url "http://export.arxiv.org/api/query"
 
   @doc """
-  根据arXiv ID获取论文详情
+  Get paper details by arXiv ID
   """
   def get_paper_by_id(arxiv_id) do
     url = "#{@base_url}?id_list=#{arxiv_id}&max_results=1"
@@ -25,11 +25,13 @@ defmodule AiSaga.ArxivClient do
   end
 
   @doc """
-  搜索论文
+  Search papers
   """
   def search_papers(query, max_results \\ 10) do
     encoded_query = URI.encode_www_form(query)
-    url = "#{@base_url}?search_query=#{encoded_query}&max_results=#{max_results}&sortBy=relevance&sortOrder=descending"
+
+    url =
+      "#{@base_url}?search_query=#{encoded_query}&max_results=#{max_results}&sortBy=relevance&sortOrder=descending"
 
     case Req.get(url) do
       {:ok, %{status: 200, body: body}} ->
@@ -43,18 +45,19 @@ defmodule AiSaga.ArxivClient do
     end
   end
 
-  # 解析Atom feed
+  # Parse Atom feed
   defp parse_atom_feed(body) do
-    # 简单解析，提取关键信息
+    # Simple parsing, extract key info
     entries = extract_entries(body)
     Enum.map(entries, &parse_entry/1)
   end
 
   defp extract_entries(body) do
-    # 按<entry>标签分割
+    # Split by <entry> tag
     body
     |> String.split("<entry>")
-    |> Enum.drop(1)  # 去掉第一个非entry部分
+    # Drop first non-entry part
+    |> Enum.drop(1)
     |> Enum.map(fn entry ->
       case String.split(entry, "</entry>") do
         [content | _] -> content
@@ -78,10 +81,11 @@ defmodule AiSaga.ArxivClient do
     }
   end
 
-  # 从 URL 中提取纯净的 arXiv ID
+  # Extract clean arXiv ID from URL
   defp clean_arxiv_id(nil), do: nil
+
   defp clean_arxiv_id(url) when is_binary(url) do
-    # 从 http://arxiv.org/abs/2005.14165v4 提取 2005.14165
+    # Extract 2005.14165 from http://arxiv.org/abs/2005.14165v4
     case Regex.run(~r/(\d{4}\.\d{4,5})(?:v\d+)?/, url) do
       [_, id] -> id
       _ -> url

@@ -1,13 +1,13 @@
 defmodule AiSaga.HFClient do
   @moduledoc """
-  HuggingFace Papers API客户端
-  获取大模型领域的热门论文
+  HuggingFace Papers API client
+  Fetches trending papers in the AI/LLM domain
   """
 
   @base_url "https://huggingface.co/api/daily_papers"
 
   @doc """
-  获取热门论文列表
+  Get trending papers list
   """
   def get_trending_papers(limit \\ 20) do
     url = "#{@base_url}?limit=#{limit}"
@@ -25,7 +25,7 @@ defmodule AiSaga.HFClient do
   end
 
   @doc """
-  获取特定日期的论文
+  Get papers for a specific date
   """
   def get_papers_by_date(date, limit \\ 20) do
     url = "#{@base_url}?date=#{date}&limit=#{limit}"
@@ -43,15 +43,15 @@ defmodule AiSaga.HFClient do
   end
 
   @doc """
-  获取论文详情（含影响力分数）
+  Get paper details (including influence score)
   """
   def get_paper_details(arxiv_id) do
-    # 从daily_papers列表中查找
+    # Look up from daily_papers list
     case get_trending_papers(100) do
       {:ok, papers} ->
         case Enum.find(papers, fn p -> p.id == arxiv_id end) do
           nil ->
-            # 如果在HuggingFace找不到，返回默认数据
+            # If not found in HuggingFace, return default data
             {:ok,
              %{
                id: arxiv_id,
@@ -67,7 +67,7 @@ defmodule AiSaga.HFClient do
         end
 
       {:error, _reason} ->
-        # HuggingFace API失败时也返回默认数据
+        # Return default data when HuggingFace API fails
         {:ok,
          %{
            id: arxiv_id,
@@ -80,16 +80,16 @@ defmodule AiSaga.HFClient do
     end
   end
 
-  # 解析论文列表
+  # Parse paper list
   defp parse_papers(body) when is_list(body) do
     Enum.map(body, &parse_paper/1)
   end
 
   defp parse_papers(_), do: []
 
-  # 解析单篇论文 - 新API格式包含嵌套的paper字段
+  # Parse single paper - new API format includes nested paper field
   defp parse_paper(item) when is_map(item) do
-    # 新API返回的格式: %{"paper" => %{...}, "publishedAt" => ..., ...}
+    # New API returns: %{"paper" => %{...}, "publishedAt" => ..., ...}
     paper_data = item["paper"] || item
 
     %{
@@ -106,7 +106,7 @@ defmodule AiSaga.HFClient do
     }
   end
 
-  # 提取作者名称列表
+  # Extract author name list
   defp extract_authors(nil), do: []
 
   defp extract_authors(authors) when is_list(authors) do

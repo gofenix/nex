@@ -1,28 +1,29 @@
 _ = """
- Usage: mix run scripts/insert_paper.exs <slug> <markdown_file>
+Usage: mix run scripts/insert_paper.exs <slug> <markdown_file>
 
- 将AI生成的论文内容插入数据库
+Insert AI-generated paper content into database
 
- 参数:
-   slug - URL标识（如：dhariwal-2021-diffusion）
-   markdown_file - AI生成的Markdown文件路径
+Parameters:
+  slug - URL identifier (e.g., dhariwal-2021-diffusion)
+  markdown_file - Path to AI-generated Markdown file
 """
 
 Nex.Env.init()
 NexBase.init(url: Nex.Env.get(:database_url), start: true)
 
-# 解析命令行参数
+# Parse command line arguments
 [slug, markdown_file | _] = System.argv()
 
-IO.puts("读取文件: #{markdown_file}")
+IO.puts("Reading file: #{markdown_file}")
 content = File.read!(markdown_file)
 
-# 解析Markdown内容
-# 假设AI按照固定格式返回，我们需要提取各个部分
+# Parse Markdown content
+# Assume AI returns in fixed format, we need to extract each section
 parse_markdown_sections = fn content ->
   content
   |> String.split(~r/\n##\s+/)
-  |> Enum.drop(1)  # 去掉第一个空字符串
+  # Drop first empty string
+  |> Enum.drop(1)
   |> Enum.map(fn section ->
     [title | lines] = String.split(section, "\n", parts: 2)
     {String.trim(title), String.trim(List.first(lines) || "")}
@@ -32,10 +33,10 @@ end
 
 sections = parse_markdown_sections.(content)
 
-IO.puts("解析到以下部分:")
+IO.puts("Parsed sections:")
 Enum.each(sections, fn {key, _} -> IO.puts("  - #{key}") end)
 
-# 构建论文数据
+# Build paper data
 paper_data = %{
   slug: slug,
   prev_paradigm: sections["上一个范式"],
@@ -50,10 +51,10 @@ paper_data = %{
   history_context: sections["历史背景"]
 }
 
-# 插入数据库
+# Insert to database
 NexBase.from("aisaga_papers")
 |> NexBase.eq(:slug, slug)
 |> NexBase.update(paper_data)
 |> NexBase.run()
 
-IO.puts("✅ 论文 #{slug} 已更新到数据库！")
+IO.puts("✅ Paper #{slug} updated in database!")

@@ -21,8 +21,9 @@ defmodule AiSaga.MixProject do
 
   defp deps do
     [
-      {:nex_core, "~> 0.3.9"},
-      {:nex_base, "~> 0.3.9"},
+      {:nex_core, path: "../../framework"},
+      {:nex_base, path: "../../nex_base"},
+      {:nex_env, path: "../../nex_env"},
       {:jason, "~> 1.4"},
       {:req, "~> 0.5"},
       {:earmark, "~> 1.4"},

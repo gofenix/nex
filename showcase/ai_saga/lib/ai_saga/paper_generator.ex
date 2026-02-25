@@ -1,13 +1,13 @@
 defmodule AiSaga.PaperGenerator do
   @moduledoc """
-  论文生成协调器
-  协调各个客户端完成论文推荐和生成
+  Paper generation coordinator
+  Coordinates clients to complete paper recommendation and generation
   """
 
   alias AiSaga.{HFClient, ArxivClient, OpenAIClient}
 
   @doc """
-  生成新论文的完整流程
+  Complete flow to generate and save a new paper
   """
   def generate_and_save do
     with {:ok, papers_summary} <- get_papers_summary(),
@@ -26,23 +26,23 @@ defmodule AiSaga.PaperGenerator do
   end
 
   @doc """
-  获取论文统计摘要（固定大小，不随论文数量增长）
+  Get papers summary statistics (fixed size, doesn't grow with paper count)
   """
   def get_papers_summary do
-    # 获取所有范式
+    # Get all paradigms
     {:ok, paradigms} =
       NexBase.from("aisaga_paradigms")
       |> NexBase.order(:start_year, :asc)
       |> NexBase.run()
 
-    # 一次获取所有论文的关键字段（避免 N+1）
+    # Fetch all papers with key fields in one query (avoid N+1)
     {:ok, all_papers} =
       NexBase.from("aisaga_papers")
       |> NexBase.select([:published_year, :arxiv_id, :title, :paradigm_id])
       |> NexBase.order(:published_year, :asc)
       |> NexBase.run()
 
-    # 按范式分组计算统计
+    # Group by paradigm and calculate statistics
     papers_by_paradigm = Enum.group_by(all_papers, & &1["paradigm_id"])
 
     paradigm_summaries =
@@ -65,13 +65,13 @@ defmodule AiSaga.PaperGenerator do
 
     years = Enum.map(all_papers, & &1["published_year"])
 
-    # 收集所有已有的 arXiv ID（过滤掉 nil）
+    # Collect all existing arXiv IDs (filter out nil)
     existing_arxiv_ids =
       all_papers
       |> Enum.map(& &1["arxiv_id"])
       |> Enum.filter(&(&1 != nil))
 
-    # 收集所有已有论文标题
+    # Collect all existing paper titles
     existing_titles =
       all_papers
       |> Enum.map(fn p -> "#{p["published_year"]}: #{p["title"]}" end)
@@ -88,12 +88,12 @@ defmodule AiSaga.PaperGenerator do
   end
 
   @doc """
-  获取与新论文相关的论文（前后几年）
+  Get papers relevant to the new paper (previous and subsequent years)
   """
   def get_relevant_papers(published_date) do
     year = String.slice(published_date, 0, 4) |> String.to_integer()
 
-    # 获取前后3年的论文
+    # Get papers from 3 years before and after
     {:ok, papers} =
       NexBase.from("aisaga_papers")
       |> NexBase.gte(:published_year, year - 3)
@@ -101,7 +101,7 @@ defmodule AiSaga.PaperGenerator do
       |> NexBase.order(:published_year, :asc)
       |> NexBase.run()
 
-    # 一次获取所有需要的范式（避免 N+1）
+    # Fetch all needed paradigms in one query (avoid N+1)
     paradigm_ids = papers |> Enum.map(& &1["paradigm_id"]) |> Enum.uniq()
 
     {:ok, paradigms} =
@@ -125,30 +125,30 @@ defmodule AiSaga.PaperGenerator do
   end
 
   @doc """
-  保存论文到数据库
+  Save paper to database
   """
   def save_paper(arxiv_paper, analysis, recommendation) do
-    # 标准化新论文标题
+    # Normalize new paper title
     normalized_new_title = normalize_title(arxiv_paper.title)
 
-    # 获取所有已有论文的标题
+    # Get all existing paper titles
     {:ok, existing_papers} =
       NexBase.from("aisaga_papers")
       |> NexBase.select([:title, :slug])
       |> NexBase.run()
 
-    # 检查是否有相同标题（标准化后比较）
+    # Check for duplicate title (compare after normalization)
     duplicate =
       Enum.find(existing_papers, fn p ->
         normalize_title(p["title"]) == normalized_new_title
       end)
 
     if duplicate do
-      # 发现重复，返回错误
-      {:error, "论文已存在: #{duplicate["slug"]}"}
+      # Found duplicate, return error
+      {:error, "Paper already exists: #{duplicate["slug"]}"}
     else
-      # 没有重复，继续插入
-      # 生成slug
+      # No duplicate, proceed with insert
+      # Generate slug
       author_part =
         List.first(arxiv_paper.authors) |> String.downcase() |> String.split(" ") |> List.last()
 
@@ -157,10 +157,10 @@ defmodule AiSaga.PaperGenerator do
       base_slug = "#{author_part}-#{year}-#{keyword}"
       slug = ensure_unique_slug(base_slug)
 
-      # 确定范式ID
+      # Determine paradigm ID
       paradigm_id = infer_paradigm_id(year)
 
-      # 构建论文数据
+      # Build paper data
       paper_data = %{
         title: arxiv_paper.title,
         slug: slug,
@@ -175,7 +175,7 @@ defmodule AiSaga.PaperGenerator do
         is_paradigm_shift: 0,
         shift_trigger: nil,
 
-        # 三视角内容
+        # Three-perspective content
         prev_paradigm: analysis.prev_paradigm,
         core_contribution: analysis.core_contribution,
         core_mechanism: analysis.core_mechanism,
@@ -198,7 +198,7 @@ defmodule AiSaga.PaperGenerator do
     end
   end
 
-  # 从标题提取关键词
+  # Extract keywords from title
   defp extract_keyword(title) do
     title
     |> String.downcase()
@@ -208,7 +208,7 @@ defmodule AiSaga.PaperGenerator do
     |> Enum.join("-")
   end
 
-  # 确保slug唯一性
+  # Ensure slug uniqueness
   defp ensure_unique_slug(base_slug, suffix \\ 0) do
     candidate = if suffix == 0, do: base_slug, else: "#{base_slug}-#{suffix}"
 
@@ -222,17 +222,17 @@ defmodule AiSaga.PaperGenerator do
     end
   end
 
-  # 根据年份推断范式ID
+  # Infer paradigm ID from year
   defp infer_paradigm_id(year) do
     year_int = String.to_integer(year)
 
-    # 从数据库动态获取范式，根据年份范围匹配
+    # Dynamically fetch paradigms from DB and match by year range
     {:ok, paradigms} =
       NexBase.from("aisaga_paradigms")
       |> NexBase.order(:start_year, :asc)
       |> NexBase.run()
 
-    # 找到匹配的范式：发表年份 >= start_year 且（无 end_year 或 <= end_year）
+    # Find matching paradigm: published_year >= start_year AND (no end_year OR <= end_year)
     matching =
       Enum.find(paradigms, fn p ->
         start_year = p["start_year"] || 0
@@ -243,7 +243,7 @@ defmodule AiSaga.PaperGenerator do
 
     case matching do
       nil ->
-        # 如果没有匹配，返回最新的范式（最后一个）
+        # If no match, return the newest paradigm (last one)
         List.last(paradigms)["id"]
 
       paradigm ->
@@ -251,7 +251,7 @@ defmodule AiSaga.PaperGenerator do
     end
   end
 
-  # 查找或创建作者
+  # Find or create author
   defp find_or_create_author(name) do
     slug = name |> String.downcase() |> String.replace(" ", "-")
 
@@ -302,8 +302,8 @@ defmodule AiSaga.PaperGenerator do
            |> NexBase.insert(%{
              name: name,
              slug: slug,
-             bio: "待补充",
-             affiliation: "待补充",
+             bio: "TBD",
+             affiliation: "TBD",
              influence_score: 50
            })
            |> NexBase.run(),
@@ -319,13 +319,13 @@ defmodule AiSaga.PaperGenerator do
     end
   end
 
-  # 标准化论文标题（用于去重比较）
+  # Normalize paper title (for deduplication comparison)
   defp normalize_title(title) do
     title
     |> String.downcase()
-    # 移除标点符号
+    # Remove punctuation
     |> String.replace(~r/[^\p{L}\p{N}\s]/u, "")
-    # 多个空格合并为一个
+    # Merge multiple spaces into one
     |> String.replace(~r/\s+/, " ")
     |> String.trim()
   end
