@@ -63,13 +63,13 @@ defmodule BestofEx.Pages.Projects.Show do
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
               </svg>
-              Last push: {format_date(@project["pushed_at"])}
+              Last push: {format_date_safe(@project["pushed_at"])}
             </div>
             <div :if={@project["open_issues"]} class="flex items-center gap-1.5">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
               </svg>
-              {format_number(@project["open_issues"])} open issues
+              {format_number_safe(@project["open_issues"])} open issues
             </div>
           </div>
 
@@ -136,19 +136,19 @@ defmodule BestofEx.Pages.Projects.Show do
   defp format_stars(n) when n >= 1000, do: "#{Float.round(n / 1000, 1)}k"
   defp format_stars(n), do: "#{n}"
 
-  defp format_date(nil), do: ""
-  defp format_date(date) when is_binary(date) do
+  defp format_date_safe(nil), do: ""
+  defp format_date_safe(date) when is_binary(date) do
     case DateTime.from_iso8601(date) do
       {:ok, dt, _} -> Calendar.strftime(dt, "%b %d, %Y")
       _ -> String.slice(date, 0, 10)
     end
   end
-  defp format_date(%NaiveDateTime{} = dt), do: Calendar.strftime(dt, "%b %d, %Y")
-  defp format_date(_), do: ""
+  defp format_date_safe(%NaiveDateTime{} = dt), do: Calendar.strftime(dt, "%b %d, %Y")
+  defp format_date_safe(_), do: ""
 
-  defp format_number(nil), do: "0"
-  defp format_number(n) when is_integer(n) and n >= 1000 do
+  defp format_number_safe(nil), do: "0"
+  defp format_number_safe(n) when is_integer(n) and n >= 1000 do
     "#{Float.round(n / 1000, 1)}k"
   end
-  defp format_number(n), do: "#{n}"
+  defp format_number_safe(n), do: "#{n}"
 end
