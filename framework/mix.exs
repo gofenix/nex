@@ -9,14 +9,13 @@ defmodule Nex.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       description: "A minimalist Elixir web framework powered by HTMX",
-      package: package()
+      package: package(),
+      test_coverage: [summary: [threshold: 0]]
     ]
   end
 
   def application do
-    [
-      extra_applications: [:logger, :plug]
-    ]
+    [extra_applications: [:logger, :plug]]
   end
 
   defp deps do

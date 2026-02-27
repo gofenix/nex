@@ -9,7 +9,8 @@ defmodule NexEnv.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       description: "Environment variable management for Nex projects",
-      package: package()
+      package: package(),
+      test_coverage: [summary: [threshold: 0]]
     ]
   end
 

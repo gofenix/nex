@@ -23,6 +23,20 @@ defmodule Nex.HelpersTest do
       assert Helpers.format_number(1_000_000) == "1.0M"
       assert Helpers.format_number(1_500_000) == "1.5M"
     end
+
+    test "handles negative numbers" do
+      assert Helpers.format_number(-1000) == "-1000"
+      assert Helpers.format_number(-500) == "-500"
+    end
+
+    test "handles floats" do
+      assert Helpers.format_number(1500.5) == "1.5k"
+      assert Helpers.format_number(500.123) == "500"
+    end
+
+    test "handles very large numbers" do
+      assert Helpers.format_number(1_000_000_000) == "1.0e3M"
+    end
   end
 
   describe "format_date/1" do
@@ -41,6 +55,14 @@ defmodule Nex.HelpersTest do
     test "parses ISO string" do
       assert Helpers.format_date("2026-02-19") == "Feb 19, 2026"
     end
+
+    test "handles invalid string" do
+      assert Helpers.format_date("not-a-date") == "not-a-date"
+    end
+
+    test "handles NaiveDateTime" do
+      assert Helpers.format_date(~N[2026-02-19T10:30:00]) == "Feb 19, 2026"
+    end
   end
 
   describe "truncate/3" do
@@ -54,6 +76,10 @@ defmodule Nex.HelpersTest do
 
     test "truncates with ellipsis" do
       assert Helpers.truncate("Hello, world!", 8) == "Hello..."
+    end
+
+    test "handles omission option" do
+      assert Helpers.truncate("Hello, world!", 8, omission: "…") == "Hello, …"
     end
   end
 
@@ -83,6 +109,14 @@ defmodule Nex.HelpersTest do
     test "filters falsy" do
       assert Helpers.clsx(["a", nil, false, "b"]) == "a b"
     end
+
+    test "handles tuples with false" do
+      assert Helpers.clsx([{"active", false}]) == ""
+    end
+
+    test "handles empty strings" do
+      assert Helpers.clsx([""]) == ""
+    end
   end
 
   describe "time_ago/1" do
@@ -93,6 +127,21 @@ defmodule Nex.HelpersTest do
     test "just now for recent" do
       dt = DateTime.add(DateTime.utc_now(), -30, :second)
       assert Helpers.time_ago(dt) == "just now"
+    end
+
+    test "handles weeks" do
+      dt = DateTime.add(DateTime.utc_now(), -7 * 86400, :second)
+      assert Helpers.time_ago(dt) == "1 weeks ago"
+    end
+
+    test "handles months" do
+      dt = DateTime.add(DateTime.utc_now(), -60 * 86400, :second)
+      assert Helpers.time_ago(dt) == "2 months ago"
+    end
+
+    test "handles binary string input" do
+      result = Helpers.time_ago("2026-01-01T00:00:00Z")
+      assert is_binary(result)
     end
   end
 end

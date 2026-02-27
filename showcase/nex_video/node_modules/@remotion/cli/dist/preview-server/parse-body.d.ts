@@ -1,0 +1,2 @@
+import type { IncomingMessage } from 'node:http';
+export declare const parseRequestBody: (req: IncomingMessage) => Promise<unknown>;

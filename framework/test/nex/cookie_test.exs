@@ -3,7 +3,6 @@ defmodule Nex.CookieTest do
   alias Nex.Cookie
 
   setup do
-    # Clear process state before each test
     Process.delete(:nex_pending_cookies)
     Process.delete(:nex_incoming_cookies)
     :ok
@@ -42,6 +41,18 @@ defmodule Nex.CookieTest do
       pending = Process.get(:nex_pending_cookies)
       assert length(pending) == 2
     end
+
+    test "put with path option" do
+      Cookie.put(:path_test, "value", path: "/")
+      pending = Process.get(:nex_pending_cookies)
+      assert length(pending) == 1
+    end
+
+    test "put with domain option" do
+      Cookie.put(:domain_test, "value", domain: "example.com")
+      pending = Process.get(:nex_pending_cookies)
+      assert length(pending) == 1
+    end
   end
 
   describe "delete/2" do
@@ -71,10 +82,9 @@ defmodule Nex.CookieTest do
       assert Cookie.get(:session) == "value"
     end
 
-    test "converts atom keys to strings" do
-      Process.put(:nex_incoming_cookies, %{"token" => "abc"})
-
-      assert Cookie.get(:token) == "abc"
+    test "get with default for missing key" do
+      Process.put(:nex_incoming_cookies, %{})
+      assert Cookie.get(:missing, "default_value") == "default_value"
     end
   end
 
