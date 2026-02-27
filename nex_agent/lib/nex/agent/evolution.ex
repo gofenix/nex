@@ -1,0 +1,288 @@
+defmodule Nex.Agent.Evolution do
+  @moduledoc """
+  Code evolution engine - runtime code modification and hot loading.
+
+  This is the core of the self-evolving agent. It allows the agent to
+  modify its own code and reload it without restarting.
+
+  ## Usage
+
+      # Modify a module's code
+      {:ok, version} = Nex.Agent.Evolution.upgrade_module(
+        Nex.Agent.Runner,
+        new_code_string
+      )
+      
+      # Rollback to previous version
+      :ok = Nex.Agent.Evolution.rollback(Nex.Agent.Runner)
+      
+      # List all versions
+      versions = Nex.Agent.Evolution.versions(Nex.Agent.Runner)
+
+  ## Safety
+
+  - All changes are versioned
+  - Failed compilations automatically rollback
+  - Previous code is preserved for manual recovery
+  """
+
+  @versions_dir Path.join(System.get_env("HOME", "~"), ".nex/agent/evolution")
+
+  @doc """
+  Upgrade a module with new code.
+
+  ## Parameters
+
+  * `module` - Module name (atom)
+  * `code` - New Elixir code as string
+  * `opts` - Options
+
+  ## Options
+
+  * `:validate` - Run validation before applying (default: true)
+  * `:backup` - Create backup before upgrade (default: true)
+
+  ## Examples
+
+      new_code = \"\"\"
+      defmodule Nex.Agent.Runner do
+        def run(session, prompt, opts \\\\ []) do
+          IO.puts("Modified at \#{DateTime.utc_now()}")
+          original_code()
+        end
+      end
+      \"\"\"
+      
+      {:ok, version} = Nex.Agent.Evolution.upgrade_module(Nex.Agent.Runner, new_code)
+
+  """
+  @spec upgrade_module(atom(), String.t(), keyword()) :: {:ok, String.t()} | {:error, String.t()}
+  def upgrade_module(module, code, opts \\ []) do
+    validate = Keyword.get(opts, :validate, true)
+    backup = Keyword.get(opts, :backup, true)
+
+    # Get current source path
+    source_path = get_source_path(module)
+
+    # Validate code if requested
+    if validate do
+      case validate_code(code) do
+        {:error, reason} ->
+          {:error, "Validation failed: #{reason}"}
+
+        :ok ->
+          :ok
+      end
+    end
+
+    # Create backup if requested
+    if backup && File.exists?(source_path) do
+      create_backup(module, source_path)
+    end
+
+    # Write new code
+    case File.write(source_path, code) do
+      :ok ->
+        # Try to compile and load
+        case compile_and_load(module, code) do
+          :ok ->
+            version = save_version(module, code)
+            {:ok, version}
+
+          {:error, reason} ->
+            # Rollback on failure
+            if backup do
+              rollback(module)
+            end
+
+            {:error, "Compilation failed: #{inspect(reason)}"}
+        end
+
+      {:error, reason} ->
+        {:error, "Failed to write file: #{inspect(reason)}"}
+    end
+  end
+
+  @doc """
+  Rollback to the previous version of a module.
+  """
+
+  @spec rollback(atom()) :: :ok | {:error, String.t()}
+  def rollback(module) do
+    versions = list_versions(module)
+
+    if length(versions) > 1 do
+      # Get the previous version (second to last)
+      previous = Enum.at(versions, -2)
+
+      source_path = get_source_path(module)
+
+      # Write previous version
+      File.write!(source_path, previous.code)
+
+      # Reload
+      compile_and_load(module, previous.code)
+
+      :ok
+    else
+      {:error, "No previous version to rollback to"}
+    end
+  end
+
+  @doc """
+  Rollback to a specific version.
+  """
+  @spec rollback(atom(), String.t()) :: :ok | {:error, String.t()}
+  def rollback(module, version_id) do
+    version = get_version(module, version_id)
+
+    if version do
+      source_path = get_source_path(module)
+      File.write!(source_path, version.code)
+      compile_and_load(module, version.code)
+      :ok
+    else
+      {:error, "Version not found"}
+    end
+  end
+
+  @doc """
+  List all versions of a module.
+  """
+  @spec list_versions(atom()) :: list(map())
+  def list_versions(module) do
+    module_dir = Path.join(@versions_dir, to_string(module))
+
+    if File.exists?(module_dir) do
+      module_dir
+      |> File.ls!()
+      |> Enum.filter(&String.ends_with?(&1, ".ex"))
+      |> Enum.map(&read_version/1)
+      |> Enum.sort_by(& &1.timestamp)
+    else
+      []
+    end
+  end
+
+  @doc """
+  Get a specific version.
+  """
+  @spec get_version(atom(), String.t()) :: map() | nil
+  def get_version(module, version_id) do
+    list_versions(module)
+    |> Enum.find(&(&1.id == version_id))
+  end
+
+  @doc """
+  Get the current version.
+  """
+  @spec current_version(atom()) :: map() | nil
+  def current_version(module) do
+    versions = list_versions(module)
+
+    if length(versions) > 0 do
+      Enum.at(versions, -1)
+    else
+      nil
+    end
+  end
+
+  @doc """
+  Check if a module can be evolved.
+  """
+  @spec can_evolve?(atom()) :: boolean()
+  def can_evolve?(module) do
+    # Must be a defined module
+    # Must have a source path
+    Code.ensure_loaded?(module) &&
+      get_source_path(module) |> File.exists?()
+  end
+
+  # Private functions
+
+  defp get_source_path(module) do
+    # Try to get the source file from the compiled beam
+    beam_path = :code.where_is_file('#{module}.beam') |> to_string()
+
+    cond do
+      beam_path == "" ->
+        # Fallback: try to find in lib directory
+        app_dir = Application.get_env(:nex_agent, :app_dir, File.cwd!())
+        module_path = to_string(module) |> String.replace(".", "/")
+        Path.join([app_dir, "lib", module_path <> ".ex"])
+
+      true ->
+        # Convert beam path to ex path
+        beam_path
+        |> Path.rootname(".beam")
+        |> Path.rootname(".ez")
+        |> String.replace("_build/", "lib/")
+        |> String.replace("/ebin/", "/lib/")
+        |> String.replace_suffix("", ".ex")
+    end
+  end
+
+  defp validate_code(code) do
+    # Try to compile in memory
+    try do
+      {:ok, _} = Code.eval_string(code, [], __ENV__)
+      :ok
+    rescue
+      e ->
+        {:error, Exception.message(e)}
+    end
+  end
+
+  defp compile_and_load(module, code) do
+    # Compile the code
+    quoted = Code.string_to_quoted!(code)
+
+    # Compile to module
+    {:module, _module} = Code.eval_quoted(quoted, [], __ENV__)
+
+    # Purge old version and load new
+    :code.purge(module)
+
+    {:module, _module} =
+      :code.load_binary(module, '', :erlang.term_to_binary(module.__info__(:module)))
+
+    :ok
+  rescue
+    e ->
+      {:error, Exception.message(e)}
+  end
+
+  defp create_backup(module, source_path) do
+    module_dir = Path.join(@versions_dir, to_string(module))
+    File.mkdir_p!(module_dir)
+
+    backup_path = Path.join(module_dir, "backup.ex")
+    File.copy!(source_path, backup_path)
+  end
+
+  defp save_version(module, code) do
+    module_dir = Path.join(@versions_dir, to_string(module))
+    File.mkdir_p!(module_dir)
+
+    version_id = :crypto.strong_rand_bytes(8) |> Base.encode16(case: :lower)
+    timestamp = DateTime.utc_now() |> DateTime.to_string()
+
+    version = %{
+      id: version_id,
+      timestamp: timestamp,
+      code: code,
+      module: module
+    }
+
+    version_file = Path.join(module_dir, "#{version_id}.ex")
+    File.write!(version_file, Jason.encode!(version))
+
+    version
+  end
+
+  defp read_version(filename) do
+    version_path = Path.join(@versions_dir, filename)
+    {:ok, content} = File.read(version_path)
+    Jason.decode!(content, keys: :atoms!)
+  end
+end
