@@ -7,7 +7,9 @@ defmodule Nex.Agent.Runner do
     Tool.Edit,
     Tool.Bash,
     Skills,
-    Memory
+    Memory,
+    Reflection,
+    Evolution
   }
 
   @default_max_iterations 10
@@ -203,7 +205,114 @@ defmodule Nex.Agent.Runner do
       }
     ]
 
-    tools ++ skill_tools ++ [skills_list_tool] ++ memory_tools
+    tools ++ skill_tools ++ [skills_list_tool] ++ memory_tools ++ evolution_tools() ++ mcp_tools()
+  end
+
+  defp mcp_tools do
+    [
+      %{
+        "name" => "mcp_discover",
+        "description" => "Discover available MCP servers from PATH",
+        "input_schema" => %{"type" => "object", "properties" => %{}}
+      },
+      %{
+        "name" => "mcp_start",
+        "description" => "Start an MCP server",
+        "input_schema" => %{
+          "type" => "object",
+          "properties" => %{
+            "name" => %{"type" => "string", "description" => "Server name"},
+            "command" => %{"type" => "string", "description" => "Command to run"},
+            "args" => %{"type" => "array", "description" => "Arguments"}
+          },
+          "required" => ["name", "command"]
+        }
+      },
+      %{
+        "name" => "mcp_stop",
+        "description" => "Stop an MCP server",
+        "input_schema" => %{
+          "type" => "object",
+          "properties" => %{
+            "server_id" => %{"type" => "string", "description" => "Server ID to stop"}
+          },
+          "required" => ["server_id"]
+        }
+      },
+      %{
+        "name" => "mcp_list",
+        "description" => "List running MCP servers",
+        "input_schema" => %{"type" => "object", "properties" => %{}}
+      },
+      %{
+        "name" => "mcp_call",
+        "description" => "Call a tool on an MCP server",
+        "input_schema" => %{
+          "type" => "object",
+          "properties" => %{
+            "server_id" => %{"type" => "string", "description" => "Server ID"},
+            "tool" => %{"type" => "string", "description" => "Tool name"},
+            "arguments" => %{"type" => "object", "description" => "Tool arguments"}
+          },
+          "required" => ["server_id", "tool"]
+        }
+      }
+    ]
+  end
+
+  defp evolution_tools do
+    [
+      %{
+        "name" => "evolve_code",
+        "description" => "Modify and reload agent's own code at runtime",
+        "input_schema" => %{
+          "type" => "object",
+          "properties" => %{
+            "module" => %{
+              "type" => "string",
+              "description" => "Module name to modify (e.g., Nex.Agent.Runner)"
+            },
+            "code" => %{"type" => "string", "description" => "New Elixir code for the module"}
+          },
+          "required" => ["module", "code"]
+        }
+      },
+      %{
+        "name" => "evolve_rollback",
+        "description" => "Rollback to previous version of a module",
+        "input_schema" => %{
+          "type" => "object",
+          "properties" => %{
+            "module" => %{"type" => "string", "description" => "Module name to rollback"}
+          },
+          "required" => ["module"]
+        }
+      },
+      %{
+        "name" => "evolve_versions",
+        "description" => "List all versions of a module",
+        "input_schema" => %{
+          "type" => "object",
+          "properties" => %{
+            "module" => %{"type" => "string", "description" => "Module name"}
+          },
+          "required" => ["module"]
+        }
+      },
+      %{
+        "name" => "reflect",
+        "description" => "Analyze recent execution results and generate insights",
+        "input_schema" => %{
+          "type" => "object",
+          "properties" => %{
+            "auto_apply" => %{
+              "type" => "boolean",
+              "description" => "Automatically apply suggestions"
+            }
+          }
+        }
+      }
+    ]
   end
 
   defp call_llm_real(messages, opts) do
@@ -321,6 +430,186 @@ defmodule Nex.Agent.Runner do
       end)
 
     {:ok, %{result: "Available skills:\n#{formatted}"}}
+  end
+
+  # Evolution tools
+  defp execute_tool("evolve_code", args, _opts) do
+    module_str = args["module"]
+    code = args["code"]
+
+    if is_nil(module_str) || is_nil(code) do
+      {:error, "Both module and code are required"}
+    else
+      module = String.to_atom(module_str)
+
+      case Evolution.upgrade_module(module, code) do
+        {:ok, version} ->
+          Memory.append(
+            "Evolved: #{module_str}",
+            "SUCCESS",
+            %{type: :evolution, version: version.id}
+          )
+
+          {:ok, %{result: "Successfully evolved #{module_str} to version #{version.id}"}}
+
+        {:error, reason} ->
+          Memory.append(
+            "Failed to evolve: #{module_str}",
+            "FAILURE",
+            %{type: :evolution, error: reason}
+          )
+
+          {:error, reason}
+      end
+    end
+  end
+
+  defp execute_tool("evolve_rollback", args, _opts) do
+    module_str = args["module"]
+
+    if is_nil(module_str) do
+      {:error, "module is required"}
+    else
+      module = String.to_atom(module_str)
+
+      case Evolution.rollback(module) do
+        :ok ->
+          Memory.append(
+            "Rolled back: #{module_str}",
+            "SUCCESS",
+            %{type: :rollback}
+          )
+
+          {:ok, %{result: "Successfully rolled back #{module_str}"}}
+
+        {:error, reason} ->
+          {:error, reason}
+      end
+    end
+  end
+
+  defp execute_tool("evolve_versions", args, _opts) do
+    module_str = args["module"]
+
+    if is_nil(module_str) do
+      {:error, "module is required"}
+    else
+      module = String.to_atom(module_str)
+      versions = Evolution.list_versions(module)
+
+      if versions == [] do
+        {:ok, %{result: "No versions found for #{module_str}"}}
+      else
+        formatted =
+          Enum.map_join(versions, "\n", fn v ->
+            "#{v.id} - #{v.timestamp}"
+          end)
+
+        {:ok, %{result: "Versions of #{module_str}:\n#{formatted}"}}
+      end
+    end
+  end
+
+  # Reflection tools
+  defp execute_tool("reflect", args, _opts) do
+    # This would need to track execution results - for now just show recent memories
+    auto_apply = args["auto_apply"] == true
+
+    # Get recent memories for reflection context
+    recent = Memory.search("", limit: 20)
+
+    formatted =
+      Enum.map_join(recent, "\n\n", fn r ->
+        "#{r.entry.task} - #{r.entry.result}\n#{r.entry.body}"
+      end)
+
+    {:ok,
+     %{
+       result: "Recent experiences:\n#{formatted}\n\nUse memory_search to find specific patterns."
+     }}
+  end
+
+  # MCP tools
+  defp execute_tool("mcp_discover", _args, _opts) do
+    servers = Nex.Agent.MCP.Discovery.scan()
+
+    if servers == [] do
+      {:ok, %{result: "No MCP servers found in PATH"}}
+    else
+      formatted =
+        Enum.map_join(servers, "\n", fn s ->
+          "- #{s.name}: #{s.command}"
+        end)
+
+      {:ok, %{result: "Available MCP servers:\n#{formatted}"}}
+    end
+  end
+
+  defp execute_tool("mcp_start", args, _opts) do
+    name = args["name"]
+    command = args["command"]
+    args_list = args["args"] || []
+
+    if is_nil(name) || is_nil(command) do
+      {:error, "name and command are required"}
+    else
+      case Nex.Agent.MCP.ServerManager.start(name, command: command, args: args_list) do
+        {:ok, server_id} ->
+          {:ok, %{result: "Started MCP server #{name} with ID: #{server_id}"}}
+
+        {:error, reason} ->
+          {:error, reason}
+      end
+    end
+  end
+
+  defp execute_tool("mcp_stop", args, _opts) do
+    server_id = args["server_id"]
+
+    if is_nil(server_id) do
+      {:error, "server_id is required"}
+    else
+      case Nex.Agent.MCP.ServerManager.stop(server_id) do
+        :ok ->
+          {:ok, %{result: "Stopped MCP server #{server_id}"}}
+
+        {:error, reason} ->
+          {:error, reason}
+      end
+    end
+  end
+
+  defp execute_tool("mcp_list", _args, _opts) do
+    servers = Nex.Agent.MCP.ServerManager.list()
+
+    if servers == [] do
+      {:ok, %{result: "No MCP servers running"}}
+    else
+      formatted =
+        Enum.map_join(servers, "\n", fn s ->
+          "- #{s.id} (#{s.name}): #{s.config[:command]}"
+        end)
+
+      {:ok, %{result: "Running MCP servers:\n#{formatted}"}}
+    end
+  end
+
+  defp execute_tool("mcp_call", args, _opts) do
+    server_id = args["server_id"]
+    tool = args["tool"]
+    tool_args = args["arguments"] || %{}
+
+    if is_nil(server_id) || is_nil(tool) do
+      {:error, "server_id and tool are required"}
+    else
+      case Nex.Agent.MCP.ServerManager.call_tool(server_id, tool, tool_args) do
+        {:ok, result} ->
+          {:ok, %{result: Jason.encode!(result)}}
+
+        {:error, reason} ->
+          {:error, reason}
+      end
+    end
   end
 
   defp execute_tool(name, _args, _opts) do
