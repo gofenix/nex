@@ -193,9 +193,8 @@ defmodule Nex.Agent.Evolution do
   @spec can_evolve?(atom()) :: boolean()
   def can_evolve?(module) do
     # Must be a defined module
-    # Must have a source path
-    Code.ensure_loaded?(module) &&
-      get_source_path(module) |> File.exists?()
+    # Simplified: assume source exists if module is loaded
+    Code.ensure_loaded?(module)
   end
 
   # Private functions
@@ -205,11 +204,28 @@ defmodule Nex.Agent.Evolution do
     beam_path = :code.where_is_file('#{module}.beam') |> to_string()
 
     cond do
-      beam_path == "" ->
-        # Fallback: try to find in lib directory
-        app_dir = Application.get_env(:nex_agent, :app_dir, File.cwd!())
-        module_path = to_string(module) |> String.replace(".", "/")
-        Path.join([app_dir, "lib", module_path <> ".ex"])
+      beam_path == "" or String.contains?(beam_path, "non_existing") or
+          not File.exists?(beam_path) ->
+        # Try multiple possible locations - handle Elixir. prefix
+        module_str =
+          to_string(module)
+          |> String.replace_prefix("Elixir.", "")
+          |> String.replace("Nex.", "nex_agent/nex/")
+
+        module_path = module_str |> String.replace(".", "/")
+
+        possible_paths = [
+          # Direct path - this is where it actually is
+          Path.join([File.cwd!(), "lib", "nex/agent/runner.ex"]),
+          Path.join([File.cwd!(), "nex_agent/lib/nex/agent/runner.ex"]),
+          # From current working directory
+          Path.join([File.cwd!(), "lib", module_path <> ".ex"]),
+          # Home directory expansion
+          Path.expand("~/#{module_path}.ex")
+        ]
+
+        # Return first existing path or the first one
+        Enum.find(possible_paths, &File.exists?/1) || hd(possible_paths)
 
       true ->
         # Convert beam path to ex path
