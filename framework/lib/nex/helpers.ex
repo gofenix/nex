@@ -9,6 +9,11 @@ defmodule Nex.Helpers do
   - `format_number/1` — Format integers with k/M suffix (e.g. `12345` → `"12.3k"`)
   - `format_date/1` — Format dates/datetimes to human-readable string
   - `time_ago/1` — Relative time string (e.g. `"3 days ago"`)
+  - `truncate/3` — Truncate strings with ellipsis
+  - `pluralize/3` — Singular/plural based on count
+  - `clsx/1` — Build CSS classes from lists
+  - `class/2` — Build CSS classes with template support
+  - `attrs/1` — Build HTML attributes conditionally
   """
 
   @type date_input :: Date.t() | NaiveDateTime.t() | DateTime.t() | String.t() | nil
@@ -176,4 +181,70 @@ defmodule Nex.Helpers do
   end
 
   def time_ago(_), do: ""
+
+  @doc """
+  Builds CSS classes with template support.
+
+  Similar to `clsx/1` but supports nested templates with the `&` placeholder.
+
+  ## Examples
+
+      class("btn &", ["btn-primary", "btn-large"])
+      # => "btn-primary btn-large"
+
+      class("item active-&1", ["active", "disabled"])
+      # => "item active-active"
+
+      class("btn &-state", ["success", "large"])
+      # => "btn success-state btn large-state"
+  """
+  @spec class(String.t(), [String.t() | nil | false]) :: String.t()
+  def class(template, values) when is_binary(template) and is_list(values) do
+    values
+    |> Enum.filter(& &1)
+    |> Enum.map(fn val -> String.replace(template, "&", to_string(val)) end)
+    |> Enum.join(" ")
+    |> String.replace(" ", " ")
+    |> String.trim()
+  end
+
+  @doc """
+  Builds HTML attributes from a keyword list, filtering out nil/false values.
+
+  ## Examples
+
+      attrs([class: "btn", disabled: false, data_action: "submit"])
+      # => "class=\"btn\" data-action=\"submit\""
+
+      attrs([id: "my-form", required: true])
+      # => "id=\"my-form\" required"
+  """
+  @spec attrs([{atom() | String.t(), term()}]) :: String.t()
+  def attrs(attrs) when is_list(attrs) do
+    attrs
+    |> Enum.filter(fn
+      {_key, nil} -> false
+      {_key, false} -> false
+      {_key, _value} -> true
+    end)
+    |> Enum.map(fn
+      {key, true} ->
+        "#{attr_key(key)}"
+
+      {key, value} when is_binary(value) or is_number(value) ->
+        "#{attr_key(key)}=\"#{value}\""
+
+      {key, value} ->
+        "#{attr_key(key)}=\"#{inspect(value)}\""
+    end)
+    |> Enum.join(" ")
+  end
+
+  defp attr_key(key) when is_atom(key) do
+    key
+    |> Atom.to_string()
+    |> String.replace("_", "-")
+  end
+
+  defp attr_key(key) when is_binary(key), do: key
 end

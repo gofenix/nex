@@ -164,11 +164,22 @@ defmodule Nex.Session do
   def ensure_table do
     case :ets.whereis(@table) do
       :undefined ->
-        :ets.new(@table, [:named_table, :public, :set])
+        :ets.new(@table, [
+          :named_table,
+          :public,
+          :set,
+          read_concurrency: true,
+          write_concurrency: true
+        ])
 
       _ ->
         @table
     end
+  end
+
+  # Cache TTL to avoid repeated Application.get_env calls
+  defp session_ttl_ms do
+    @default_ttl_seconds * 1000
   end
 
   defp table_get(nil, _key, default), do: default
@@ -241,13 +252,37 @@ defmodule Nex.Session do
     end
   end
 
+  # Session ID Management
+
   defp secret do
     case System.get_env("SECRET_KEY_BASE") do
       nil ->
-        "nex_dev_secret_key_base_do_not_use_in_production_replace_with_64_char_random_string"
+        if Mix.env() == :dev do
+          # In development, generate a deterministic but unique secret
+          # This allows sessions to persist across restarts during development
+          "nex_dev_secret_key_base_do_not_use_in_production_#{node()}"
+        else
+          raise """
+          SECRET_KEY_BASE environment variable is not set.
+          
+          Please set it in your .env file or production environment:
+          
+              SECRET_KEY_BASE=<random 64 character string>
+          
+          You can generate one with: mix phx.gen.secret
+          """
+        end
+
+      s when byte_size(s) >= 32 ->
+        s
 
       s ->
-        s
+        raise """
+        SECRET_KEY_BASE must be at least 32 characters.
+        Current length: #{byte_size(s)}
+        
+        You can generate one with: mix phx.gen.secret
+        """
     end
   end
 end

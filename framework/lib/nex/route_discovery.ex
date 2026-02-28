@@ -330,30 +330,12 @@ defmodule Nex.RouteDiscovery do
   end
 
   # Config helpers
-  defp get_app_module do
-    Application.get_env(:nex_core, :app_module, "MyApp")
-  end
+  defp get_app_module, do: Nex.Config.app_module()
+  defp get_src_path, do: Nex.Config.src_path()
 
-  defp get_src_path do
-    Application.get_env(:nex_core, :src_path, "src")
-  end
-
-  # Safe atom/module conversion to prevent atom exhaustion attacks
-  defp safe_to_existing_atom(string) do
-    {:ok, String.to_existing_atom(string)}
-  rescue
-    ArgumentError -> :error
-  end
-
-  defp safe_to_existing_module(module_name) do
-    case safe_to_existing_atom("Elixir.#{module_name}") do
-      {:ok, module} ->
-        if Code.ensure_loaded?(module), do: {:ok, module}, else: :error
-
-      :error ->
-        :error
-    end
-  end
+  # Safe atom/module conversion - now delegated to Nex.Utils
+  defp safe_to_existing_atom(string), do: Nex.Utils.safe_to_existing_atom(string)
+  defp safe_to_existing_module(module_name), do: Nex.Utils.safe_to_existing_module(module_name)
 
   # Get current page module from referer path
   defp get_current_page_module(app_module, referer_path) do

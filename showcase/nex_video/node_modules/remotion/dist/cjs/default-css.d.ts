@@ -1,3 +1,0 @@
-export declare const injectCSS: (css: string) => void;
-export declare const OFFTHREAD_VIDEO_CLASS_NAME = "__remotion_offthreadvideo";
-export declare const makeDefaultCSS: (scope: string | null, backgroundColor: string) => string;

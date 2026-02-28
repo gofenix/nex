@@ -569,12 +569,10 @@ defmodule Nex.Handler do
     |> send_resp(200, html)
   end
 
-  defp get_app_module do
-    Application.get_env(:nex_core, :app_module, "MyApp")
-  end
+  defp get_app_module, do: Nex.Config.app_module()
 
   defp get_layout_module do
-    app_module = get_app_module()
+    app_module = Nex.Config.app_module()
 
     case safe_to_existing_module("#{app_module}.Layouts") do
       {:ok, module} -> module
@@ -793,37 +791,14 @@ defmodule Nex.Handler do
     """
   end
 
-  defp dev_env? do
-    Application.get_env(:nex_core, :env, :prod) == :dev
-  end
+  defp dev_env?, do: Nex.Config.dev?()
 
-  defp html_escape(text) when is_binary(text) do
-    text
-    |> String.replace("&", "&amp;")
-    |> String.replace("<", "&lt;")
-    |> String.replace(">", "&gt;")
-    |> String.replace("\"", "&quot;")
-  end
+  defp html_escape(text) when is_binary(text), do: Phoenix.HTML.html_escape(text) |> Phoenix.HTML.safe_to_string()
+  defp html_escape(text), do: text |> to_string() |> html_escape()
 
-  defp html_escape(text), do: html_escape(to_string(text))
-
-  # Safe atom/module conversion to prevent atom exhaustion attacks
-  # Only converts to atom if it already exists (i.e., module was compiled)
-  defp safe_to_existing_atom(string) do
-    {:ok, String.to_existing_atom(string)}
-  rescue
-    ArgumentError -> :error
-  end
-
-  defp safe_to_existing_module(module_name) do
-    case safe_to_existing_atom("Elixir.#{module_name}") do
-      {:ok, module} ->
-        if Code.ensure_loaded?(module), do: {:ok, module}, else: :error
-
-      :error ->
-        :error
-    end
-  end
+  # Safe atom/module conversion - now delegated to Nex.Utils
+  defp safe_to_existing_atom(string), do: Nex.Utils.safe_to_existing_atom(string)
+  defp safe_to_existing_module(module_name), do: Nex.Utils.safe_to_existing_module(module_name)
 
   # Get page_id from request (header or fallback to param for backward compatibility)
   defp get_page_id_from_request(conn) do

@@ -106,7 +106,14 @@ defmodule Nex.Store do
 
   @impl true
   def init(_opts) do
-    table = :ets.new(@table, [:named_table, :public, :set])
+    # Use read_concurrency for better read performance since we have many readers
+    table = :ets.new(@table, [
+      :named_table,
+      :public,
+      :set,
+      read_concurrency: true,
+      write_concurrency: true
+    ])
     schedule_cleanup()
     {:ok, %{table: table}}
   end
