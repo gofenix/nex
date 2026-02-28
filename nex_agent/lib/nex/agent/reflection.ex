@@ -39,7 +39,7 @@ defmodule Nex.Agent.Reflection do
       analysis = Nex.Agent.Reflection.analyze(results)
   """
   @spec analyze([map()], keyword()) :: map()
-  def analyze(results, opts \\ []) do
+  def analyze(results, _opts \\ []) do
     # Categorize results
     successes = Enum.filter(results, &(&1.result == "SUCCESS"))
     failures = Enum.filter(results, &(&1.result == "FAILURE"))
@@ -94,8 +94,8 @@ defmodule Nex.Agent.Reflection do
         end)
 
     # Learning suggestions
-    if analysis.failures > analysis.successes do
-      suggestions =
+    suggestions =
+      if analysis.failures > analysis.successes do
         suggestions ++
           [
             %{
@@ -105,7 +105,9 @@ defmodule Nex.Agent.Reflection do
               action: "Analyze root cause and adjust strategy"
             }
           ]
-    end
+      else
+        suggestions
+      end
 
     suggestions
   end
@@ -221,15 +223,18 @@ defmodule Nex.Agent.Reflection do
     insights = []
 
     # If same tool keeps failing
-    if length(error_patterns) > 0 && hd(error_patterns).count > 3 do
-      insights = insights ++ ["#{hd(error_patterns).tool} seems problematic"]
-    end
+    insights =
+      if length(error_patterns) > 0 && hd(error_patterns).count > 3 do
+        insights ++ ["#{hd(error_patterns).tool} seems problematic"]
+      else
+        insights
+      end
 
     # If success pattern is strong
     if length(success_patterns) > 0 && hd(success_patterns).count > 5 do
-      insights = insights ++ ["#{hd(success_patterns).tool} is reliable"]
+      insights ++ ["#{hd(success_patterns).tool} is reliable"]
+    else
+      insights
     end
-
-    insights
   end
 end

@@ -12,7 +12,7 @@ defmodule Nex.Agent.Session do
   @session_dir "~/.nex/agent/sessions"
 
   def create(project_id, cwd \\ nil) do
-    working_dir = cwd || File.cwd!()
+    _working_dir = cwd || File.cwd!()
     session_id = generate_session_id()
     project_dir = sanitize_project_id(project_id)
 

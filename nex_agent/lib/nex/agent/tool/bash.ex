@@ -1,14 +1,15 @@
 defmodule Nex.Agent.Tool.Bash do
+  alias Nex.Agent.Security
   @behaviour Nex.Agent.Tool.Behaviour
 
   def definition do
     %{
       name: "bash",
-      description: "Execute bash commands (ls, grep, find, etc.)",
+      description: "Execute whitelisted bash commands (git, mix, ls, grep, etc.)",
       parameters: %{
         type: "object",
         properties: %{
-          command: %{type: "string", description: "Command to execute"},
+          command: %{type: "string", description: "Command to execute (must be whitelisted)"},
           timeout: %{type: "number", description: "Timeout in seconds (default: 30)", default: 30}
         },
         required: ["command"]
@@ -17,46 +18,53 @@ defmodule Nex.Agent.Tool.Bash do
   end
 
   def execute(%{"command" => command}, ctx) do
-    cwd = Map.get(ctx, :cwd, File.cwd!())
-    timeout = Map.get(ctx, :timeout, 30) * 1000
+    # Validate command against whitelist
+    case Security.validate_command(command) do
+      {:error, reason} ->
+        {:error, reason}
 
-    task =
-      Task.async(fn ->
-        System.cmd("sh", ["-c", command], stderr_to_stdout: true, cd: cwd)
-      end)
+      :ok ->
+        cwd = Map.get(ctx, :cwd, File.cwd!())
+        timeout = Map.get(ctx, :timeout, 30) * 1000
 
-    result =
-      try do
-        Task.await(task, timeout)
-      rescue
-        _ ->
-          Task.shutdown(task, :brutal_kill)
-          {:error, :timeout}
-      end
+        task =
+          Task.async(fn ->
+            System.cmd("sh", ["-c", command], stderr_to_stdout: true, cd: cwd)
+          end)
 
-    case result do
-      {output, 0} ->
-        truncated =
-          if String.length(output) > 50000 do
-            String.slice(output, 0, 50000) <> "\n\n[Output truncated]"
-          else
-            output
+        result =
+          try do
+            Task.await(task, timeout)
+          rescue
+            _ ->
+              Task.shutdown(task, :brutal_kill)
+              {:error, :timeout}
           end
 
-        {:ok, %{content: truncated, exit_code: 0}}
+        case result do
+          {output, 0} ->
+            truncated =
+              if String.length(output) > 50000 do
+                String.slice(output, 0, 50000) <> "\n\n[Output truncated]"
+              else
+                output
+              end
 
-      {output, exit_code} ->
-        truncated =
-          if String.length(output) > 50000 do
-            String.slice(output, 0, 50000) <> "\n\n[Output truncated]"
-          else
-            output
-          end
+            {:ok, %{content: truncated, exit_code: 0}}
 
-        {:ok, %{content: truncated, exit_code: exit_code}}
+          {output, exit_code} ->
+            truncated =
+              if String.length(output) > 50000 do
+                String.slice(output, 0, 50000) <> "\n\n[Output truncated]"
+              else
+                output
+              end
 
-      {:error, :timeout} ->
-        {:error, "Command timed out after #{div(timeout, 1000)} seconds"}
+            {:ok, %{content: truncated, exit_code: exit_code}}
+
+          {:error, :timeout} ->
+            {:error, "Command timed out after #{div(timeout, 1000)} seconds"}
+        end
     end
   end
 end

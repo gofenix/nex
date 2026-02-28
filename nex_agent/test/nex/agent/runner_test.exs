@@ -4,6 +4,19 @@ defmodule Nex.Agent.RunnerTest do
   alias Nex.Agent.Runner
   alias Nex.Agent.Session
 
+  setup do
+    on_exit(fn ->
+      session_dir = Path.expand("~/.nex/agent/sessions")
+
+      if File.exists?(session_dir) do
+        File.rm_rf!(Path.join(session_dir, "test-project"))
+        File.rm_rf!(Path.join(session_dir, "test-project-fork"))
+      end
+    end)
+
+    :ok
+  end
+
   describe "Nex.Agent.Runner" do
     test "module loads" do
       assert Code.ensure_loaded?(Nex.Agent.Runner)
@@ -214,30 +227,32 @@ defmodule Nex.Agent.RunnerTest do
 
     test "run with unknown tool name reaches max iterations" do
       {:ok, session} = Session.create("test-project")
-      
+
       # Mock always returns unknown tool call - will hit max iterations
       mock_client = fn _messages, _opts ->
-        {:ok, %{
-          content: "I'll use a custom tool",
-          tool_calls: [
-            %{
-              "id" => "call_1",
-              "function" => %{
-                "name" => "nonexistent_tool",
-                "arguments" => %{}
-              }
-            }
-          ]
-        }}
+        {:ok,
+         %{
+           content: "I'll use a custom tool",
+           tool_calls: [
+             %{
+               "id" => "call_1",
+               "function" => %{
+                 "name" => "nonexistent_tool",
+                 "arguments" => %{}
+               }
+             }
+           ]
+         }}
       end
-      
-      result = Runner.run(session, "use custom tool",
-        provider: :anthropic,
-        api_key: "test",
-        llm_client: mock_client,
-        max_iterations: 2
-      )
-      
+
+      result =
+        Runner.run(session, "use custom tool",
+          provider: :anthropic,
+          api_key: "test",
+          llm_client: mock_client,
+          max_iterations: 2
+        )
+
       # With unknown tool, it keeps retrying until max_iterations
       assert {:error, :max_iterations_exceeded, _} = result
     end

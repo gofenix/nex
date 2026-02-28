@@ -4,6 +4,23 @@ defmodule Nex.Agent.SessionTest do
   alias Nex.Agent.Session
   alias Nex.Agent.Entry
 
+  setup do
+    on_exit(fn ->
+      session_dir = Path.expand("~/.nex/agent/sessions")
+
+      if File.exists?(session_dir) do
+        session_dir
+        |> File.ls!()
+        |> Enum.filter(&String.starts_with?(&1, "test_"))
+        |> Enum.each(fn dir ->
+          File.rm_rf!(Path.join(session_dir, dir))
+        end)
+      end
+    end)
+
+    :ok
+  end
+
   describe "Session.create/2" do
     test "creates a new session with valid project_id" do
       project_id = "test_project_#{:rand.uniform(10000)}"

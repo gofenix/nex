@@ -201,7 +201,7 @@ defmodule Nex.Agent.Evolution do
 
   defp get_source_path(module) do
     # Try to get the source file from the compiled beam
-    beam_path = :code.where_is_file('#{module}.beam') |> to_string()
+    beam_path = :code.where_is_file(~c"#{module}.beam") |> to_string()
 
     cond do
       beam_path == "" or String.contains?(beam_path, "non_existing") or
@@ -239,28 +239,25 @@ defmodule Nex.Agent.Evolution do
   end
 
   defp validate_code(code) do
-    # Try to compile in memory
-    try do
-      {:ok, _} = Code.eval_string(code, [], __ENV__)
-      :ok
-    rescue
-      e ->
-        {:error, Exception.message(e)}
+    # Only parse the code, don't execute it
+    # This validates syntax without running the code
+    case Code.string_to_quoted(code) do
+      {:ok, _} -> :ok
+      {:error, error} -> {:error, Exception.message(error)}
     end
   end
 
   defp compile_and_load(module, code) do
-    # Compile the code
+    # Parse the code
     quoted = Code.string_to_quoted!(code)
 
-    # Compile to module
-    {:module, _module} = Code.eval_quoted(quoted, [], __ENV__)
+    # Compile the module with a unique name to avoid conflicts
+    # This compiles the code into the module name
+    {module_bin, _} = Code.compile_quoted(quoted, [])
 
     # Purge old version and load new
     :code.purge(module)
-
-    {:module, _module} =
-      :code.load_binary(module, '', :erlang.term_to_binary(module.__info__(:module)))
+    {:module, _module} = :code.load_binary(module, ~c"", module_bin)
 
     :ok
   rescue

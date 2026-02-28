@@ -4,6 +4,20 @@ defmodule Nex.AgentTest do
   alias Nex.Agent
   alias Nex.Agent.Session
 
+  setup do
+    on_exit(fn ->
+      session_dir = Path.expand("~/.nex/agent/sessions")
+
+      if File.exists?(session_dir) do
+        # Clean up test-generated sessions (nex_agent is default in test)
+        File.rm_rf!(Path.join(session_dir, "nex_agent"))
+        File.rm_rf!(Path.join(session_dir, "nex_agent-fork"))
+      end
+    end)
+
+    :ok
+  end
+
   describe "Nex.Agent.start/1" do
     test "creates agent with valid API key" do
       result = Agent.start(provider: :anthropic, api_key: "test-key-123")
