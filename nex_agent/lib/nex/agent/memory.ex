@@ -14,10 +14,10 @@ defmodule Nex.Agent.Memory do
 
       # Append to today's log
       :ok = Nex.Agent.Memory.append("Task: Fix login", "Success", %{tool: "bash", command: "..."})
-      
+
       # Search memories
       results = Nex.Agent.Memory.search("login bug")
-      
+
       # Get today's entries
       entries = Nex.Agent.Memory.today()
   """
@@ -275,6 +275,113 @@ defmodule Nex.Agent.Memory do
       "## Long-term Memory\n\n#{long_term}"
     else
       ""
+    end
+  end
+
+  @doc """
+  Consolidate old session messages into MEMORY.md and HISTORY.md via LLM.
+
+  Takes messages beyond last_consolidated, asks LLM to summarize into
+  a history entry + updated long-term memory. Updates session.last_consolidated.
+
+  Returns {:ok, updated_session} or {:error, reason}.
+  """
+  @spec consolidate(map(), atom(), String.t(), keyword()) :: {:ok, map()} | {:error, term()}
+  def consolidate(session, provider, model, opts \\ []) do
+    require Logger
+    api_key = Keyword.get(opts, :api_key)
+    base_url = Keyword.get(opts, :base_url)
+    memory_window = Keyword.get(opts, :memory_window, 50)
+
+    messages = Nex.Agent.Session.current_messages(session)
+    keep_count = div(memory_window, 2)
+    old_messages = Enum.slice(messages, session.last_consolidated, length(messages) - keep_count - session.last_consolidated)
+
+    if old_messages == [] do
+      {:ok, session}
+    else
+      Logger.info("[Memory] Consolidating #{length(old_messages)} messages")
+
+      lines =
+        old_messages
+        |> Enum.reject(fn m -> is_nil(Map.get(m, "content")) end)
+        |> Enum.map(fn m ->
+          role = Map.get(m, "role", "?") |> String.upcase()
+          content = Map.get(m, "content", "") |> to_string() |> String.slice(0, 500)
+          "[#{role}]: #{content}"
+        end)
+        |> Enum.join("\n")
+
+      current_memory = read_long_term()
+
+      consolidation_prompt = """
+      You are a memory consolidation agent. Process the conversation below and call the save_memory tool.
+
+      ## Current Long-term Memory
+      #{if current_memory == "", do: "(empty)", else: current_memory}
+
+      ## Conversation to Process
+      #{lines}
+      """
+
+      save_memory_tool = [
+        %{
+          "type" => "function",
+          "function" => %{
+            "name" => "save_memory",
+            "description" => "Save the memory consolidation result to persistent storage.",
+            "parameters" => %{
+              "type" => "object",
+              "properties" => %{
+                "history_entry" => %{
+                  "type" => "string",
+                  "description" => "A paragraph (2-5 sentences) summarizing key events/decisions/topics. Start with [YYYY-MM-DD HH:MM]. Include detail useful for grep search."
+                },
+                "memory_update" => %{
+                  "type" => "string",
+                  "description" => "Full updated long-term memory as markdown. Include all existing facts plus new ones. Return unchanged if nothing new."
+                }
+              },
+              "required" => ["history_entry", "memory_update"]
+            }
+          }
+        }
+      ]
+
+      consolidation_messages = [
+        %{
+          "role" => "system",
+          "content" => "You are a memory consolidation agent. Call the save_memory tool with your consolidation of the conversation."
+        },
+        %{"role" => "user", "content" => consolidation_prompt}
+      ]
+
+      llm_opts = [
+        provider: provider,
+        model: model,
+        api_key: api_key,
+        base_url: base_url,
+        tools: save_memory_tool
+      ]
+
+      case Nex.Agent.Runner.call_llm_for_consolidation(consolidation_messages, llm_opts) do
+        {:ok, %{"history_entry" => history_entry, "memory_update" => memory_update}} ->
+          append_history(history_entry)
+
+          if memory_update != current_memory && memory_update != "" do
+            write_long_term(memory_update)
+          end
+
+          new_last_consolidated = length(messages) - keep_count
+          updated_session = %{session | last_consolidated: new_last_consolidated}
+          Nex.Agent.Session.save_meta(updated_session)
+
+          Logger.info("[Memory] Consolidation done, last_consolidated=#{new_last_consolidated}")
+          {:ok, updated_session}
+
+        {:error, reason} ->
+          {:error, reason}
+      end
     end
   end
 end

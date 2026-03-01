@@ -4,6 +4,7 @@ defmodule Mix.Tasks.Nex.Agent do
   """
 
   use Mix.Task
+  require Logger
 
   @shortdoc "Nex Agent CLI"
 
@@ -13,9 +14,18 @@ defmodule Mix.Tasks.Nex.Agent do
 
     {opts, args} =
       OptionParser.parse!(args,
-        switches: [message: :string, model: :string, provider: :string, help: :boolean],
-        aliases: [m: :message, h: :help]
+        switches: [
+          message: :string,
+          model: :string,
+          provider: :string,
+          help: :boolean,
+          log: :boolean,
+          log_level: :string
+        ],
+        aliases: [m: :message, h: :help, l: :log]
       )
+
+    configure_logging(opts)
 
     if opts[:help] do
       print_help()
@@ -33,12 +43,15 @@ defmodule Mix.Tasks.Nex.Agent do
   end
 
   defp ensure_finch_started do
-    case Process.whereis(Req.Finch) do
-      nil ->
-        {:ok, _} = Finch.start_link(name: Req.Finch)
-
-      _ ->
+    case Application.ensure_all_started(:req) do
+      {:ok, _apps} ->
         :ok
+
+      {:error, {:already_started, _app}} ->
+        :ok
+
+      {:error, reason} ->
+        Mix.raise("Failed to start :req application: #{inspect(reason)}")
     end
   end
 
@@ -49,6 +62,33 @@ defmodule Mix.Tasks.Nex.Agent do
     Mix.shell().info("  mix nex.agent -m \"hello\"       Single message")
     Mix.shell().info("  mix nex.agent gateway          Start gateway")
     Mix.shell().info("  mix nex.agent status           Show status")
+    Mix.shell().info("  mix nex.agent gateway --log    Enable debug logs")
+    Mix.shell().info("  mix nex.agent --log-level debug|info|warning|error")
+  end
+
+  defp configure_logging(opts) do
+    level =
+      cond do
+        is_binary(opts[:log_level]) -> parse_log_level(opts[:log_level])
+        opts[:log] == true -> :debug
+        true -> nil
+      end
+
+    if level do
+      Logger.configure(level: level)
+      Mix.shell().info("Logger level set to #{level}")
+    end
+  end
+
+  defp parse_log_level(raw) do
+    case raw |> String.trim() |> String.downcase() do
+      "debug" -> :debug
+      "info" -> :info
+      "warn" -> :warning
+      "warning" -> :warning
+      "error" -> :error
+      _ -> :info
+    end
   end
 
   defp run_onboard do
@@ -66,8 +106,51 @@ defmodule Mix.Tasks.Nex.Agent do
 
   defp run_gateway do
     Mix.shell().info("Starting Gateway...")
+
+    lock_socket =
+      case acquire_gateway_lock() do
+        {:ok, socket} ->
+          socket
+
+        {:error, :already_running} ->
+          Mix.shell().error("Gateway is already running (port lock is held).")
+          System.halt(1)
+
+        {:error, reason} ->
+          Mix.shell().error("Failed to acquire gateway port lock: #{inspect(reason)}")
+          System.halt(1)
+      end
+
+    case Process.whereis(Nex.Agent.Gateway) do
+      nil ->
+        {:ok, _} = Nex.Agent.Gateway.start_link()
+
+      _pid ->
+        :ok
+    end
+
+    Process.put(:gateway_lock_socket, lock_socket)
     Nex.Agent.Gateway.start()
     Process.sleep(:infinity)
+  end
+
+  defp acquire_gateway_lock do
+    config = Nex.Agent.Config.load()
+    gateway = config.gateway || %{}
+    port = Map.get(gateway, "port", 18790)
+
+    :gen_tcp.listen(port, [
+      :binary,
+      {:packet, 0},
+      {:active, false},
+      {:reuseaddr, false},
+      {:ip, {127, 0, 0, 1}}
+    ])
+    |> case do
+      {:ok, socket} -> {:ok, socket}
+      {:error, :eaddrinuse} -> {:error, :already_running}
+      other -> other
+    end
   end
 
   defp run_config(args) do

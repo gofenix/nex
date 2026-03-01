@@ -22,7 +22,8 @@ defmodule NexAgent.MixProject do
   defp deps do
     [
       {:req, "~> 0.5"},
-      {:jason, "~> 1.4"}
+      {:jason, "~> 1.4"},
+      {:websockex, "~> 0.4"}
     ]
   end
 end

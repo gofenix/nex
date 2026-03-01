@@ -21,7 +21,7 @@ defmodule Nex.Agent.Channel.TelegramTest do
   test "publishes inbound telegram message when sender is allowed" do
     {:ok, seq} = Agent.start_link(fn -> 0 end)
 
-    get_fun = fn _url, _params ->
+    get_fun = fn _url, _params, _req_options ->
       n = Agent.get_and_update(seq, fn current -> {current, current + 1} end)
 
       result =
@@ -46,7 +46,7 @@ defmodule Nex.Agent.Channel.TelegramTest do
       {:ok, %{"ok" => true, "result" => result}}
     end
 
-    post_fun = fn _url, _body -> {:ok, %{"ok" => true, "result" => true}} end
+    post_fun = fn _url, _body, _req_options -> {:ok, %{"ok" => true, "result" => true}} end
 
     config =
       Config.default()
@@ -76,11 +76,11 @@ defmodule Nex.Agent.Channel.TelegramTest do
   end
 
   test "outbound supports reply_to_message metadata" do
-    get_fun = fn _url, _params -> {:ok, %{"ok" => true, "result" => []}} end
+    get_fun = fn _url, _params, _req_options -> {:ok, %{"ok" => true, "result" => []}} end
 
     test_pid = self()
 
-    post_fun = fn _url, body ->
+    post_fun = fn _url, body, _req_options ->
       send(test_pid, {:telegram_post, body})
       {:ok, %{"ok" => true, "result" => true}}
     end

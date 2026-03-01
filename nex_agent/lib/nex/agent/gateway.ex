@@ -58,6 +58,23 @@ defmodule Nex.Agent.Gateway do
     end
   end
 
+  defp ensure_feishu_channel_started(config) do
+    if Nex.Agent.Config.feishu_enabled?(config) do
+      case Process.whereis(Nex.Agent.Channel.Feishu) do
+        nil ->
+          {:ok, _} = Nex.Agent.Channel.Feishu.start_link(config: config)
+          _ = Nex.Agent.Channel.Feishu.start_websocket()
+          :ok
+
+        _pid ->
+          _ = Nex.Agent.Channel.Feishu.start_websocket()
+          :ok
+      end
+    else
+      :ok
+    end
+  end
+
   @doc """
   启动所有服务
   """
@@ -145,7 +162,8 @@ defmodule Nex.Agent.Gateway do
         bus: Process.whereis(Nex.Agent.Bus) != nil,
         cron: Process.whereis(Nex.Agent.Cron) != nil,
         inbound_worker: Process.whereis(Nex.Agent.InboundWorker) != nil,
-        telegram_channel: Process.whereis(Nex.Agent.Channel.Telegram) != nil
+        telegram_channel: Process.whereis(Nex.Agent.Channel.Telegram) != nil,
+        feishu_channel: Process.whereis(Nex.Agent.Channel.Feishu) != nil
       }
     }
 
@@ -181,6 +199,7 @@ defmodule Nex.Agent.Gateway do
       ensure_cron_started()
       ensure_inbound_worker_started(state.config)
       ensure_telegram_channel_started(state.config)
+      ensure_feishu_channel_started(state.config)
 
       {:ok,
        %{
@@ -192,6 +211,7 @@ defmodule Nex.Agent.Gateway do
   end
 
   defp do_stop(state) do
+    stop_feishu_channel()
     stop_telegram_channel()
     stop_inbound_worker()
     stop_cron()
@@ -247,6 +267,17 @@ defmodule Nex.Agent.Gateway do
     case Process.whereis(Nex.Agent.Channel.Telegram) do
       nil -> :ok
       pid -> GenServer.stop(pid, :shutdown)
+    end
+  end
+
+  defp stop_feishu_channel do
+    case Process.whereis(Nex.Agent.Channel.Feishu) do
+      nil ->
+        :ok
+
+      pid ->
+        _ = Nex.Agent.Channel.Feishu.stop_websocket()
+        GenServer.stop(pid, :shutdown)
     end
   end
 

@@ -4,18 +4,21 @@ defmodule Nex.Agent.Channel.Telegram do
   """
 
   use GenServer
+  require Logger
 
   alias Nex.Agent.{Bus, Config}
 
   @telegram_api "https://api.telegram.org"
   @default_poll_interval_ms 1_000
-  @default_timeout_seconds 20
+  @default_poll_timeout_seconds 1
+  @default_send_timeout_ms 15_000
 
   defstruct [
     :token,
     :allow_from,
     :reply_to_message,
     :proxy,
+    :req_options,
     :http_get_fun,
     :http_post_fun,
     :offset,
@@ -28,6 +31,7 @@ defmodule Nex.Agent.Channel.Telegram do
           allow_from: [String.t()],
           reply_to_message: boolean(),
           proxy: String.t() | nil,
+          req_options: keyword(),
           http_get_fun: (String.t(), map() -> {:ok, map()} | {:error, term()}),
           http_post_fun: (String.t(), map() -> {:ok, map()} | {:error, term()}),
           offset: integer() | nil,
@@ -52,16 +56,20 @@ defmodule Nex.Agent.Channel.Telegram do
 
   @impl true
   def init(opts) do
+    _ = Application.ensure_all_started(:req)
+
     config = Keyword.get(opts, :config, Config.load())
     telegram = Config.telegram(config)
+    proxy = normalize_proxy(Map.get(telegram, "proxy"))
 
     state = %__MODULE__{
       token: Map.get(telegram, "token", ""),
       allow_from: Config.telegram_allow_from(config),
       reply_to_message: Config.telegram_reply_to_message?(config),
-      proxy: Map.get(telegram, "proxy"),
-      http_get_fun: Keyword.get(opts, :http_get_fun, &default_http_get/2),
-      http_post_fun: Keyword.get(opts, :http_post_fun, &default_http_post/2),
+      proxy: proxy,
+      req_options: req_options(proxy),
+      http_get_fun: Keyword.get(opts, :http_get_fun, &default_http_get/3),
+      http_post_fun: Keyword.get(opts, :http_post_fun, &default_http_post/3),
       offset: nil,
       poll_interval_ms: Keyword.get(opts, :poll_interval_ms, @default_poll_interval_ms),
       enabled: Config.telegram_enabled?(config)
@@ -100,6 +108,7 @@ defmodule Nex.Agent.Channel.Telegram do
 
   @impl true
   def handle_info({:bus_message, :telegram_outbound, payload}, state) when is_map(payload) do
+    Logger.warning("Telegram received outbound message: #{inspect(payload)}")
     _ = do_send(payload, state)
     {:noreply, state}
   end
@@ -110,15 +119,30 @@ defmodule Nex.Agent.Channel.Telegram do
   defp poll_updates(state) do
     case telegram_get(state, "getUpdates", update_params(state.offset)) do
       {:ok, %{"ok" => true, "result" => updates}} when is_list(updates) ->
+        Logger.warning("Telegram poll ok updates_count=#{length(updates)}")
         handle_updates(updates, state)
+
+      {:ok, %{"ok" => false} = body} ->
+        Logger.warning("Telegram getUpdates returned not ok: #{inspect(body)}")
+        state
+
+      {:error, reason} ->
+        Logger.warning("Telegram getUpdates failed: #{inspect(reason)}")
+        state
 
       _ ->
         state
     end
   end
 
+  defp maybe_finch_opt([]), do: [finch: Req.Finch]
+  defp maybe_finch_opt(_connect_options), do: []
+
+  defp maybe_connect_options_opt([]), do: []
+  defp maybe_connect_options_opt(connect_options), do: [connect_options: connect_options]
+
   defp drop_pending_updates(state) do
-    case telegram_get(state, "getUpdates", %{timeout: 0, allowed_updates: ["message"]}) do
+    case telegram_get(state, "getUpdates", %{timeout: 0}) do
       {:ok, %{"ok" => true, "result" => updates}} when is_list(updates) and updates != [] ->
         next_offset =
           updates
@@ -140,7 +164,15 @@ defmodule Nex.Agent.Channel.Telegram do
       case normalize_update(update) do
         {:ok, inbound} ->
           if allowed?(inbound.sender_id, acc.allow_from) do
+            Logger.warning(
+              "Telegram inbound accepted sender=#{inbound.sender_id} chat_id=#{inbound.chat_id}"
+            )
+
             Bus.publish(:inbound, inbound)
+          else
+            Logger.warning(
+              "Telegram inbound denied by allow_from sender=#{inbound.sender_id} allow_from=#{inspect(acc.allow_from)}"
+            )
           end
 
           acc
@@ -196,8 +228,10 @@ defmodule Nex.Agent.Channel.Telegram do
 
   defp update_offset(state, _), do: state
 
-  defp do_send(%{chat_id: chat_id, content: content} = payload, state)
-       when is_binary(chat_id) and is_binary(content) do
+  defp do_send(%{chat_id: chat_id, content: content} = payload, state) do
+    chat_id = to_string(chat_id)
+    content = to_string(content)
+
     params = %{
       chat_id: chat_id,
       text: content
@@ -207,7 +241,10 @@ defmodule Nex.Agent.Channel.Telegram do
     telegram_post(state, "sendMessage", params)
   end
 
-  defp do_send(_payload, _state), do: :ok
+  defp do_send(payload, _state) do
+    Logger.error("Telegram do_send received invalid payload: #{inspect(payload)}")
+    :ok
+  end
 
   defp maybe_reply_params(params, payload, state) do
     metadata = Map.get(payload, :metadata) || Map.get(payload, "metadata") || %{}
@@ -238,20 +275,19 @@ defmodule Nex.Agent.Channel.Telegram do
 
   defp update_params(offset) do
     base = %{
-      timeout: @default_timeout_seconds,
-      allowed_updates: ["message"]
+      timeout: @default_poll_timeout_seconds
     }
 
     if is_integer(offset), do: Map.put(base, :offset, offset), else: base
   end
 
   defp telegram_get(state, method, params) do
-    state.http_get_fun.(build_url(state, method), params)
+    state.http_get_fun.(build_url(state, method), params, state.req_options)
     |> normalize_req_response()
   end
 
   defp telegram_post(state, method, body) do
-    state.http_post_fun.(build_url(state, method), body)
+    state.http_post_fun.(build_url(state, method), body, state.req_options)
     |> normalize_req_response()
   end
 
@@ -269,12 +305,56 @@ defmodule Nex.Agent.Channel.Telegram do
     "#{@telegram_api}/bot#{state.token}/#{method}"
   end
 
-  defp default_http_get(url, params) do
-    Req.get(url, params: params, receive_timeout: (@default_timeout_seconds + 5) * 1000)
+  defp default_http_get(url, params, req_options) do
+    connect_options = Keyword.get(req_options, :connect_options, [])
+
+    options =
+      [
+        params: params,
+        receive_timeout: (@default_poll_timeout_seconds + 2) * 1000,
+        retry: false
+      ] ++
+        maybe_finch_opt(connect_options) ++
+        maybe_connect_options_opt(connect_options)
+
+    Req.get(url, options)
   end
 
-  defp default_http_post(url, body) do
-    Req.post(url, json: body, receive_timeout: (@default_timeout_seconds + 5) * 1000)
+  defp default_http_post(url, body, req_options) do
+    connect_options = Keyword.get(req_options, :connect_options, [])
+
+    options =
+      [
+        json: body,
+        receive_timeout: @default_send_timeout_ms + 5_000,
+        retry: false
+      ] ++
+        maybe_finch_opt(connect_options) ++
+        maybe_connect_options_opt(connect_options)
+
+    Req.post(url, options)
+  end
+
+  defp normalize_proxy(proxy) when is_binary(proxy) and proxy != "", do: proxy
+  defp normalize_proxy(_), do: nil
+
+  defp req_options(nil), do: []
+
+  defp req_options(proxy) do
+    case URI.parse(proxy) do
+      %{scheme: scheme, host: host, port: port}
+      when scheme in ["http", "https"] and is_binary(host) ->
+        proxy_port = port || if(scheme == "https", do: 443, else: 80)
+
+        proxy_tuple =
+          {String.to_atom(scheme), host, proxy_port, []}
+
+        [connect_options: [proxy: proxy_tuple]]
+
+      _ ->
+        Logger.warning("Invalid telegram proxy ignored: #{inspect(proxy)}")
+        []
+    end
   end
 
   defp schedule_poll(interval_ms) do

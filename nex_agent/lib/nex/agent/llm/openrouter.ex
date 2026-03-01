@@ -8,15 +8,23 @@ defmodule Nex.Agent.LLM.OpenRouter do
     max_tokens = Keyword.get(options, :max_tokens, 4096)
     temperature = Keyword.get(options, :temperature, 0.1)
     http_client = Keyword.get(options, :http_client, &Req.post/2)
+    tools = Keyword.get(options, :tools, []) |> transform_tools()
 
     base_url = String.trim_trailing(base_url, "/")
 
     body = %{
       model: model,
-      messages: messages,
+      messages: transform_messages(messages),
       temperature: temperature,
       max_tokens: max_tokens
     }
+
+    body =
+      if tools != [] do
+        Map.put(body, :tools, tools)
+      else
+        body
+      end
 
     case http_client.("#{base_url}/chat/completions",
            json: body,
@@ -31,10 +39,24 @@ defmodule Nex.Agent.LLM.OpenRouter do
         choice = hd(response["choices"])
         message = choice["message"] || %{}
 
+        # Parse tool calls from OpenAI format back to our internal format
+        tool_calls =
+          (message["tool_calls"] || [])
+          |> Enum.map(fn tc ->
+            %{
+              "id" => tc["id"],
+              "type" => tc["type"],
+              "function" => %{
+                "name" => tc["function"]["name"],
+                "arguments" => tc["function"]["arguments"]
+              }
+            }
+          end)
+
         {:ok,
          %{
            content: message["content"],
-           tool_calls: message["tool_calls"] || [],
+           tool_calls: tool_calls,
            model: response["model"],
            usage: response["usage"]
          }}
@@ -52,4 +74,46 @@ defmodule Nex.Agent.LLM.OpenRouter do
   end
 
   def tools, do: []
+
+  defp transform_tools(tools) when is_list(tools) do
+    Enum.map(tools, fn tool ->
+      %{
+        type: "function",
+        function: %{
+          name: tool["name"],
+          description: tool["description"],
+          parameters: tool["input_schema"] || %{type: "object", properties: %{}}
+        }
+      }
+    end)
+  end
+
+  defp transform_tools(_), do: []
+
+  defp transform_messages(messages) do
+    Enum.map(messages, fn m ->
+      cond do
+        m["role"] == "assistant" && m["tool_calls"] && m["tool_calls"] != [] ->
+          %{
+            "role" => "assistant",
+            "content" => m["content"],
+            "tool_calls" => m["tool_calls"]
+          }
+
+        m["role"] == "tool" ->
+          %{
+            "role" => "tool",
+            "tool_call_id" => m["tool_call_id"],
+            "name" => "tool",
+            "content" => m["content"]
+          }
+
+        true ->
+          %{
+            "role" => m["role"],
+            "content" => m["content"]
+          }
+      end
+    end)
+  end
 end

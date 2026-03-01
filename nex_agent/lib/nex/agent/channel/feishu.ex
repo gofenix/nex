@@ -1,0 +1,812 @@
+defmodule Nex.Agent.Channel.Feishu do
+  @moduledoc """
+  Feishu channel (v2):
+  - WebSocket long connection for inbound events
+  - Message deduplication (based on message_id)
+  - Bot message filtering
+  - react_emoji automatic response
+  - Support for text, post, image, file, audio, media types
+  """
+
+  use GenServer
+  require Logger
+
+  alias Nex.Agent.{Bus, Config}
+  alias Nex.Agent.Channel.Feishu.{Frame, WSClient}
+
+  @feishu_api "https://open.feishu.cn/open-apis"
+  @feishu_ws_endpoint "https://open.feishu.cn/callback/ws/endpoint"
+  @default_send_timeout_ms 15_000
+  @dedup_cache_max 1000
+
+  defstruct [
+    :app_id,
+    :app_secret,
+    :encrypt_key,
+    :verification_token,
+    :allow_from,
+    :react_emoji,
+    :enabled,
+    :http_post_fun,
+    :tenant_access_token,
+    :tenant_access_token_expire_at,
+    :ws_pid,
+    :ws_monitor_ref,
+    :ws_reconnect_timer,
+    :ws_ping_interval,
+    :ws_ping_timer,
+    :ws_service_id,
+    ws_pending_fragments: %{},
+    processed_message_ids: []
+  ]
+
+  @type t :: %__MODULE__{
+          app_id: String.t(),
+          app_secret: String.t(),
+          encrypt_key: String.t() | nil,
+          verification_token: String.t() | nil,
+          allow_from: [String.t()],
+          react_emoji: String.t(),
+          enabled: boolean(),
+          http_post_fun: (String.t(), map(), keyword() -> {:ok, map()} | {:error, term()}),
+          tenant_access_token: String.t() | nil,
+          tenant_access_token_expire_at: integer() | nil,
+          ws_pid: pid() | nil,
+          ws_monitor_ref: reference() | nil,
+          ws_reconnect_timer: reference() | nil,
+          ws_ping_interval: integer() | nil,
+          ws_ping_timer: reference() | nil,
+          ws_service_id: integer() | nil,
+          ws_pending_fragments: map(),
+          processed_message_ids: [String.t()]
+        }
+
+  @spec start_link(keyword()) :: GenServer.on_start()
+  def start_link(opts \\ []) do
+    name = Keyword.get(opts, :name, __MODULE__)
+    GenServer.start_link(__MODULE__, opts, name: name)
+  end
+
+  @spec send_message(String.t(), String.t(), map()) :: :ok
+  def send_message(chat_id, content, metadata \\ %{}) do
+    Bus.publish(:feishu_outbound, %{
+      chat_id: to_string(chat_id),
+      content: content,
+      metadata: metadata
+    })
+  end
+
+  @spec ingest_event(map()) :: :ok | {:ok, map()} | {:error, term()}
+  def ingest_event(payload) when is_map(payload) do
+    GenServer.call(__MODULE__, {:ingest_event, payload})
+  end
+
+  @spec start_websocket() :: :ok | {:error, term()}
+  def start_websocket do
+    GenServer.call(__MODULE__, :start_websocket)
+  end
+
+  @spec stop_websocket() :: :ok
+  def stop_websocket do
+    GenServer.call(__MODULE__, :stop_websocket)
+  end
+
+  @impl true
+  def init(opts) do
+    _ = Application.ensure_all_started(:req)
+
+    config = Keyword.get(opts, :config, Config.load())
+    feishu = Config.feishu(config)
+
+    state = %__MODULE__{
+      app_id: Map.get(feishu, "app_id", ""),
+      app_secret: Map.get(feishu, "app_secret", ""),
+      encrypt_key: Config.feishu_encrypt_key(config),
+      verification_token: Config.feishu_verification_token(config),
+      allow_from: Config.feishu_allow_from(config),
+      react_emoji: Config.feishu_react_emoji(config),
+      enabled: Config.feishu_enabled?(config),
+      http_post_fun: Keyword.get(opts, :http_post_fun, &default_http_post/3),
+      tenant_access_token: nil,
+      tenant_access_token_expire_at: nil,
+      ws_pid: nil,
+      ws_monitor_ref: nil,
+      ws_reconnect_timer: nil,
+      ws_ping_interval: nil,
+      ws_ping_timer: nil,
+      ws_service_id: nil,
+      ws_pending_fragments: %{},
+      processed_message_ids: []
+    }
+
+    Bus.subscribe(:feishu_outbound)
+
+    state =
+      if state.enabled do
+        maybe_start_websocket(state)
+      else
+        state
+      end
+
+    {:ok, state}
+  end
+
+  @impl true
+  def handle_call(:start_websocket, _from, state) do
+    if state.ws_pid do
+      {:reply, {:error, :already_running}, state}
+    else
+      case start_ws_connection(state) do
+        {:ok, new_state} -> {:reply, :ok, new_state}
+        {:error, reason, new_state} -> {:reply, {:error, reason}, new_state}
+      end
+    end
+  end
+
+  @impl true
+  def handle_call(:stop_websocket, _from, state) do
+    {:reply, :ok, stop_ws(state)}
+  end
+
+  @impl true
+  def handle_call({:ingest_event, payload}, _from, state) do
+    case normalize_event(payload) do
+      {:challenge, challenge} ->
+        {:reply, {:ok, %{"challenge" => challenge}}, state}
+
+      {:ok, inbound} ->
+        {:reply, :ok, process_inbound_message(inbound, state)}
+
+      :ignore ->
+        {:reply, :ok, state}
+    end
+  end
+
+  @impl true
+  def handle_info({:bus_message, :feishu_outbound, payload}, state) when is_map(payload) do
+    case do_send(payload, state) do
+      {:ok, new_state} ->
+        {:noreply, new_state}
+
+      {:error, reason, new_state} ->
+        Logger.warning("Feishu send failed: #{inspect(reason)}")
+        {:noreply, new_state}
+    end
+  end
+
+  @impl true
+  def handle_info({:feishu_ws_event, pid, raw_frame, event_json}, %{ws_pid: pid} = state) do
+    {state, maybe_event} = merge_ws_fragment(raw_frame, event_json, state)
+
+    state =
+      case maybe_event do
+        nil ->
+          state
+
+        full_json when is_binary(full_json) ->
+          _ = send_ws_ack(raw_frame, state)
+
+          case Jason.decode(full_json) do
+            {:ok, payload} -> handle_ws_event_payload(payload, state)
+            _ -> state
+          end
+      end
+
+    {:noreply, state}
+  end
+
+  @impl true
+  def handle_info({:feishu_ws_disconnected, pid, reason}, %{ws_pid: pid} = state) do
+    Logger.warning("Feishu WebSocket disconnected: #{inspect(reason)}")
+    {:noreply, schedule_ws_reconnect(clear_ws_state(state))}
+  end
+
+  @impl true
+  def handle_info(:reconnect_ws, state) do
+    state = %{state | ws_reconnect_timer: nil}
+    {:noreply, maybe_start_websocket(state)}
+  end
+
+  @impl true
+  def handle_info(:feishu_ws_send_initial_ping, %{ws_pid: ws_pid, ws_service_id: svc_id} = state)
+      when is_pid(ws_pid) do
+    ping = %Frame{
+      seq_id: 0,
+      log_id: 0,
+      service: svc_id || 0,
+      method: Frame.method_control(),
+      headers: [{"type", "ping"}],
+      payload: <<>>
+    }
+
+    _ = WSClient.send_frame(ws_pid, ping)
+    Logger.info("[Feishu] Sent initial ping service_id=#{svc_id || 0}")
+    {:noreply, state}
+  end
+
+  @impl true
+  def handle_info(:feishu_ws_send_initial_ping, state), do: {:noreply, state}
+
+  @impl true
+  def handle_info(:ws_ping, %{ws_pid: ws_pid, ws_service_id: svc_id} = state) when is_pid(ws_pid) do
+    ping = %Frame{
+      seq_id: 0,
+      log_id: 0,
+      service: svc_id || 0,
+      method: Frame.method_control(),
+      headers: [{"type", "ping"}],
+      payload: <<>>
+    }
+
+    _ = WSClient.send_frame(ws_pid, ping)
+    {:noreply, schedule_ws_ping(state)}
+  end
+
+  @impl true
+  def handle_info(:ws_ping, state), do: {:noreply, state}
+
+  @impl true
+  def handle_info({:feishu_ws_pong_config, ping_interval_s}, state)
+      when is_integer(ping_interval_s) and ping_interval_s > 0 do
+    new_interval = ping_interval_s * 1000
+    state = %{state | ws_ping_interval: new_interval}
+    {:noreply, schedule_ws_ping(state)}
+  end
+
+  @impl true
+  def handle_info({:feishu_ws_pong_config, _}, state), do: {:noreply, state}
+
+  @impl true
+  def handle_info({:DOWN, _ref, :process, pid, reason}, state) when pid == state.ws_pid do
+    Logger.warning("Feishu WebSocket disconnected: #{inspect(reason)}")
+    {:noreply, schedule_ws_reconnect(clear_ws_state(state))}
+  end
+
+  @impl true
+  def handle_info(_msg, state), do: {:noreply, state}
+
+  defp add_reaction(_message_id, %{react_emoji: ""}), do: :ok
+  defp add_reaction(_, %{enabled: false}), do: :ok
+
+  defp add_reaction(message_id, state) when is_binary(message_id) and message_id != "" do
+    Task.start(fn ->
+      with {:ok, token, _} <- get_tenant_access_token(state),
+           {:ok, _} <-
+             feishu_post(
+               state,
+               "/im/v1/messages/#{message_id}/reactions",
+               %{"reaction_type" => %{"emoji_type" => state.react_emoji}},
+               [{"Authorization", "Bearer #{token}"}]
+             ) do
+        Logger.debug("Added #{state.react_emoji} reaction to #{message_id}")
+      else
+        {:error, reason} ->
+          Logger.warning("Failed to add reaction: #{inspect(reason)}")
+      end
+    end)
+  end
+
+  defp add_reaction(_, _), do: :ok
+
+  defp maybe_start_websocket(%{ws_pid: nil, enabled: true} = state) do
+    case start_ws_connection(state) do
+      {:ok, new_state} ->
+        new_state
+
+      {:error, reason, new_state} ->
+        Logger.warning("Failed to start Feishu WebSocket: #{inspect(reason)}")
+        schedule_ws_reconnect(new_state)
+    end
+  end
+
+  defp maybe_start_websocket(state), do: state
+
+  defp start_ws_connection(%{app_id: app_id, app_secret: app_secret} = state)
+       when app_id in [nil, ""] or app_secret in [nil, ""] do
+    {:error, :missing_credentials, state}
+  end
+
+  defp start_ws_connection(state) do
+    with {:ok, ws_url, ping_interval, service_id} <- fetch_ws_endpoint(state),
+         {:ok, pid} <- WSClient.start_link(ws_url, [], self()) do
+      ref = Process.monitor(pid)
+
+      state = %{
+        state
+        | ws_pid: pid,
+          ws_monitor_ref: ref,
+          ws_ping_interval: ping_interval,
+          ws_service_id: service_id
+      }
+
+      {:ok, schedule_ws_ping(state)}
+    else
+      {:error, reason} -> {:error, reason, state}
+    end
+  end
+
+  defp fetch_ws_endpoint(state) do
+    result =
+      state.http_post_fun.(
+        @feishu_ws_endpoint,
+        %{"AppID" => state.app_id, "AppSecret" => state.app_secret},
+        [{"locale", "zh"}]
+      )
+
+    case result do
+      {:ok, %{body: %{"code" => 0, "data" => %{"URL" => url} = data}}} ->
+        extract_endpoint_ok(url, data)
+
+      {:ok, %{"code" => 0, "data" => %{"URL" => url} = data}} ->
+        extract_endpoint_ok(url, data)
+
+      {:ok, %{body: body}} ->
+        Logger.warning("[Feishu] WS endpoint error: #{inspect(body)}")
+        {:error, {:ws_endpoint_error, body}}
+
+      {:ok, body} when is_map(body) ->
+        Logger.warning("[Feishu] WS endpoint error: #{inspect(body)}")
+        {:error, {:ws_endpoint_error, body}}
+
+      {:error, reason} ->
+        Logger.warning("[Feishu] WS endpoint request failed: #{inspect(reason)}")
+        {:error, reason}
+    end
+  end
+
+  defp extract_endpoint_ok(url, data) do
+    ping_ms = get_in(data, ["ClientConfig", "PingInterval"])
+    ping_ms = if is_integer(ping_ms) and ping_ms > 0, do: ping_ms * 1000, else: 120_000
+    service_id = extract_service_id(url)
+    Logger.info("[Feishu] Got WS endpoint service_id=#{service_id} ping=#{ping_ms}ms")
+    {:ok, url, ping_ms, service_id}
+  end
+
+  defp extract_service_id(url) do
+    uri = URI.parse(url)
+    params = URI.decode_query(uri.query || "")
+    case Integer.parse(Map.get(params, "service_id", "0")) do
+      {n, _} -> n
+      _ -> 0
+    end
+  end
+
+  defp merge_ws_fragment(raw_frame, event_json, state) do
+    headers = Map.new(raw_frame.headers)
+    message_id = Map.get(headers, "message_id", "")
+    sum = Map.get(headers, "sum", "1") |> parse_int(1)
+    seq = Map.get(headers, "seq", "0") |> parse_int(0)
+
+    if sum <= 1 do
+      {state, event_json}
+    else
+      fragments = Map.get(state.ws_pending_fragments, message_id, %{})
+      fragments = Map.put(fragments, seq, event_json)
+
+      if map_size(fragments) >= sum do
+        merged =
+          0..(sum - 1)
+          |> Enum.map(&Map.get(fragments, &1, <<>>))
+          |> Enum.join()
+
+        state = %{state | ws_pending_fragments: Map.delete(state.ws_pending_fragments, message_id)}
+        {state, merged}
+      else
+        state = %{state | ws_pending_fragments: Map.put(state.ws_pending_fragments, message_id, fragments)}
+        {state, nil}
+      end
+    end
+  end
+
+  defp parse_int(s, default) when is_binary(s) do
+    case Integer.parse(s) do
+      {n, _} -> n
+      _ -> default
+    end
+  end
+
+  defp parse_int(n, _) when is_integer(n), do: n
+  defp parse_int(_, default), do: default
+
+  defp send_ws_ack(raw_frame, %{ws_pid: ws_pid}) when is_pid(ws_pid) do
+    ack_payload = Jason.encode!(%{"code" => 200})
+
+    ack_frame = %Frame{
+      seq_id: raw_frame.seq_id,
+      log_id: raw_frame.log_id,
+      service: raw_frame.service,
+      method: raw_frame.method,
+      headers: raw_frame.headers ++ [{"biz_rt", "0"}],
+      payload: ack_payload
+    }
+
+    WSClient.send_frame(ws_pid, ack_frame)
+  end
+
+  defp send_ws_ack(_, _), do: :ok
+
+  defp handle_ws_event_payload(payload, state) do
+    Logger.debug("[Feishu] WS event payload keys=#{inspect(Map.keys(payload))}")
+
+    case normalize_event(payload) do
+      {:ok, inbound} ->
+        Logger.info("[Feishu] Inbound sender=#{inbound[:sender_id]} chat=#{inbound[:chat_id]} content=#{inspect(inbound[:content])}")
+        process_inbound_message(inbound, state)
+
+      :ignore ->
+        Logger.debug("[Feishu] Event ignored keys=#{inspect(Map.keys(payload))}")
+        state
+
+      {:challenge, _} ->
+        state
+    end
+  end
+
+  defp schedule_ws_ping(%{ws_ping_interval: nil} = state), do: state
+
+  defp schedule_ws_ping(%{ws_ping_interval: interval} = state) when is_integer(interval) do
+    if state.ws_ping_timer, do: Process.cancel_timer(state.ws_ping_timer)
+    timer = Process.send_after(self(), :ws_ping, interval)
+    %{state | ws_ping_timer: timer}
+  end
+
+  defp stop_ws(state) do
+    if state.ws_monitor_ref, do: Process.demonitor(state.ws_monitor_ref, [:flush])
+    if state.ws_reconnect_timer, do: Process.cancel_timer(state.ws_reconnect_timer)
+    if state.ws_ping_timer, do: Process.cancel_timer(state.ws_ping_timer)
+    if state.ws_pid, do: Process.exit(state.ws_pid, :normal)
+
+    %{state | ws_pid: nil, ws_monitor_ref: nil, ws_reconnect_timer: nil, ws_ping_timer: nil}
+  end
+
+  defp clear_ws_state(state) do
+    if state.ws_monitor_ref, do: Process.demonitor(state.ws_monitor_ref, [:flush])
+    if state.ws_ping_timer, do: Process.cancel_timer(state.ws_ping_timer)
+    %{state | ws_pid: nil, ws_monitor_ref: nil, ws_ping_timer: nil}
+  end
+
+  defp schedule_ws_reconnect(%{enabled: false} = state), do: state
+
+  defp schedule_ws_reconnect(%{ws_reconnect_timer: nil} = state) do
+    timer = Process.send_after(self(), :reconnect_ws, 5_000)
+    %{state | ws_reconnect_timer: timer}
+  end
+
+  defp schedule_ws_reconnect(state), do: state
+
+  defp process_inbound_message(inbound, state) do
+    message_id = Map.get(inbound, :message_id)
+
+    if message_id && message_id in state.processed_message_ids do
+      Logger.debug("Feishu duplicate message: #{message_id}")
+      state
+    else
+      new_state =
+        if message_id do
+          %{
+            state
+            | processed_message_ids: trim_dedup_cache([message_id | state.processed_message_ids])
+          }
+        else
+          state
+        end
+
+      if allowed?(Map.get(inbound, :sender_id), state.allow_from) do
+        add_reaction(message_id, state)
+        Bus.publish(:inbound, inbound)
+      else
+        Logger.warning(
+          "Feishu inbound denied sender=#{Map.get(inbound, :sender_id)} allow_from=#{inspect(state.allow_from)}"
+        )
+      end
+
+      new_state
+    end
+  end
+
+  defp normalize_event(%{"type" => "url_verification", "challenge" => challenge})
+       when is_binary(challenge) do
+    {:challenge, challenge}
+  end
+
+  defp normalize_event(payload) when is_map(payload) do
+    event = Map.get(payload, "event") || Map.get(payload, :event)
+    message = event && (Map.get(event, "message") || Map.get(event, :message))
+    sender = event && (Map.get(event, "sender") || Map.get(event, :sender))
+
+    cond do
+      not is_map(event) or not is_map(message) or not is_map(sender) ->
+        :ignore
+
+      true ->
+        normalize_message(message, sender, payload)
+    end
+  end
+
+  defp normalize_message(message, sender, raw_payload) do
+    msg_type = Map.get(message, "message_type") || Map.get(message, :message_type)
+    chat_id = Map.get(message, "chat_id") || Map.get(message, :chat_id)
+    chat_type = Map.get(message, "chat_type") || Map.get(message, :chat_type)
+    message_id = Map.get(message, "message_id") || Map.get(message, :message_id)
+    sender_id = extract_sender_open_id(sender)
+    sender_type = Map.get(sender, "sender_type") || Map.get(sender, :sender_type)
+    user_id = sender_id
+
+    content_json =
+      message
+      |> Map.get("content", Map.get(message, :content))
+      |> parse_content()
+
+    {content, _media_paths} = extract_content(msg_type, content_json, message_id)
+
+    cond do
+      sender_type == "bot" ->
+        :ignore
+
+      is_nil(sender_id) or sender_id == "" ->
+        :ignore
+
+      is_nil(chat_id) or to_string(chat_id) == "" ->
+        :ignore
+
+      is_nil(content) ->
+        :ignore
+
+      true ->
+        reply_target = if to_string(chat_type) == "group", do: to_string(chat_id), else: sender_id
+
+        {:ok,
+         %{
+           channel: "feishu",
+           chat_id: reply_target,
+           sender_id: sender_id,
+           user_id: user_id,
+           message_id: message_id,
+           content: content,
+           raw: raw_payload,
+           metadata: %{
+             "message_id" => message_id,
+             "user_id" => user_id,
+             "chat_type" => to_string(chat_type),
+             "message_type" => msg_type
+           }
+         }}
+    end
+  end
+
+  defp parse_content(content) when is_binary(content) do
+    case Jason.decode(content) do
+      {:ok, map} -> map
+      _ -> %{}
+    end
+  end
+
+  defp parse_content(content) when is_map(content), do: content
+  defp parse_content(_), do: %{}
+
+  defp extract_content("text", content_json, _message_id) do
+    text = Map.get(content_json, "text") || Map.get(content_json, :text)
+    {text, []}
+  end
+
+  defp extract_content("post", content_json, _message_id) do
+    text = extract_post_text(content_json)
+    {text, []}
+  end
+
+  defp extract_content(msg_type, content_json, _message_id)
+       when msg_type in ["image", "audio", "file", "media"] do
+    file_key =
+      Map.get(content_json, "image_key") ||
+        Map.get(content_json, "file_key") ||
+        Map.get(content_json, :image_key) ||
+        Map.get(content_json, :file_key)
+
+    if file_key do
+      content_text = "[#{msg_type}: #{file_key}]"
+      {content_text, []}
+    else
+      {nil, []}
+    end
+  end
+
+  defp extract_content(msg_type, content_json, _message_id)
+       when msg_type in [
+              "share_chat",
+              "share_user",
+              "interactive",
+              "share_calendar_event",
+              "system",
+              "merge_forward"
+            ] do
+    text = extract_share_card_content(content_json, msg_type)
+    {text, []}
+  end
+
+  defp extract_content(_msg_type, _content_json, _message_id) do
+    {nil, []}
+  end
+
+  defp extract_post_text(content_json) do
+    case Map.get(content_json, "zh_cn") || Map.get(content_json, "content") do
+      nil ->
+        nil
+
+      post_content when is_map(post_content) ->
+        title = Map.get(post_content, "title", "")
+        content_blocks = Map.get(post_content, "content", [])
+
+        parts =
+          Enum.flat_map(content_blocks, fn block ->
+            if is_list(block) do
+              Enum.map(block, fn
+                %{"tag" => "text", "text" => t} -> t
+                %{"tag" => "at", "user_name" => name} -> "@#{name}"
+                _ -> ""
+              end)
+            else
+              []
+            end
+          end)
+          |> Enum.reject(&(&1 == ""))
+          |> Enum.join(" ")
+
+        if title != "" do
+          "#{title}\n#{parts}"
+        else
+          parts
+        end
+
+      _ ->
+        nil
+    end
+  end
+
+  defp extract_share_card_content(content_json, msg_type) do
+    case msg_type do
+      "share_chat" -> "[shared chat: #{Map.get(content_json, "chat_id", "")}]"
+      "share_user" -> "[shared user: #{Map.get(content_json, "user_id", "")}]"
+      "system" -> "[system message]"
+      "merge_forward" -> "[merged forward messages]"
+      _ -> "[#{msg_type}]"
+    end
+  end
+
+  defp get_tenant_access_token(state) do
+    now = System.system_time(:second)
+
+    if is_binary(state.tenant_access_token) and is_integer(state.tenant_access_token_expire_at) and
+         state.tenant_access_token_expire_at > now + 60 do
+      {:ok, state.tenant_access_token, state}
+    else
+      with {:ok, body} <-
+             feishu_post(
+               state,
+               "/auth/v3/tenant_access_token/internal",
+               %{"app_id" => state.app_id, "app_secret" => state.app_secret},
+               []
+             ),
+           {:ok, token, expires_in} <- extract_tenant_token(body) do
+        expire_at = now + expires_in
+
+        {:ok, token,
+         %{state | tenant_access_token: token, tenant_access_token_expire_at: expire_at}}
+      end
+    end
+  end
+
+  defp do_send(_payload, %{enabled: false} = state), do: {:ok, state}
+
+  defp do_send(payload, state) do
+    chat_id = Map.get(payload, :chat_id) || Map.get(payload, "chat_id") || ""
+    content = Map.get(payload, :content) || Map.get(payload, "content") || ""
+
+    cond do
+      not is_binary(chat_id) or chat_id == "" ->
+        {:error, :invalid_chat_id, state}
+
+      not is_binary(content) or String.trim(content) == "" ->
+        {:error, :invalid_content, state}
+
+      state.app_id == "" or state.app_secret == "" ->
+        {:error, :missing_credentials, state}
+
+      true ->
+        send_text(payload, chat_id, content, state)
+    end
+  end
+
+  defp send_text(payload, chat_id, content, state) do
+    with {:ok, token, state} <- get_tenant_access_token(state),
+         {:ok, receive_id_type} <- outbound_receive_id_type(payload, chat_id),
+         {:ok, _body} <-
+           feishu_post(
+             state,
+             "/im/v1/messages?receive_id_type=#{receive_id_type}",
+             %{
+               "receive_id" => chat_id,
+               "msg_type" => "text",
+               "content" => Jason.encode!(%{"text" => content})
+             },
+             [{"Authorization", "Bearer #{token}"}]
+           ) do
+      {:ok, state}
+    else
+      {:error, reason} -> {:error, reason, state}
+    end
+  end
+
+  defp extract_tenant_token(%{"code" => 0, "tenant_access_token" => token, "expire" => expire})
+       when is_binary(token) and is_integer(expire) do
+    {:ok, token, expire}
+  end
+
+  defp extract_tenant_token(body), do: {:error, {:tenant_token_error, body}}
+
+  defp outbound_receive_id_type(payload, chat_id) do
+    metadata = Map.get(payload, :metadata) || Map.get(payload, "metadata") || %{}
+
+    case Map.get(metadata, "receive_id_type") || Map.get(metadata, :receive_id_type) do
+      type when type in ["open_id", "chat_id", "user_id", "union_id", "email"] ->
+        {:ok, type}
+
+      _ ->
+        if String.starts_with?(chat_id, "oc_") do
+          {:ok, "chat_id"}
+        else
+          {:ok, "open_id"}
+        end
+    end
+  end
+
+  defp feishu_post(state, path, body, headers) do
+    state.http_post_fun.(@feishu_api <> path, body, headers)
+    |> normalize_req_response()
+    |> normalize_feishu_response()
+  end
+
+  defp normalize_req_response({:ok, %{body: body}}), do: {:ok, body}
+  defp normalize_req_response({:ok, body}) when is_map(body), do: {:ok, body}
+  defp normalize_req_response({:error, reason}), do: {:error, reason}
+
+  defp normalize_feishu_response({:ok, %{"code" => 0} = body}), do: {:ok, body}
+  defp normalize_feishu_response({:ok, body}), do: {:error, {:feishu_api_error, body}}
+  defp normalize_feishu_response({:error, reason}), do: {:error, reason}
+
+  defp default_http_post(url, body, headers) do
+    Req.post(url,
+      json: body,
+      headers: headers,
+      receive_timeout: @default_send_timeout_ms,
+      retry: false,
+      finch: Req.Finch
+    )
+  end
+
+  defp extract_sender_open_id(sender) do
+    sender_id = Map.get(sender, "sender_id") || Map.get(sender, :sender_id) || %{}
+    open_id = Map.get(sender_id, "open_id") || Map.get(sender_id, :open_id)
+
+    if is_binary(open_id), do: open_id, else: nil
+  end
+
+  defp trim_dedup_cache(ids) when length(ids) > @dedup_cache_max do
+    Enum.take(ids, @dedup_cache_max)
+  end
+
+  defp trim_dedup_cache(ids), do: ids
+
+  defp allowed?(_sender_id, []), do: true
+
+  defp allowed?(sender_id, allow_from) do
+    sender = to_string(sender_id)
+
+    if sender in allow_from do
+      true
+    else
+      sender
+      |> String.split("|", trim: true)
+      |> Enum.any?(&(&1 in allow_from))
+    end
+  end
+end

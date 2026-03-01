@@ -7,6 +7,7 @@ defmodule Nex.Agent do
           model: String.t(),
           api_key: String.t() | nil,
           base_url: String.t() | nil,
+          cwd: String.t(),
           max_iterations: pos_integer()
         }
 
@@ -16,6 +17,7 @@ defmodule Nex.Agent do
     :model,
     :api_key,
     :base_url,
+    :cwd,
     max_iterations: 10
   ]
 
@@ -43,6 +45,7 @@ defmodule Nex.Agent do
              model: model,
              api_key: api_key,
              base_url: base_url,
+             cwd: cwd,
              max_iterations: max_iterations
            }}
 
@@ -57,8 +60,10 @@ defmodule Nex.Agent do
     model = Keyword.get(opts, :model, agent.model)
     api_key = Keyword.get(opts, :api_key) || agent.api_key || default_api_key(provider)
     base_url = Keyword.get(opts, :base_url, agent.base_url)
-    cwd = Keyword.get(opts, :cwd, File.cwd!())
+    cwd = Keyword.get(opts, :cwd, agent.cwd || File.cwd!())
     max_iterations = Keyword.get(opts, :max_iterations, agent.max_iterations)
+    channel = Keyword.get(opts, :channel, "telegram")
+    chat_id = Keyword.get(opts, :chat_id, "")
 
     case Runner.run(agent.session, prompt,
            provider: provider,
@@ -66,7 +71,9 @@ defmodule Nex.Agent do
            api_key: api_key,
            base_url: base_url,
            cwd: cwd,
-           max_iterations: max_iterations
+           max_iterations: max_iterations,
+           channel: channel,
+           chat_id: chat_id
          ) do
       {:ok, result, session} ->
         {:ok, result, %{agent | session: session}}

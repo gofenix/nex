@@ -46,7 +46,7 @@ defmodule Nex.Agent.Tool.WebFetch do
       {"Accept-Language", "en-US,en;q=0.5"}
     ]
 
-    case Req.get(url, headers: headers, max_redirects: 5, timeout: 30_000) do
+    case Req.get(url, headers: headers, max_redirects: 5, receive_timeout: 30_000) do
       {:ok, %{status: 200, body: body}} ->
         content = extract_content(body, url)
         {:ok, content}

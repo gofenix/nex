@@ -8,6 +8,7 @@ defmodule Nex.Agent.LLM.OpenAI do
     max_tokens = Keyword.get(options, :max_tokens, 4096)
     temperature = Keyword.get(options, :temperature, 1.0)
     http_client = Keyword.get(options, :http_client, &Req.post/2)
+    tools = Keyword.get(options, :tools, []) |> transform_tools()
 
     base_url = String.trim_trailing(base_url, "/")
 
@@ -17,6 +18,13 @@ defmodule Nex.Agent.LLM.OpenAI do
       temperature: temperature,
       max_tokens: max_tokens
     }
+
+    body =
+      if tools != [] do
+        Map.put(body, :tools, tools)
+      else
+        body
+      end
 
     case http_client.("#{base_url}/chat/completions",
            json: body,
@@ -50,4 +58,19 @@ defmodule Nex.Agent.LLM.OpenAI do
   end
 
   def tools, do: []
+
+  defp transform_tools(tools) when is_list(tools) do
+    Enum.map(tools, fn tool ->
+      %{
+        type: "function",
+        function: %{
+          name: tool["name"],
+          description: tool["description"],
+          parameters: tool["input_schema"] || %{type: "object", properties: %{}}
+        }
+      }
+    end)
+  end
+
+  defp transform_tools(_), do: []
 end

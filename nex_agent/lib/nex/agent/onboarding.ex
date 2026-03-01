@@ -37,6 +37,7 @@ defmodule Nex.Agent.Onboarding do
       mark_initialized()
     end
 
+    init_workspace_templates()
     :ok
   end
 
@@ -63,6 +64,10 @@ defmodule Nex.Agent.Onboarding do
   @spec default_skills() :: list({String.t(), atom()})
   def default_skills, do: @default_skills
 
+  defp workspace_dir do
+    Path.join(base_dir(), "workspace")
+  end
+
   defp init_directories do
     b = base_dir()
 
@@ -71,10 +76,125 @@ defmodule Nex.Agent.Onboarding do
       skills_dir(),
       Path.join(b, "sessions"),
       Path.join(b, "evolution"),
-      Path.join(b, "workspace/memory")
+      Path.join(workspace_dir(), "memory"),
+      Path.join(workspace_dir(), "skills")
     ]
 
     Enum.each(dirs, &File.mkdir_p!/1)
+    init_workspace_templates()
+  end
+
+  defp init_workspace_templates do
+    w = workspace_dir()
+
+    templates = [
+      {Path.join(w, "SOUL.md"), soul_template()},
+      {Path.join(w, "USER.md"), user_template()},
+      {Path.join(w, "memory/MEMORY.md"), memory_template()},
+      {Path.join(w, "memory/HISTORY.md"), history_template()}
+    ]
+
+    Enum.each(templates, fn {path, content} ->
+      unless File.exists?(path) do
+        File.write!(path, content)
+      end
+    end)
+  end
+
+  defp soul_template do
+    """
+    # Soul
+
+    I am a personal AI assistant.
+
+    ## Personality
+
+    - Helpful and friendly
+    - Concise and direct
+    - Honest — never claim to have done something without actually doing it
+
+    ## Values
+
+    - Accuracy over speed
+    - Always verify actions with tools before reporting results
+    - Transparency in actions
+
+    ## Communication Style
+
+    - Reply in the same language the user writes in
+    - Be clear and direct
+    - Ask clarifying questions when the request is ambiguous
+    """
+  end
+
+  defp user_template do
+    """
+    # User Profile
+
+    Information about the user to personalize interactions.
+
+    ## Basic Information
+
+    - **Name**: (user's name)
+    - **Timezone**: (e.g., UTC+8)
+    - **Language**: (preferred language)
+
+    ## Preferences
+
+    - Communication style: casual / professional / technical
+    - Response length: brief / detailed / adaptive
+
+    ## Work Context
+
+    - **Primary Role**: (developer, researcher, etc.)
+    - **Main Projects**: (what they're working on)
+
+    ## Special Instructions
+
+    (Any specific instructions for how the assistant should behave)
+
+    ---
+
+    *Edit this file to customize the assistant's behavior.*
+    """
+  end
+
+  defp memory_template do
+    """
+    # Long-term Memory
+
+    This file stores important facts that persist across conversations.
+
+    ## User Information
+
+    (Important facts about the user)
+
+    ## Preferences
+
+    (User preferences learned over time)
+
+    ## Project Context
+
+    (Information about ongoing projects)
+
+    ## Important Notes
+
+    (Things to remember)
+
+    ---
+
+    *This file is automatically updated when important information should be remembered.*
+    """
+  end
+
+  defp history_template do
+    """
+    # Conversation History Log
+
+    Grep-searchable log of past conversations. Each entry starts with [YYYY-MM-DD HH:MM].
+
+    ---
+    """
   end
 
   defp init_default_skills do

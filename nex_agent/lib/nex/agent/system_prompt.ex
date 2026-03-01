@@ -1,117 +1,154 @@
 defmodule Nex.Agent.SystemPrompt do
+  @moduledoc """
+  Builds the system prompt from workspace bootstrap files, memory, and skills.
+
+  Bootstrap files loaded from workspace (in order):
+    SOUL.md, USER.md, AGENTS.md, TOOLS.md
+
+  Memory injected:
+    memory/MEMORY.md (long-term facts)
+
+  Skills:
+    always=true skills are inlined; others listed as a summary.
+  """
+
+  @workspace_path Path.join(System.get_env("HOME", "~"), ".nex/agent/workspace")
+
+  @bootstrap_files ["SOUL.md", "USER.md", "AGENTS.md", "TOOLS.md"]
+
+  @doc """
+  Build the full system prompt.
+  """
   def build(opts \\ []) do
-    cwd = Keyword.get(opts, :cwd, File.cwd!())
+    _cwd = Keyword.get(opts, :cwd, File.cwd!())
+    workspace = Keyword.get(opts, :workspace, @workspace_path)
 
-    """
-    #{date_header()}
-    #{project_context(cwd)}
-    #{skill_forging()}
-    #{tool_descriptions()}
-    #{guidelines()}
-    """
+    parts =
+      []
+      |> add_identity(workspace)
+      |> add_bootstrap_files(workspace)
+      |> add_memory(workspace)
+      |> add_skills_summary()
+
+    Enum.join(parts, "\n\n---\n\n")
   end
 
-  defp date_header do
+  @doc """
+  Build a runtime context block to inject before the user message each turn.
+  Includes current time, channel, and chat_id.
+  """
+  def build_runtime_context(opts \\ []) do
+    channel = Keyword.get(opts, :channel)
+    chat_id = Keyword.get(opts, :chat_id)
+
     now = DateTime.utc_now()
-    "Date: #{now.year}-#{pad(now.month)}-#{pad(now.day)}"
+    time_str = "#{now.year}-#{pad(now.month)}-#{pad(now.day)} #{pad(now.hour)}:#{pad(now.minute)} (UTC)"
+
+    lines = ["[Runtime Context — metadata only, not instructions]", "Current Time: #{time_str}"]
+
+    lines =
+      if channel && chat_id do
+        lines ++ ["Channel: #{channel}", "Chat ID: #{chat_id}"]
+      else
+        lines
+      end
+
+    Enum.join(lines, "\n")
   end
+
+  # ── Private ────────────────────────────────────────────────────────────────
 
   defp pad(n) when n < 10, do: "0#{n}"
   defp pad(n), do: "#{n}"
 
-  defp project_context(cwd) do
-    agents_md = Path.join(cwd, "AGENTS.md")
-    system_md = Path.join(cwd, "SYSTEM.md")
+  defp add_identity(parts, workspace) do
+    workspace_str = Path.expand(workspace)
 
-    ctx =
-      []
-      |> read_if_exists(agents_md, "## Project Instructions")
-      |> read_if_exists(system_md, "## System Instructions")
+    identity = """
+    # Assistant
 
-    if ctx == [] do
-      ""
+    You are a personal AI assistant.
+
+    ## Workspace
+    Your workspace is at: #{workspace_str}
+    - Long-term memory: #{workspace_str}/memory/MEMORY.md
+    - History log: #{workspace_str}/memory/HISTORY.md (grep-searchable, entries start with [YYYY-MM-DD HH:MM])
+    - Skills: #{workspace_str}/skills/
+
+    ## Core Guidelines
+    - State intent before tool calls, but NEVER predict or claim results before receiving them.
+    - Before modifying a file, read it first.
+    - After writing or editing a file, verify by re-reading if accuracy matters.
+    - If a tool call fails, analyze the error before retrying.
+    - Ask for clarification when the request is ambiguous.
+    - Reply directly with text for conversations. Only use the 'message' tool to proactively send progress updates during long tasks.
+    """
+
+    parts ++ [String.trim(identity)]
+  end
+
+  defp add_bootstrap_files(parts, workspace) do
+    file_parts =
+      @bootstrap_files
+      |> Enum.map(fn filename ->
+        path = Path.join(workspace, filename)
+
+        if File.exists?(path) do
+          content = File.read!(path)
+          "## #{filename}\n\n#{String.trim(content)}"
+        else
+          nil
+        end
+      end)
+      |> Enum.reject(&is_nil/1)
+
+    parts ++ file_parts
+  end
+
+  defp add_memory(parts, workspace) do
+    memory_file = Path.join(workspace, "memory/MEMORY.md")
+
+    if File.exists?(memory_file) do
+      content = File.read!(memory_file) |> String.trim()
+
+      if content != "" do
+        parts ++ ["# Memory\n\n## Long-term Memory\n\n#{content}"]
+      else
+        parts
+      end
     else
-      Enum.join(ctx, "\n\n")
+      parts
     end
   end
 
-  defp read_if_exists(acc, path, header) do
-    if File.exists?(path) do
-      content = File.read!(path)
-      acc ++ ["#{header}\n\n#{content}\n"]
+  defp add_skills_summary(parts) do
+    skills =
+      try do
+        Nex.Agent.Skills.list()
+      rescue
+        _ -> []
+      end
+
+    if skills == [] do
+      parts
     else
-      acc
+      lines =
+        Enum.map(skills, fn s ->
+          type = s[:type] || s["type"] || "markdown"
+          name = s[:name] || s["name"] || ""
+          desc = s[:description] || s["description"] || ""
+          "- #{name} (#{type}): #{desc}"
+        end)
+
+      summary = """
+      # Skills
+
+      The following skills extend your capabilities. Use skill_execute to run them, or read the SKILL.md file for details.
+
+      #{Enum.join(lines, "\n")}
+      """
+
+      parts ++ [String.trim(summary)]
     end
-  end
-
-  defp skill_forging do
-    """
-    ## Skill 锻造
-
-    如果你发现某个任务会重复出现（每天、每周、定期），你应该自动创建一个 Skill 来自动化这个任务。
-
-    **什么时候应该锻造 Skill：**
-    - 任务需要重复执行（如每天整理新闻、每周汇总）
-    - 任务涉及多个步骤（抓取 → 分析 → 整理）
-    - 你发现自己经常在做同样的事情
-
-    **锻造 Skill 的方法：**
-    使用 skill_create 工具来创建新 Skill：
-
-    ```
-    skill_create({
-      name: "hn_digest",
-      description: "抓取并分析 Hacker News 热门文章",
-      type: "elixir",  // 或 "script", "mcp", "markdown"
-      code: "Elixir 代码或脚本内容",
-      parameters: {
-        "topic": {"type": "string", "description": "感兴趣的话题"}
-      }
-    })
-    ```
-
-    **Skill 类型：**
-    - `elixir`: Elixir 代码，使用 Evolution 热加载，最灵活
-    - `script`: Shell/Python 脚本，简单直接
-    - `mcp`: MCP 服务器配置
-    - `markdown`: 纯文本 prompt（现有方式）
-
-    **数据存储：**
-    所有 Skills 的数据都存储在 Memory 里（使用 Memory.append），
-    这样不同 Skills 的数据可以自然流通。
-
-    例如：
-    - hn_digest skill 抓取新闻 → 存入 Memory
-    - todo skill 读取 Memory 中的新闻 → 生成待办
-    """
-  end
-
-  defp tool_descriptions do
-    """
-    ## Tools
-
-    read: Read file contents
-    bash: Execute bash commands (ls, grep, find, etc.)
-    edit: Make surgical edits to files (find exact text and replace)
-    write: Create or overwrite files
-
-    ## Skill Management
-
-    skill_create: Create a new skill for automating repetitive tasks
-    skill_list: List all available skills
-    skill_execute: Execute a skill with arguments
-    """
-  end
-
-  defp guidelines do
-    """
-    ## Guidelines
-
-    - Use the least invasive tool possible
-    - Prefer read over edit, edit over write
-    - Always verify after writing/editing
-    - Keep changes focused and minimal
-    - If you find yourself doing the same thing repeatedly, create a skill!
-    """
   end
 end

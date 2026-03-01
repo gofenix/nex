@@ -1,4 +1,6 @@
 defmodule Nex.Agent.Runner do
+  require Logger
+
   alias Nex.Agent.{
     Session,
     Entry,
@@ -25,6 +27,8 @@ defmodule Nex.Agent.Runner do
     - :cwd - Current working directory
     - :llm_client - For testing: a function that mocks LLM responses
   """
+  @memory_window 50
+
   def run(session, prompt, opts \\ []) do
     max_iterations = Keyword.get(opts, :max_iterations, @default_max_iterations)
     provider = Keyword.get(opts, :provider, :anthropic)
@@ -32,14 +36,26 @@ defmodule Nex.Agent.Runner do
     api_key = Keyword.get(opts, :api_key)
     base_url = Keyword.get(opts, :base_url)
     cwd = Keyword.get(opts, :cwd, File.cwd!())
+    channel = Keyword.get(opts, :channel, "telegram")
+    chat_id = Keyword.get(opts, :chat_id, "")
     llm_client = Keyword.get(opts, :llm_client)
+
+    Logger.info(
+      "[Runner] Starting session=#{session.id} provider=#{provider} model=#{model} cwd=#{cwd}"
+    )
+
+    session = maybe_consolidate_memory(session, provider, model, api_key, base_url)
 
     system_prompt = Nex.Agent.SystemPrompt.build(cwd: cwd)
 
-    messages = [
-      %{"role" => "system", "content" => system_prompt}
-      | Session.current_messages(session)
-    ]
+    runtime_ctx = Nex.Agent.SystemPrompt.build_runtime_context(channel: channel, chat_id: chat_id)
+
+    history = session_history(session)
+
+    messages =
+      [%{"role" => "system", "content" => system_prompt}] ++
+        history ++
+        [%{"role" => "user", "content" => runtime_ctx}]
 
     user_message = %{"role" => "user", "content" => prompt}
     session = add_message(session, user_message)
@@ -51,12 +67,51 @@ defmodule Nex.Agent.Runner do
       api_key: api_key,
       base_url: base_url,
       cwd: cwd,
+      channel: channel,
+      chat_id: chat_id,
       llm_client: llm_client
     )
   end
 
-  defp run_loop(session, messages, iteration, max_iterations, opts) do
+  defp session_history(session) do
+    all_messages = Session.current_messages(session)
+    unconsolidated_count = length(all_messages) - session.last_consolidated
+    window = max(unconsolidated_count, div(@memory_window, 2))
+
+    all_messages
+    |> Enum.drop(max(0, length(all_messages) - window))
+    |> Enum.drop_while(fn m -> Map.get(m, "role") != "user" end)
+  end
+
+  defp maybe_consolidate_memory(session, provider, model, api_key, base_url) do
+    messages = Session.current_messages(session)
+    unconsolidated = length(messages) - session.last_consolidated
+
+    if unconsolidated >= @memory_window do
+      Logger.info("[Runner] Triggering memory consolidation: #{unconsolidated} unconsolidated messages")
+
+      case Memory.consolidate(session, provider, model,
+             api_key: api_key,
+             base_url: base_url,
+             memory_window: @memory_window
+           ) do
+        {:ok, updated_session} ->
+          updated_session
+
+        {:error, reason} ->
+          Logger.warning("[Runner] Memory consolidation failed: #{inspect(reason)}")
+          session
+      end
+    else
+      session
+    end
+  end
+
+  defp run_loop(session, messages, iteration, max_iterations, opts, ever_sent_message \\ false) do
+    Logger.debug("[Runner] Loop iteration=#{iteration + 1}/#{max_iterations}")
+
     if iteration >= max_iterations do
+      Logger.warning("[Runner] Max iterations exceeded (#{max_iterations})")
       {:error, :max_iterations_exceeded, session}
     else
       case call_llm(messages, opts) do
@@ -65,6 +120,10 @@ defmodule Nex.Agent.Runner do
           tool_calls = Map.get(response, :tool_calls) || Map.get(response, "tool_calls")
 
           if tool_calls && tool_calls != [] do
+            Logger.info(
+              "[Runner] LLM requests #{length(tool_calls)} tool call(s) (iteration #{iteration + 1})"
+            )
+
             session =
               add_message(session, %{
                 "role" => "assistant",
@@ -76,23 +135,35 @@ defmodule Nex.Agent.Runner do
               messages ++
                 [%{"role" => "assistant", "content" => content, "tool_calls" => tool_calls}]
 
-            {new_messages, _results} = execute_tools(session, messages, tool_calls, opts)
-            run_loop(session, new_messages, iteration + 1, max_iterations, opts)
+            {new_messages, _results, message_sent?} =
+              execute_tools(session, messages, tool_calls, opts)
+
+            run_loop(session, new_messages, iteration + 1, max_iterations, opts, ever_sent_message || message_sent?)
           else
+            Logger.info("[Runner] LLM finished reasoning (iteration #{iteration + 1})")
             session = add_message(session, %{"role" => "assistant", "content" => content})
-            {:ok, content, session}
+
+            if ever_sent_message do
+              Logger.info("[Runner] Final reply suppressed (message tool was used)")
+              {:ok, :message_sent, session}
+            else
+              {:ok, content, session}
+            end
           end
 
         {:error, reason} ->
+          Logger.error("[Runner] LLM call failed: #{inspect(reason)}")
           {:error, reason, session}
       end
     end
   end
 
   defp call_llm(messages, opts) do
+    opts = Keyword.put(opts, :tools, all_tools())
+
     # Check if a test client is provided
     if opts[:llm_client] do
-      opts[:llm_client].(messages, opts ++ [tools: all_tools()])
+      opts[:llm_client].(messages, opts)
     else
       call_llm_real(messages, opts)
     end
@@ -284,7 +355,31 @@ defmodule Nex.Agent.Runner do
       }
     ]
 
+    # Add message tool for sending messages during agent loop
+    message_tool = %{
+      "name" => "message",
+      "description" =>
+        "Send a message to the user. Use this when you want to communicate something immediately.",
+      "input_schema" => %{
+        "type" => "object",
+        "properties" => %{
+          "content" => %{"type" => "string", "description" => "The message content to send"},
+          "channel" => %{
+            "type" => "string",
+            "description" =>
+              "Target channel (telegram, discord, http). Defaults to current channel."
+          },
+          "chat_id" => %{
+            "type" => "string",
+            "description" => "Target chat/user ID. Defaults to current chat."
+          }
+        },
+        "required" => ["content"]
+      }
+    }
+
     tools ++
+      [message_tool] ++
       skill_tools ++
       [skills_list_tool, skill_create_tool, skill_execute_tool, skill_delete_tool] ++
       memory_tools ++ evolution_tools() ++ mcp_tools()
@@ -402,12 +497,14 @@ defmodule Nex.Agent.Runner do
     model = Keyword.get(opts, :model)
     api_key = Keyword.get(opts, :api_key)
     base_url = Keyword.get(opts, :base_url)
+    tools = Keyword.get(opts, :tools, [])
 
     provider_opts =
       [
         model: model,
         api_key: api_key,
-        base_url: base_url
+        base_url: base_url,
+        tools: tools
       ]
       |> Enum.reject(fn {_, v} -> is_nil(v) end)
 
@@ -429,20 +526,80 @@ defmodule Nex.Agent.Runner do
     end
   end
 
+  @doc """
+  Call LLM for memory consolidation. Returns {:ok, args_map} where args_map has
+  "history_entry" and "memory_update" keys, or {:error, reason}.
+  """
+  def call_llm_for_consolidation(messages, opts) do
+    case call_llm_real(messages, opts) do
+      {:ok, response} ->
+        tool_calls = Map.get(response, :tool_calls) || []
+
+        save_call =
+          Enum.find(tool_calls, fn tc ->
+            name = get_in(tc, [:function, :name]) || get_in(tc, ["function", "name"])
+            name == "save_memory"
+          end)
+
+        if save_call do
+          raw_args =
+            get_in(save_call, [:function, :arguments]) ||
+              get_in(save_call, ["function", "arguments"])
+
+          case normalize_tool_arguments(raw_args) do
+            {:error, reason} -> {:error, reason}
+            args -> {:ok, args}
+          end
+        else
+          {:error, :no_save_memory_call}
+        end
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
   defp execute_tools(_session, messages, tool_calls, opts) do
     cwd = Keyword.get(opts, :cwd, File.cwd!())
+    channel = Keyword.get(opts, :channel, "telegram")
+    chat_id = Keyword.get(opts, :chat_id, "")
+    ctx = %{cwd: cwd, channel: channel, chat_id: chat_id}
 
-    results =
-      Enum.map(tool_calls, fn tc ->
+    message_sent? = false
+
+    {results, message_sent} =
+      Enum.map_reduce(tool_calls, message_sent?, fn tc, acc ->
         tool_name = get_in(tc, ["function", "name"]) || get_in(tc, [:function, :name])
         raw_args = get_in(tc, ["function", "arguments"]) || get_in(tc, [:function, :arguments])
         args = normalize_tool_arguments(raw_args)
 
+        Logger.info("[Runner] Executing tool: #{tool_name} with args: #{inspect(args)}")
+        start_time = System.monotonic_time(:millisecond)
+
         result =
           case args do
             {:error, reason} -> {:error, reason}
-            parsed_args -> execute_tool(tool_name, parsed_args, cwd: cwd)
+            parsed_args -> execute_tool(tool_name, parsed_args, ctx)
           end
+
+        elapsed_ms = System.monotonic_time(:millisecond) - start_time
+
+        # Track if message tool successfully sent a message
+        sent_via_tool =
+          case {tool_name, result} do
+            {"message", {:ok, _}} -> true
+            _ -> acc
+          end
+
+        case result do
+          {:ok, _val} ->
+            Logger.debug("[Runner] Tool '#{tool_name}' succeeded in #{elapsed_ms}ms")
+
+          {:error, err} ->
+            Logger.warning(
+              "[Runner] Tool '#{tool_name}' failed in #{elapsed_ms}ms: #{inspect(err)}"
+            )
+        end
 
         tool_result = %{
           "role" => "tool",
@@ -450,27 +607,27 @@ defmodule Nex.Agent.Runner do
           "content" => format_result(result)
         }
 
-        {tc["id"], tool_result}
+        {{tc["id"], tool_result}, sent_via_tool}
       end)
 
     tool_messages = Enum.map(results, fn {_, msg} -> msg end)
-    {messages ++ tool_messages, results}
+    {messages ++ tool_messages, results, message_sent}
   end
 
-  defp execute_tool("read", args, opts) do
-    Read.execute(args, %{cwd: opts[:cwd]})
+  defp execute_tool("read", args, ctx) do
+    Read.execute(args, %{cwd: ctx[:cwd] || File.cwd!()})
   end
 
-  defp execute_tool("write", args, opts) do
-    Write.execute(args, %{cwd: opts[:cwd]})
+  defp execute_tool("write", args, ctx) do
+    Write.execute(args, %{cwd: ctx[:cwd] || File.cwd!()})
   end
 
-  defp execute_tool("edit", args, opts) do
-    Edit.execute(args, %{cwd: opts[:cwd]})
+  defp execute_tool("edit", args, ctx) do
+    Edit.execute(args, %{cwd: ctx[:cwd] || File.cwd!()})
   end
 
-  defp execute_tool("bash", args, opts) do
-    Bash.execute(args, %{cwd: opts[:cwd]})
+  defp execute_tool("bash", args, ctx) do
+    Bash.execute(args, %{cwd: ctx[:cwd] || File.cwd!()})
   end
 
   defp execute_tool("web_search", args, _opts) do
@@ -479,6 +636,10 @@ defmodule Nex.Agent.Runner do
 
   defp execute_tool("web_fetch", args, _opts) do
     Nex.Agent.Tool.WebFetch.execute(args, %{})
+  end
+
+  defp execute_tool("message", args, ctx) do
+    Nex.Agent.Tool.Message.execute(args, ctx)
   end
 
   defp execute_tool("memory_search", args, _opts) do

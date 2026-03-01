@@ -6,7 +6,8 @@ defmodule Nex.Agent.Session do
     :project_id,
     :path,
     entries: [],
-    current_entry_id: nil
+    current_entry_id: nil,
+    last_consolidated: 0
   ]
 
   @session_dir "~/.nex/agent/sessions"
@@ -46,9 +47,30 @@ defmodule Nex.Agent.Session do
     if File.exists?(file) do
       case File.read(file) do
         {:ok, content} ->
+          lines = String.split(content, "\n", trim: true)
+
+          {meta_lines, entry_lines} =
+            Enum.split_with(lines, fn line ->
+              case Jason.decode(line) do
+                {:ok, %{"_type" => "session_meta"}} -> true
+                _ -> false
+              end
+            end)
+
+          last_consolidated =
+            case meta_lines do
+              [meta_line | _] ->
+                case Jason.decode(meta_line) do
+                  {:ok, %{"last_consolidated" => n}} when is_integer(n) -> n
+                  _ -> 0
+                end
+
+              _ ->
+                0
+            end
+
           entries =
-            content
-            |> String.split("\n", trim: true)
+            entry_lines
             |> Enum.map(&Entry.from_json/1)
             |> Enum.filter(&match?({:ok, _}, &1))
             |> Enum.map(fn {:ok, e} -> e end)
@@ -64,7 +86,8 @@ defmodule Nex.Agent.Session do
              project_id: project_id,
              path: dir,
              entries: entries,
-             current_entry_id: current_entry_id
+             current_entry_id: current_entry_id,
+             last_consolidated: last_consolidated
            }}
 
         error ->
@@ -72,6 +95,33 @@ defmodule Nex.Agent.Session do
       end
     else
       {:error, :session_not_found}
+    end
+  end
+
+  def save_meta(%__MODULE__{} = session) do
+    file = entries_file_path(session.path)
+    meta = Jason.encode!(%{"_type" => "session_meta", "last_consolidated" => session.last_consolidated})
+
+    case File.read(file) do
+      {:ok, content} ->
+        lines = String.split(content, "\n", trim: true)
+
+        updated_lines =
+          case lines do
+            [first | rest] ->
+              case Jason.decode(first) do
+                {:ok, %{"_type" => "session_meta"}} -> [meta | rest]
+                _ -> [meta | lines]
+              end
+
+            [] ->
+              [meta]
+          end
+
+        File.write(file, Enum.join(updated_lines, "\n") <> "\n")
+
+      {:error, :enoent} ->
+        File.write(file, meta <> "\n")
     end
   end
 

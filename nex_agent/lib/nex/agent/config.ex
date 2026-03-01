@@ -10,7 +10,8 @@ defmodule Nex.Agent.Config do
             providers: %{},
             defaults: %{},
             gateway: %{},
-            telegram: %{}
+            telegram: %{},
+            feishu: %{}
 
   @type t :: %__MODULE__{
           provider: String.t(),
@@ -18,7 +19,8 @@ defmodule Nex.Agent.Config do
           providers: map(),
           defaults: map(),
           gateway: map(),
-          telegram: map()
+          telegram: map(),
+          feishu: map()
         }
 
   @doc """
@@ -45,7 +47,8 @@ defmodule Nex.Agent.Config do
             providers: Map.get(data, "providers", default_providers()),
             defaults: Map.get(data, "defaults", default_defaults()),
             gateway: Map.get(data, "gateway", default_gateway()),
-            telegram: Map.get(data, "telegram", default_telegram())
+            telegram: Map.get(data, "telegram", default_telegram()),
+            feishu: Map.get(data, "feishu", default_feishu())
           }
 
         _ ->
@@ -70,7 +73,8 @@ defmodule Nex.Agent.Config do
       "providers" => config.providers,
       "defaults" => config.defaults,
       "gateway" => config.gateway,
-      "telegram" => config.telegram
+      "telegram" => config.telegram,
+      "feishu" => config.feishu
     }
 
     File.write(path, Jason.encode!(data, pretty: true))
@@ -87,7 +91,8 @@ defmodule Nex.Agent.Config do
       providers: default_providers(),
       defaults: default_defaults(),
       gateway: default_gateway(),
-      telegram: default_telegram()
+      telegram: default_telegram(),
+      feishu: default_feishu()
     }
   end
 
@@ -97,6 +102,14 @@ defmodule Nex.Agent.Config do
   @spec telegram(t()) :: map()
   def telegram(%__MODULE__{} = config) do
     Map.merge(default_telegram(), config.telegram || %{})
+  end
+
+  @doc """
+  获取 Feishu 配置
+  """
+  @spec feishu(t()) :: map()
+  def feishu(%__MODULE__{} = config) do
+    Map.merge(default_feishu(), config.feishu || %{})
   end
 
   @doc """
@@ -141,6 +154,83 @@ defmodule Nex.Agent.Config do
     |> telegram()
     |> Map.get("reply_to_message", false)
     |> Kernel.==(true)
+  end
+
+  @doc """
+  Feishu 是否启用
+  """
+  @spec feishu_enabled?(t()) :: boolean()
+  def feishu_enabled?(%__MODULE__{} = config) do
+    config
+    |> feishu()
+    |> Map.get("enabled", false)
+    |> Kernel.==(true)
+  end
+
+  @doc """
+  获取 Feishu app_id
+  """
+  @spec feishu_app_id(t()) :: String.t() | nil
+  def feishu_app_id(%__MODULE__{} = config) do
+    case Map.get(feishu(config), "app_id") do
+      app_id when is_binary(app_id) and app_id != "" -> app_id
+      _ -> nil
+    end
+  end
+
+  @doc """
+  获取 Feishu app_secret
+  """
+  @spec feishu_app_secret(t()) :: String.t() | nil
+  def feishu_app_secret(%__MODULE__{} = config) do
+    case Map.get(feishu(config), "app_secret") do
+      app_secret when is_binary(app_secret) and app_secret != "" -> app_secret
+      _ -> nil
+    end
+  end
+
+  @doc """
+  获取 Feishu allow_from
+  """
+  @spec feishu_allow_from(t()) :: [String.t()]
+  def feishu_allow_from(%__MODULE__{} = config) do
+    case Map.get(feishu(config), "allow_from") do
+      list when is_list(list) -> Enum.map(list, &to_string/1)
+      _ -> []
+    end
+  end
+
+  @doc """
+  获取 Feishu reaction emoji
+  """
+  @spec feishu_react_emoji(t()) :: String.t()
+  def feishu_react_emoji(%__MODULE__{} = config) do
+    case Map.get(feishu(config), "react_emoji") do
+      emoji when is_binary(emoji) and emoji != "" -> emoji
+      _ -> "THUMBSUP"
+    end
+  end
+
+  @doc """
+  获取 Feishu encrypt_key
+  """
+  @spec feishu_encrypt_key(t()) :: String.t() | nil
+  def feishu_encrypt_key(%__MODULE__{} = config) do
+    case Map.get(feishu(config), "encrypt_key") do
+      key when is_binary(key) and key != "" -> key
+      _ -> nil
+    end
+  end
+
+  @doc """
+  获取 Feishu verification_token
+  """
+  @spec feishu_verification_token(t()) :: String.t() | nil
+  def feishu_verification_token(%__MODULE__{} = config) do
+    case Map.get(feishu(config), "verification_token") do
+      token when is_binary(token) and token != "" -> token
+      _ -> nil
+    end
   end
 
   @doc """
@@ -235,6 +325,41 @@ defmodule Nex.Agent.Config do
     %{config | telegram: Map.put(telegram(config), "proxy", value)}
   end
 
+  def set(%__MODULE__{} = config, :feishu_enabled, value) when is_boolean(value) do
+    %{config | feishu: Map.put(feishu(config), "enabled", value)}
+  end
+
+  def set(%__MODULE__{} = config, :feishu_app_id, value) when is_binary(value) do
+    %{config | feishu: Map.put(feishu(config), "app_id", value)}
+  end
+
+  def set(%__MODULE__{} = config, :feishu_app_secret, value) when is_binary(value) do
+    %{config | feishu: Map.put(feishu(config), "app_secret", value)}
+  end
+
+  def set(%__MODULE__{} = config, :feishu_encrypt_key, value) when is_binary(value) do
+    %{config | feishu: Map.put(feishu(config), "encrypt_key", value)}
+  end
+
+  def set(%__MODULE__{} = config, :feishu_verification_token, value) when is_binary(value) do
+    %{config | feishu: Map.put(feishu(config), "verification_token", value)}
+  end
+
+  def set(%__MODULE__{} = config, :feishu_allow_from, value) when is_list(value) do
+    allow_from =
+      value
+      |> Enum.map(&to_string/1)
+      |> Enum.map(&String.trim/1)
+      |> Enum.reject(&(&1 == ""))
+      |> Enum.uniq()
+
+    %{config | feishu: Map.put(feishu(config), "allow_from", allow_from)}
+  end
+
+  def set(%__MODULE__{} = config, :feishu_react_emoji, value) when is_binary(value) do
+    %{config | feishu: Map.put(feishu(config), "react_emoji", value)}
+  end
+
   def set(%__MODULE__{} = config, :base_url, {provider, url}) when is_binary(provider) do
     providers =
       Map.update(
@@ -250,6 +375,17 @@ defmodule Nex.Agent.Config do
   end
 
   @doc """
+  获取最大迭代次数
+  """
+  @spec get_max_iterations(t()) :: pos_integer()
+  def get_max_iterations(%__MODULE__{} = config) do
+    case Map.get(config.defaults || %{}, "max_iterations") do
+      n when is_integer(n) and n > 0 -> n
+      _ -> 40
+    end
+  end
+
+  @doc """
   验证配置是否有效
   """
   @spec valid?(t()) :: boolean()
@@ -260,12 +396,20 @@ defmodule Nex.Agent.Config do
         _ -> true
       end
 
-    provider_valid? and telegram_valid?(config)
+    provider_valid? and telegram_valid?(config) and feishu_valid?(config)
   end
 
   defp telegram_valid?(%__MODULE__{} = config) do
     if telegram_enabled?(config) do
       not is_nil(telegram_token(config))
+    else
+      true
+    end
+  end
+
+  defp feishu_valid?(%__MODULE__{} = config) do
+    if feishu_enabled?(config) do
+      not is_nil(feishu_app_id(config)) and not is_nil(feishu_app_secret(config))
     else
       true
     end
@@ -301,6 +445,18 @@ defmodule Nex.Agent.Config do
       "allow_from" => [],
       "reply_to_message" => false,
       "proxy" => nil
+    }
+  end
+
+  defp default_feishu do
+    %{
+      "enabled" => false,
+      "app_id" => "",
+      "app_secret" => "",
+      "encrypt_key" => "",
+      "verification_token" => "",
+      "allow_from" => [],
+      "react_emoji" => "THUMBSUP"
     }
   end
 end

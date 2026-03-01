@@ -6,13 +6,14 @@ defmodule Nex.Agent.InboundWorker do
   """
 
   use GenServer
+  require Logger
 
-  alias Nex.Agent.{Bus, Config}
+  alias Nex.Agent.{Bus, Config, Session}
 
   defstruct [:config, :agent_start_fun, :agent_prompt_fun, :agent_abort_fun, agents: %{}]
 
   @type agent_start_fun :: (keyword() -> {:ok, term()} | {:error, term()})
-  @type agent_prompt_fun :: (term(), String.t() ->
+  @type agent_prompt_fun :: (term(), String.t(), keyword() ->
                                {:ok, String.t(), term()} | {:error, term(), term()})
   @type agent_abort_fun :: (term() -> :ok | {:error, term()})
 
@@ -40,7 +41,7 @@ defmodule Nex.Agent.InboundWorker do
     state = %__MODULE__{
       config: Keyword.get(opts, :config, Config.load()),
       agent_start_fun: Keyword.get(opts, :agent_start_fun, &Nex.Agent.start/1),
-      agent_prompt_fun: Keyword.get(opts, :agent_prompt_fun, &Nex.Agent.prompt/2),
+      agent_prompt_fun: Keyword.get(opts, :agent_prompt_fun, &Nex.Agent.prompt/3),
       agent_abort_fun: Keyword.get(opts, :agent_abort_fun, &Nex.Agent.abort/1),
       agents: %{}
     }
@@ -77,6 +78,10 @@ defmodule Nex.Agent.InboundWorker do
     cmd = String.trim(content)
     key = session_key(channel, chat_id)
 
+    Logger.info(
+      "InboundWorker received channel=#{channel} chat_id=#{chat_id} cmd=#{inspect(cmd)}"
+    )
+
     cond do
       cmd == "" ->
         {:ok, state}
@@ -91,10 +96,17 @@ defmodule Nex.Agent.InboundWorker do
         {:ok, state}
 
       true ->
+        {channel, chat_id} = parse_session_key(key)
+
         with {:ok, agent, state} <- ensure_agent(state, key),
-             {:ok, result, updated_agent} <- state.agent_prompt_fun.(agent, content) do
+             {:ok, result, updated_agent} <-
+               state.agent_prompt_fun.(agent, content, channel: channel, chat_id: chat_id) do
           state = put_in(state.agents[key], updated_agent)
-          publish_outbound(payload, result)
+          # Only publish outbound if Runner didn't already send via message tool
+          unless result == :message_sent do
+            publish_outbound(payload, result)
+          end
+
           {:ok, state}
         else
           {:error, reason, updated_agent} ->
@@ -114,16 +126,84 @@ defmodule Nex.Agent.InboundWorker do
 
       :error ->
         opts = agent_start_opts(state.config, key)
+        project = Keyword.get(opts, :project, key)
 
-        case state.agent_start_fun.(opts) do
-          {:ok, agent} -> {:ok, agent, put_in(state.agents[key], agent)}
-          {:error, reason} -> {:error, reason}
+        agent_result =
+          case load_persisted_session(key, project) do
+            {:ok, session} ->
+              Logger.info("InboundWorker restored session=#{session.id} for key=#{key}")
+              provider = Keyword.get(opts, :provider, :openai)
+              model = Keyword.get(opts, :model, "gpt-4o")
+              api_key = Keyword.get(opts, :api_key)
+              base_url = Keyword.get(opts, :base_url)
+              cwd = Keyword.get(opts, :cwd, File.cwd!())
+              max_iterations = Keyword.get(opts, :max_iterations, 40)
+
+              {:ok,
+               %Nex.Agent{
+                 session: session,
+                 provider: provider,
+                 model: model,
+                 api_key: api_key,
+                 base_url: base_url,
+                 cwd: cwd,
+                 max_iterations: max_iterations
+               }}
+
+            :error ->
+              state.agent_start_fun.(opts)
+          end
+
+        case agent_result do
+          {:ok, agent} ->
+            persist_session(key, agent.session.id, agent.session.project_id)
+            {:ok, agent, put_in(state.agents[key], agent)}
+
+          {:error, reason} ->
+            {:error, reason}
         end
     end
   end
 
+  @session_map_file Path.expand("~/.nex/agent/sessions/user_sessions.json")
+
+  defp load_persisted_session(key, _project_id) do
+    with {:ok, content} <- File.read(@session_map_file),
+         {:ok, map} <- Jason.decode(content),
+         %{"session_id" => session_id, "project_id" => stored_project_id} <- Map.get(map, key),
+         true <- is_binary(session_id) and is_binary(stored_project_id) do
+      case Session.load(session_id, stored_project_id) do
+        {:ok, session} -> {:ok, session}
+        _ -> :error
+      end
+    else
+      _ -> :error
+    end
+  end
+
+  defp persist_session(key, session_id, project_id) do
+    File.mkdir_p!(Path.dirname(@session_map_file))
+
+    existing =
+      case File.read(@session_map_file) do
+        {:ok, content} ->
+          case Jason.decode(content) do
+            {:ok, map} -> map
+            _ -> %{}
+          end
+
+        _ ->
+          %{}
+      end
+
+    updated = Map.put(existing, key, %{"session_id" => session_id, "project_id" => project_id})
+    File.write!(@session_map_file, Jason.encode!(updated, pretty: true))
+  end
+
   defp agent_start_opts(config, session_key) do
+    [channel, chat_id] = String.split(session_key, ":", parts: 2)
     provider = String.to_atom(config.provider)
+    home = System.get_env("HOME", File.cwd!())
 
     [
       provider: provider,
@@ -131,7 +211,10 @@ defmodule Nex.Agent.InboundWorker do
       api_key: Config.get_current_api_key(config),
       base_url: Config.get_current_base_url(config),
       project: session_key,
-      cwd: File.cwd!()
+      cwd: home,
+      max_iterations: Config.get_max_iterations(config),
+      channel: channel,
+      chat_id: chat_id
     ]
   end
 
@@ -153,6 +236,7 @@ defmodule Nex.Agent.InboundWorker do
     outbound_topic =
       case channel do
         "telegram" -> :telegram_outbound
+        "feishu" -> :feishu_outbound
         "http" -> :http_outbound
         _ -> :outbound
       end
@@ -162,6 +246,8 @@ defmodule Nex.Agent.InboundWorker do
       |> extract_metadata()
       |> Map.put_new("channel", channel)
       |> Map.put_new("chat_id", chat_id)
+
+    Logger.info("InboundWorker publishing topic=#{inspect(outbound_topic)} chat_id=#{chat_id}")
 
     Bus.publish(outbound_topic, %{chat_id: chat_id, content: content, metadata: metadata})
   end
@@ -193,6 +279,31 @@ defmodule Nex.Agent.InboundWorker do
   defp payload_chat_id(payload) do
     (Map.get(payload, :chat_id) || Map.get(payload, "chat_id") || "")
     |> to_string()
+  end
+
+  defp parse_session_key(key) do
+    # Handle various input formats - could be string, list, or other
+    key_str =
+      cond do
+        is_binary(key) ->
+          key
+
+        is_list(key) ->
+          # If it's a list, try to join or take first element
+          if length(key) == 1, do: hd(key), else: Enum.join(key, ":")
+
+        is_integer(key) ->
+          to_string(key)
+
+        true ->
+          inspect(key)
+      end
+
+    case String.split(key_str, ":", parts: 2) do
+      [channel, chat_id] -> {channel, chat_id}
+      [single] -> {single, ""}
+      _ -> {"unknown", key_str}
+    end
   end
 
   defp session_key(channel, chat_id), do: "#{channel}:#{chat_id}"
