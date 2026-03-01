@@ -147,6 +147,34 @@ defmodule Nex.Agent.Runner do
           },
           "required" => ["command"]
         }
+      },
+      %{
+        "name" => "web_search",
+        "description" => "Search the web using Brave Search API",
+        "input_schema" => %{
+          "type" => "object",
+          "properties" => %{
+            "query" => %{"type" => "string", "description" => "Search query"},
+            "count" => %{
+              "type" => "integer",
+              "description" => "Number of results (1-10)",
+              "minimum" => 1,
+              "maximum" => 10
+            }
+          },
+          "required" => ["query"]
+        }
+      },
+      %{
+        "name" => "web_fetch",
+        "description" => "Fetch and extract content from a URL",
+        "input_schema" => %{
+          "type" => "object",
+          "properties" => %{
+            "url" => %{"type" => "string", "description" => "URL to fetch"}
+          },
+          "required" => ["url"]
+        }
       }
     ]
 
@@ -433,6 +461,14 @@ defmodule Nex.Agent.Runner do
 
   defp execute_tool("bash", args, opts) do
     Bash.execute(args, %{cwd: opts[:cwd]})
+  end
+
+  defp execute_tool("web_search", args, _opts) do
+    Nex.Agent.Tool.WebSearch.execute(args, %{})
+  end
+
+  defp execute_tool("web_fetch", args, _opts) do
+    Nex.Agent.Tool.WebFetch.execute(args, %{})
   end
 
   defp execute_tool("memory_search", args, _opts) do
@@ -765,12 +801,29 @@ defmodule Nex.Agent.Runner do
     {:error, "Unknown tool: #{name}"}
   end
 
+  @tool_result_max_chars 500
+
   defp format_result({:ok, result}) when is_map(result) do
-    result |> Map.values() |> Enum.join("\n")
+    result
+    |> Map.values()
+    |> Enum.join("\n")
+    |> truncate_result(@tool_result_max_chars)
   end
 
   defp format_result({:error, error}) do
     "Error: #{error}"
+  end
+
+  defp format_result(result) when is_binary(result) do
+    truncate_result(result, @tool_result_max_chars)
+  end
+
+  defp truncate_result(result, max_chars) do
+    if String.length(result) > max_chars do
+      String.slice(result, 0, max_chars) <> "\n\n... [truncated]"
+    else
+      result
+    end
   end
 
   defp add_message(session, message) do

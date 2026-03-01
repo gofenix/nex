@@ -6,6 +6,26 @@ defmodule Nex.Agent.Workspace do
   @default_workspace Path.join(System.get_env("HOME", "~"), ".nex/agent/workspace")
 
   @templates %{
+    "IDENTITY.md" => """
+    # Nex Agent �
+
+    You are Nex Agent, a helpful AI assistant.
+
+    ## Runtime
+    Elixir, running on #{:os.type() |> elem(0) |> to_string()} #{:os.type() |> elem(1) |> to_string()}
+
+    ## Workspace
+    Your workspace is at: ~/.nex/agent/workspace
+    - Long-term memory: ~/.nex/agent/workspace/memory/MEMORY.md
+    - History log: ~/.nex/agent/workspace/memory/HISTORY.md
+    - Custom skills: ~/.nex/agent/skills/{skill-name}/
+
+    ## Guidelines
+    - State intent before tool calls, but NEVER predict results before receiving them.
+    - Before modifying a file, read it first. Do not assume files exist.
+    - If a tool fails, analyze the error and retry with a different approach.
+    - Ask for clarification when the request is ambiguous.
+    """,
     "AGENTS.md" => """
     # Agent Instructions
 
@@ -213,4 +233,41 @@ defmodule Nex.Agent.Workspace do
   """
   @spec templates() :: map()
   def templates, do: @templates
+
+  @doc """
+  构建系统提示 - 组合所有上下文文件
+  """
+  @spec build_system_prompt() :: String.t()
+  def build_system_prompt do
+    path = workspace_path()
+
+    # Load in order: IDENTITY, AGENTS, SOUL, USER, TOOLS, MEMORY
+    files = ["IDENTITY.md", "AGENTS.md", "SOUL.md", "USER.md", "TOOLS.md", "MEMORY.md"]
+
+    parts =
+      Enum.map(files, fn filename ->
+        file_path = Path.join(path, filename)
+
+        case File.read(file_path) do
+          {:ok, content} ->
+            trimmed = String.trim(content)
+
+            if trimmed != "" do
+              "---\n#{filename}\n---\n#{content}"
+            else
+              ""
+            end
+
+          _ ->
+            # Use template if file doesn't exist
+            case Map.get(@templates, filename) do
+              nil -> ""
+              template -> "---\n#{filename}\n---\n#{template}"
+            end
+        end
+      end)
+
+    Enum.reject(parts, &(&1 == ""))
+    |> Enum.join("\n\n")
+  end
 end

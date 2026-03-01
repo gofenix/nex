@@ -224,4 +224,57 @@ defmodule Nex.Agent.Memory do
 
     %{entry: entry, score: score}
   end
+
+  @doc """
+  Read long-term memory from MEMORY.md
+  """
+  @spec read_long_term() :: String.t()
+  def read_long_term do
+    memory_file = Path.join(@memory_dir, "MEMORY.md")
+
+    if File.exists?(memory_file) do
+      File.read!(memory_file)
+    else
+      ""
+    end
+  end
+
+  @doc """
+  Write long-term memory to MEMORY.md
+  """
+  @spec write_long_term(String.t()) :: :ok
+  def write_long_term(content) do
+    init()
+    memory_file = Path.join(@memory_dir, "MEMORY.md")
+    File.write!(memory_file, content)
+    :ok
+  end
+
+  @doc """
+  Append to HISTORY.md (grep-searchable log)
+  """
+  @spec append_history(String.t()) :: :ok
+  def append_history(entry) do
+    init()
+    history_file = Path.join(@memory_dir, "HISTORY.md")
+
+    timestamp = DateTime.utc_now() |> DateTime.to_string() |> String.slice(0..15)
+    formatted = "[#{timestamp}] #{entry}\n\n"
+
+    File.write!(history_file, formatted, [:append])
+  end
+
+  @doc """
+  Get memory context for system prompt (MEMORY.md content)
+  """
+  @spec get_memory_context() :: String.t()
+  def get_memory_context do
+    long_term = read_long_term()
+
+    if long_term != "" do
+      "## Long-term Memory\n\n#{long_term}"
+    else
+      ""
+    end
+  end
 end
