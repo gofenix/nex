@@ -1,0 +1,21 @@
+# The directory Mix writes to will be created
+/_build
+/deps
+erl_crash.dump
+*.ez
+
+# Ignore package tarballs
+*.tar
+
+# If you run mix test --cover, coverage dir is generated
+/cover
+
+# The directory NPM writes to
+/node_modules
+
+# .env files (keep .env.example)
+.env
+.env.local
+
+# OS
+.DS_Store
