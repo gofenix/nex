@@ -211,12 +211,9 @@ defmodule Nex.Agent.Skills do
         "input_schema" => %{
           "type" => "object",
           "properties" => %{
-            "arguments" => %{
-              "type" => "object",
-              "properties" => Map.new(schema, fn {k, v} -> {k, v} end)
-            }
+            "input" => %{"type" => "string", "description" => "Input to skill"}
           },
-          "required" => if(schema == %{}, do: ["arguments"], else: [])
+          "required" => ["input"]
         }
       }
     end)

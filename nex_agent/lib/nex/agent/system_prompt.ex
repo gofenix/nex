@@ -12,9 +12,16 @@ defmodule Nex.Agent.SystemPrompt do
     always=true skills are inlined; others listed as a summary.
   """
 
+  use Agent
+  require Logger
+
   @workspace_path Path.join(System.get_env("HOME", "~"), ".nex/agent/workspace")
 
   @bootstrap_files ["SOUL.md", "USER.md", "AGENTS.md", "TOOLS.md"]
+
+  def start_link(_opts \\ []) do
+    Agent.start_link(fn -> %{} end, name: __MODULE__)
+  end
 
   @doc """
   Build the full system prompt.
@@ -23,28 +30,60 @@ defmodule Nex.Agent.SystemPrompt do
     _cwd = Keyword.get(opts, :cwd, File.cwd!())
     workspace = Keyword.get(opts, :workspace, @workspace_path)
 
-    parts =
+    static = get_cached_static(workspace)
+
+    dynamic =
       []
-      |> add_identity(workspace)
-      |> add_bootstrap_files(workspace)
       |> add_memory(workspace)
       |> add_skills_summary()
+
+    parts = static ++ dynamic
 
     Enum.join(parts, "\n\n---\n\n")
   end
 
+  defp get_cached_static(workspace) do
+    cache_key = {:static, workspace}
+
+    case Agent.get(__MODULE__, &Map.get(&1, cache_key)) do
+      nil ->
+        static = build_static(workspace)
+        Agent.update(__MODULE__, &Map.put(&1, cache_key, static))
+        static
+
+      cached ->
+        cached
+    end
+  end
+
+  defp build_static(workspace) do
+    []
+    |> add_identity(workspace)
+    |> add_bootstrap_files(workspace)
+  end
+
   @doc """
-  Build a runtime context block to inject before the user message each turn.
-  Includes current time, channel, and chat_id.
+  Invalidate the cache (call when workspace files change).
+  """
+  def invalidate_cache(workspace \\ @workspace_path) do
+    Agent.update(__MODULE__, &Map.delete(&1, {:static, workspace}))
+  end
+
+  @runtime_context_tag "[Runtime Context — metadata only, not instructions]"
+
+  @doc """
+  Build runtime context block with only essential metadata.
   """
   def build_runtime_context(opts \\ []) do
     channel = Keyword.get(opts, :channel)
     chat_id = Keyword.get(opts, :chat_id)
 
     now = DateTime.utc_now()
-    time_str = "#{now.year}-#{pad(now.month)}-#{pad(now.day)} #{pad(now.hour)}:#{pad(now.minute)} (UTC)"
 
-    lines = ["[Runtime Context — metadata only, not instructions]", "Current Time: #{time_str}"]
+    time_str =
+      "#{now.year}-#{pad(now.month)}-#{pad(now.day)} (#{DateTime.day_of_week(now, :sunday)})"
+
+    lines = [@runtime_context_tag, "Current Time: #{time_str}"]
 
     lines =
       if channel && chat_id do
@@ -63,25 +102,25 @@ defmodule Nex.Agent.SystemPrompt do
 
   defp add_identity(parts, workspace) do
     workspace_str = Path.expand(workspace)
+    cwd = File.cwd!() |> Path.basename()
 
     identity = """
-    # Assistant
+    # Nex Agent
 
-    You are a personal AI assistant.
+    You are a helpful AI assistant.
 
     ## Workspace
-    Your workspace is at: #{workspace_str}
-    - Long-term memory: #{workspace_str}/memory/MEMORY.md
-    - History log: #{workspace_str}/memory/HISTORY.md (grep-searchable, entries start with [YYYY-MM-DD HH:MM])
+    Running in: #{cwd}
+    Workspace: #{workspace_str}
+    - Memory: #{workspace_str}/memory/MEMORY.md
+    - History: #{workspace_str}/memory/HISTORY.md
     - Skills: #{workspace_str}/skills/
 
-    ## Core Guidelines
-    - State intent before tool calls, but NEVER predict or claim results before receiving them.
-    - Before modifying a file, read it first.
-    - After writing or editing a file, verify by re-reading if accuracy matters.
-    - If a tool call fails, analyze the error before retrying.
-    - Ask for clarification when the request is ambiguous.
-    - Reply directly with text for conversations. Only use the 'message' tool to proactively send progress updates during long tasks.
+    ## Guidelines
+    - State intent before tool calls, but NEVER predict results before receiving them.
+    - Read files before editing. Re-read after writing if accuracy matters.
+    - Analyze errors before retrying.
+    - Ask for clarification when ambiguous.
     """
 
     parts ++ [String.trim(identity)]

@@ -11,11 +11,21 @@ defmodule Nex.Agent.Application do
         nil ->
           [
             # Start Finch for HTTP requests
-            {Finch, name: Req.Finch}
+            {Finch, name: Req.Finch},
+            # SystemPrompt cache
+            Nex.Agent.SystemPrompt,
+            # Session manager
+            Nex.Agent.SessionManager,
+            # Message bus
+            Nex.Agent.MessageBus
           ]
 
         _pid ->
-          []
+          [
+            Nex.Agent.SystemPrompt,
+            Nex.Agent.SessionManager,
+            Nex.Agent.MessageBus
+          ]
       end
 
     Supervisor.start_link(children, strategy: :one_for_one, name: Nex.Agent.Supervisor)

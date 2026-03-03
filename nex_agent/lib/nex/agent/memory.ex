@@ -293,9 +293,15 @@ defmodule Nex.Agent.Memory do
     base_url = Keyword.get(opts, :base_url)
     memory_window = Keyword.get(opts, :memory_window, 50)
 
-    messages = Nex.Agent.Session.current_messages(session)
+    messages = session.messages
     keep_count = div(memory_window, 2)
-    old_messages = Enum.slice(messages, session.last_consolidated, length(messages) - keep_count - session.last_consolidated)
+
+    old_messages =
+      Enum.slice(
+        messages,
+        session.last_consolidated,
+        length(messages) - keep_count - session.last_consolidated
+      )
 
     if old_messages == [] do
       {:ok, session}
@@ -335,11 +341,13 @@ defmodule Nex.Agent.Memory do
               "properties" => %{
                 "history_entry" => %{
                   "type" => "string",
-                  "description" => "A paragraph (2-5 sentences) summarizing key events/decisions/topics. Start with [YYYY-MM-DD HH:MM]. Include detail useful for grep search."
+                  "description" =>
+                    "A paragraph (2-5 sentences) summarizing key events/decisions/topics. Start with [YYYY-MM-DD HH:MM]. Include detail useful for grep search."
                 },
                 "memory_update" => %{
                   "type" => "string",
-                  "description" => "Full updated long-term memory as markdown. Include all existing facts plus new ones. Return unchanged if nothing new."
+                  "description" =>
+                    "Full updated long-term memory as markdown. Include all existing facts plus new ones. Return unchanged if nothing new."
                 }
               },
               "required" => ["history_entry", "memory_update"]
@@ -351,7 +359,8 @@ defmodule Nex.Agent.Memory do
       consolidation_messages = [
         %{
           "role" => "system",
-          "content" => "You are a memory consolidation agent. Call the save_memory tool with your consolidation of the conversation."
+          "content" =>
+            "You are a memory consolidation agent. Call the save_memory tool with your consolidation of the conversation."
         },
         %{"role" => "user", "content" => consolidation_prompt}
       ]
@@ -374,7 +383,7 @@ defmodule Nex.Agent.Memory do
 
           new_last_consolidated = length(messages) - keep_count
           updated_session = %{session | last_consolidated: new_last_consolidated}
-          Nex.Agent.Session.save_meta(updated_session)
+          Nex.Agent.SessionManager.save(updated_session)
 
           Logger.info("[Memory] Consolidation done, last_consolidated=#{new_last_consolidated}")
           {:ok, updated_session}

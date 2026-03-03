@@ -126,78 +126,32 @@ defmodule Nex.Agent.InboundWorker do
 
       :error ->
         opts = agent_start_opts(state.config, key)
-        project = Keyword.get(opts, :project, key)
+        [_channel, _chat_id] = String.split(key, ":", parts: 2)
 
-        agent_result =
-          case load_persisted_session(key, project) do
-            {:ok, session} ->
-              Logger.info("InboundWorker restored session=#{session.id} for key=#{key}")
-              provider = Keyword.get(opts, :provider, :openai)
-              model = Keyword.get(opts, :model, "gpt-4o")
-              api_key = Keyword.get(opts, :api_key)
-              base_url = Keyword.get(opts, :base_url)
-              cwd = Keyword.get(opts, :cwd, File.cwd!())
-              max_iterations = Keyword.get(opts, :max_iterations, 40)
+        session = Nex.Agent.SessionManager.get_or_create(key)
+        Logger.info("InboundWorker using session=#{session.key} for key=#{key}")
 
-              {:ok,
-               %Nex.Agent{
-                 session: session,
-                 provider: provider,
-                 model: model,
-                 api_key: api_key,
-                 base_url: base_url,
-                 cwd: cwd,
-                 max_iterations: max_iterations
-               }}
+        provider = Keyword.get(opts, :provider, :openai)
+        model = Keyword.get(opts, :model, "gpt-4o")
+        api_key = Keyword.get(opts, :api_key)
+        base_url = Keyword.get(opts, :base_url)
+        cwd = Keyword.get(opts, :cwd, File.cwd!())
+        max_iterations = Keyword.get(opts, :max_iterations, 40)
 
-            :error ->
-              state.agent_start_fun.(opts)
-          end
+        agent = %Nex.Agent{
+          session_key: key,
+          session: session,
+          provider: provider,
+          model: model,
+          api_key: api_key,
+          base_url: base_url,
+          cwd: cwd,
+          max_iterations: max_iterations
+        }
 
-        case agent_result do
-          {:ok, agent} ->
-            persist_session(key, agent.session.id, agent.session.project_id)
-            {:ok, agent, put_in(state.agents[key], agent)}
-
-          {:error, reason} ->
-            {:error, reason}
-        end
+        Nex.Agent.SessionManager.save(session)
+        {:ok, agent, put_in(state.agents[key], agent)}
     end
-  end
-
-  @session_map_file Path.expand("~/.nex/agent/sessions/user_sessions.json")
-
-  defp load_persisted_session(key, _project_id) do
-    with {:ok, content} <- File.read(@session_map_file),
-         {:ok, map} <- Jason.decode(content),
-         %{"session_id" => session_id, "project_id" => stored_project_id} <- Map.get(map, key),
-         true <- is_binary(session_id) and is_binary(stored_project_id) do
-      case Session.load(session_id, stored_project_id) do
-        {:ok, session} -> {:ok, session}
-        _ -> :error
-      end
-    else
-      _ -> :error
-    end
-  end
-
-  defp persist_session(key, session_id, project_id) do
-    File.mkdir_p!(Path.dirname(@session_map_file))
-
-    existing =
-      case File.read(@session_map_file) do
-        {:ok, content} ->
-          case Jason.decode(content) do
-            {:ok, map} -> map
-            _ -> %{}
-          end
-
-        _ ->
-          %{}
-      end
-
-    updated = Map.put(existing, key, %{"session_id" => session_id, "project_id" => project_id})
-    File.write!(@session_map_file, Jason.encode!(updated, pretty: true))
   end
 
   defp agent_start_opts(config, session_key) do

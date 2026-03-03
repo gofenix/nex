@@ -1,7 +1,15 @@
 defmodule Nex.Agent do
-  alias Nex.Agent.{Session, Runner, Onboarding, Skills}
+  alias Nex.Agent.{
+    SessionManager,
+    Session,
+    Runner,
+    Onboarding,
+    Skills,
+    ContextBuilder
+  }
 
   @type t :: %__MODULE__{
+          session_key: String.t(),
           session: Session.t(),
           provider: atom(),
           model: String.t(),
@@ -12,6 +20,7 @@ defmodule Nex.Agent do
         }
 
   defstruct [
+    :session_key,
     :session,
     :provider,
     :model,
@@ -32,26 +41,27 @@ defmodule Nex.Agent do
     max_iterations = Keyword.get(opts, :max_iterations, 10)
     project = Keyword.get(opts, :project, Path.basename(File.cwd!()))
     cwd = Keyword.get(opts, :cwd, File.cwd!())
+    channel = Keyword.get(opts, :channel, "telegram")
+    chat_id = Keyword.get(opts, :chat_id, "default")
+
+    session_key = "#{channel}:#{chat_id}"
 
     if is_nil(api_key) and provider != :ollama do
       {:error, "No API key found. Set :api_key or #{env_var_name(provider)}"}
     else
-      case Session.create(project, cwd) do
-        {:ok, session} ->
-          {:ok,
-           %__MODULE__{
-             session: session,
-             provider: provider,
-             model: model,
-             api_key: api_key,
-             base_url: base_url,
-             cwd: cwd,
-             max_iterations: max_iterations
-           }}
+      session = SessionManager.get_or_create(session_key)
 
-        error ->
-          error
-      end
+      {:ok,
+       %__MODULE__{
+         session_key: session_key,
+         session: session,
+         provider: provider,
+         model: model,
+         api_key: api_key,
+         base_url: base_url,
+         cwd: cwd,
+         max_iterations: max_iterations
+       }}
     end
   end
 
@@ -63,9 +73,12 @@ defmodule Nex.Agent do
     cwd = Keyword.get(opts, :cwd, agent.cwd || File.cwd!())
     max_iterations = Keyword.get(opts, :max_iterations, agent.max_iterations)
     channel = Keyword.get(opts, :channel, "telegram")
-    chat_id = Keyword.get(opts, :chat_id, "")
+    chat_id = Keyword.get(opts, :chat_id, "default")
 
-    case Runner.run(agent.session, prompt,
+    session_key = "#{channel}:#{chat_id}"
+    session = SessionManager.get_or_create(session_key)
+
+    case Runner.run(session, prompt,
            provider: provider,
            model: model,
            api_key: api_key,
@@ -76,28 +89,31 @@ defmodule Nex.Agent do
            chat_id: chat_id
          ) do
       {:ok, result, session} ->
+        SessionManager.save(session)
         {:ok, result, %{agent | session: session}}
 
       {:error, reason, session} ->
+        SessionManager.save(session)
         {:error, reason, %{agent | session: session}}
     end
   end
 
   def session_id(agent) do
-    agent.session.id
+    agent.session.key
   end
 
   def fork(agent) do
-    case Session.fork(agent.session) do
-      {:ok, forked_session} ->
-        {:ok, %{agent | session: forked_session}}
-
-      error ->
-        error
-    end
+    forked = Session.new("#{agent.session_key}_fork_#{:rand.uniform(9999)}")
+    {:ok, %{agent | session: forked, session_key: forked.key}}
   end
 
   def abort(_agent) do
+    :ok
+  end
+
+  def reset_session(channel, chat_id) do
+    session_key = "#{channel}:#{chat_id}"
+    SessionManager.invalidate(session_key)
     :ok
   end
 

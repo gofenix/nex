@@ -1,229 +1,191 @@
 defmodule Nex.Agent.Session do
-  alias Nex.Agent.Entry
+  @moduledoc """
+  Simple session management - stores messages as list, persists to JSONL.
+  Mirrors nanobot's session/manager.py Session class.
+  """
 
   defstruct [
-    :id,
-    :project_id,
-    :path,
-    entries: [],
-    current_entry_id: nil,
+    :key,
+    :created_at,
+    :updated_at,
+    :metadata,
+    messages: [],
     last_consolidated: 0
   ]
 
-  @session_dir "~/.nex/agent/sessions"
-
-  def create(project_id, cwd \\ nil) do
-    _working_dir = cwd || File.cwd!()
-    session_id = generate_session_id()
-    project_dir = sanitize_project_id(project_id)
-
-    dir = Path.join([Path.expand(@session_dir), project_dir, session_id])
-
-    case File.mkdir_p(dir) do
-      :ok ->
-        session = %__MODULE__{
-          id: session_id,
-          project_id: project_id,
-          path: dir,
-          entries: [],
-          current_entry_id: nil
+  @type t :: %__MODULE__{
+          key: String.t(),
+          messages: [map()],
+          created_at: DateTime.t(),
+          updated_at: DateTime.t(),
+          metadata: map(),
+          last_consolidated: non_neg_integer()
         }
 
-        session_entry = Entry.new_session(project_id)
-        session = add_entry(session, session_entry)
+  @sessions_dir Path.join(System.get_env("HOME", "~"), ".nex/agent/sessions")
 
-        {:ok, session}
+  @doc """
+  Create a new session with key (e.g. "telegram:123456").
+  """
+  @spec new(String.t()) :: t()
+  def new(key) do
+    now = DateTime.utc_now()
 
-      error ->
-        error
-    end
+    %__MODULE__{
+      key: key,
+      messages: [],
+      created_at: now,
+      updated_at: now,
+      metadata: %{},
+      last_consolidated: 0
+    }
   end
 
-  def load(session_id, project_id) do
-    project_dir = sanitize_project_id(project_id)
-    dir = Path.join([Path.expand(@session_dir), project_dir, session_id])
-    file = entries_file_path(dir)
+  @doc """
+  Add a message to the session.
+  """
+  @spec add_message(t(), String.t(), String.t(), keyword()) :: t()
+  def add_message(%__MODULE__{} = session, role, content, opts \\ []) do
+    msg =
+      %{
+        "role" => role,
+        "content" => content,
+        "timestamp" => DateTime.utc_now() |> DateTime.to_iso8601()
+      }
+      |> Map.merge(Map.new(opts))
 
-    if File.exists?(file) do
-      case File.read(file) do
-        {:ok, content} ->
-          lines = String.split(content, "\n", trim: true)
+    %{session | messages: session.messages ++ [msg], updated_at: DateTime.utc_now()}
+  end
 
-          {meta_lines, entry_lines} =
-            Enum.split_with(lines, fn line ->
-              case Jason.decode(line) do
-                {:ok, %{"_type" => "session_meta"}} -> true
-                _ -> false
-              end
-            end)
+  @doc """
+  Get history for LLM - unconsolidated messages, aligned to user turn.
+  """
+  @spec get_history(t(), non_neg_integer()) :: [map()]
+  def get_history(%__MODULE__{} = session, max_messages \\ 50) do
+    unconsolidated = Enum.drop(session.messages, session.last_consolidated)
+    sliced = Enum.take(unconsolidated, -max_messages)
 
-          last_consolidated =
-            case meta_lines do
-              [meta_line | _] ->
-                case Jason.decode(meta_line) do
-                  {:ok, %{"last_consolidated" => n}} when is_integer(n) -> n
-                  _ -> 0
-                end
-
-              _ ->
-                0
-            end
-
-          entries =
-            entry_lines
-            |> Enum.map(&Entry.from_json/1)
-            |> Enum.filter(&match?({:ok, _}, &1))
-            |> Enum.map(fn {:ok, e} -> e end)
-
-          current_entry_id =
-            if length(entries) > 0 do
-              List.last(entries).id
-            end
-
-          {:ok,
-           %__MODULE__{
-             id: session_id,
-             project_id: project_id,
-             path: dir,
-             entries: entries,
-             current_entry_id: current_entry_id,
-             last_consolidated: last_consolidated
-           }}
-
-        error ->
-          error
+    aligned =
+      case Enum.find_index(sliced, fn m -> Map.get(m, "role") == "user" end) do
+        nil -> sliced
+        idx -> Enum.drop(sliced, idx)
       end
-    else
-      {:error, :session_not_found}
-    end
+
+    Enum.map(aligned, fn m ->
+      entry = %{
+        "role" => Map.get(m, "role"),
+        "content" => Map.get(m, "content", "") || ""
+      }
+
+      if tool_calls = Map.get(m, "tool_calls") do
+        Map.put(entry, "tool_calls", tool_calls)
+      else
+        entry
+      end
+    end)
   end
 
-  def save_meta(%__MODULE__{} = session) do
-    file = entries_file_path(session.path)
-    meta = Jason.encode!(%{"_type" => "session_meta", "last_consolidated" => session.last_consolidated})
+  @doc """
+  Clear all messages and reset consolidation state.
+  """
+  @spec clear(t()) :: t()
+  def clear(%__MODULE__{} = session) do
+    %{session | messages: [], last_consolidated: 0, updated_at: DateTime.utc_now()}
+  end
 
-    case File.read(file) do
+  @doc """
+  Save session to disk as JSONL.
+  """
+  @spec save(t()) :: :ok | {:error, term()}
+  def save(%__MODULE__{} = session) do
+    dir = Path.join([@sessions_dir, safe_filename(session.key)])
+    File.mkdir_p!(dir)
+
+    path = Path.join(dir, "messages.jsonl")
+
+    lines =
+      [
+        %{
+          "_type" => "metadata",
+          "key" => session.key,
+          "created_at" => session.created_at |> DateTime.to_iso8601(),
+          "updated_at" => session.updated_at |> DateTime.to_iso8601(),
+          "last_consolidated" => session.last_consolidated
+        }
+        | session.messages
+      ]
+      |> Enum.map(&Jason.encode!/1)
+
+    File.write(path, Enum.join(lines, "\n"))
+  end
+
+  @doc """
+  Load session from disk.
+  """
+  @spec load(String.t()) :: t() | nil
+  def load(key) do
+    dir = Path.join([@sessions_dir, safe_filename(key)])
+    path = Path.join(dir, "messages.jsonl")
+
+    unless File.exists?(path), do: nil
+
+    case File.read(path) do
       {:ok, content} ->
         lines = String.split(content, "\n", trim: true)
 
-        updated_lines =
-          case lines do
-            [first | rest] ->
-              case Jason.decode(first) do
-                {:ok, %{"_type" => "session_meta"}} -> [meta | rest]
-                _ -> [meta | lines]
+        {metadata, messages} =
+          Enum.split_with(lines, fn line ->
+            case Jason.decode(line) do
+              {:ok, %{"_type" => "metadata"}} -> true
+              _ -> false
+            end
+          end)
+
+        meta =
+          case metadata do
+            [line | _] ->
+              case Jason.decode(line) do
+                {:ok, m} -> m
+                _ -> %{}
               end
 
-            [] ->
-              [meta]
+            _ ->
+              %{}
           end
 
-        File.write(file, Enum.join(updated_lines, "\n") <> "\n")
+        parsed_messages =
+          messages
+          |> Enum.map(&Jason.decode/1)
+          |> Enum.filter(fn
+            {:ok, _} -> true
+            _ -> false
+          end)
+          |> Enum.map(fn {:ok, m} -> m end)
 
-      {:error, :enoent} ->
-        File.write(file, meta <> "\n")
+        %__MODULE__{
+          key: key,
+          messages: parsed_messages,
+          created_at: parse_datetime(Map.get(meta, "created_at")),
+          updated_at: parse_datetime(Map.get(meta, "updated_at")),
+          metadata: %{},
+          last_consolidated: Map.get(meta, "last_consolidated", 0)
+        }
+
+      _ ->
+        nil
     end
   end
 
-  def add_entry(%__MODULE__{} = session, %Entry{} = entry) do
-    file = entries_file_path(session.path)
-    line = Entry.to_json(entry) <> "\n"
-
-    File.write(file, line, [:append])
-
-    %{session | entries: session.entries ++ [entry], current_entry_id: entry.id}
+  defp safe_filename(key) do
+    key |> String.replace(":", "_") |> String.replace(~r/[^\w-]/, "_")
   end
 
-  def fork(%__MODULE__{} = session) do
-    {:ok, forked} = create(session.project_id <> "-fork", Path.dirname(session.path))
+  defp parse_datetime(nil), do: DateTime.utc_now()
 
-    forked =
-      Enum.reduce(session.entries, forked, fn entry, acc ->
-        add_entry(acc, entry)
-      end)
-
-    {:ok, forked}
-  end
-
-  def navigate(%__MODULE__{} = session, entry_id) do
-    case Enum.find(session.entries, &(&1.id == entry_id)) do
-      nil ->
-        {:error, :entry_not_found}
-
-      _entry ->
-        {:ok, %{session | current_entry_id: entry_id}}
-    end
-  end
-
-  def current_path(%__MODULE__{} = session) do
-    entries_map = Map.new(session.entries, fn e -> {e.id, e} end)
-
-    path = []
-    current_id = session.current_entry_id
-
-    loop(path, current_id, entries_map, 0)
-  end
-
-  defp loop(acc, nil, _map, _), do: Enum.reverse(acc)
-  defp loop(acc, _id, _map, 1000), do: Enum.reverse(acc)
-
-  defp loop(acc, current_id, map, n) do
-    case Map.get(map, current_id) do
-      nil ->
-        Enum.reverse(acc)
-
-      entry ->
-        loop([entry | acc], entry.parent_id, map, n + 1)
-    end
-  end
-
-  def branches(%__MODULE__{} = session) do
-    children_ids =
-      session.entries
-      |> Enum.map(& &1.parent_id)
-      |> Enum.reject(&is_nil/1)
-      |> MapSet.new()
-
-    session.entries
-    |> Enum.filter(fn e -> not MapSet.member?(children_ids, e.id) end)
-    |> Enum.map(fn e -> {e.id, e.timestamp} end)
-  end
-
-  def current_messages(%__MODULE__{} = session) do
-    current_path(session)
-    |> Enum.filter(fn e -> e.type == :message end)
-    |> Enum.map(& &1.message)
-    |> Enum.reject(&is_nil/1)
-  end
-
-  def get_latest_model(%__MODULE__{} = session) do
-    path = current_path(session)
-
-    path
-    |> Enum.reverse()
-    |> Enum.find(fn e -> e.type == :model_change end)
-    |> case do
-      nil -> nil
-      e -> {e.data.provider, e.data.model}
-    end
-  end
-
-  defp generate_session_id do
-    :crypto.strong_rand_bytes(8) |> Base.hex_encode32(case: :lower)
-  end
-
-  defp sanitize_project_id(project_id) do
-    project_id |> String.replace(~r/[^\w-]/, "_")
-  end
-
-  defp entries_file_path(session_dir) do
-    preferred = Path.join(session_dir, "_.jsonl")
-    legacy = Path.join(session_dir, "_ .jsonl")
-
-    cond do
-      File.exists?(preferred) -> preferred
-      File.exists?(legacy) -> legacy
-      true -> preferred
+  defp parse_datetime(str) do
+    case DateTime.from_iso8601(str) do
+      {:ok, dt, _} -> dt
+      _ -> DateTime.utc_now()
     end
   end
 end

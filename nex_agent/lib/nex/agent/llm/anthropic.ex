@@ -9,6 +9,7 @@ defmodule Nex.Agent.LLM.Anthropic do
     max_tokens = Keyword.get(options, :max_tokens, 4096)
     temperature = Keyword.get(options, :temperature, 1.0)
     http_client = Keyword.get(options, :http_client, &Req.post/2)
+    tools = Keyword.get(options, :tools, [])
 
     body = %{
       model: model,
@@ -17,6 +18,13 @@ defmodule Nex.Agent.LLM.Anthropic do
       messages: transform_messages(messages),
       system: extract_system(messages)
     }
+
+    body =
+      if tools != [] do
+        Map.put(body, :tools, transform_tools(tools))
+      else
+        body
+      end
 
     result =
       http_client.("#{@base_url}/messages",
@@ -30,9 +38,24 @@ defmodule Nex.Agent.LLM.Anthropic do
 
     case result do
       {:ok, %{status: 200, body: response}} ->
+        content = response["content"] |> Enum.find(fn c -> c["type"] == "text" end)
+        tool_calls = response["content"] |> Enum.filter(fn c -> c["type"] == "tool_use" end)
+
         {:ok,
          %{
-           content: response["content"] |> hd |> Map.get("text"),
+           content: content && content["text"],
+           tool_calls:
+             if tool_calls != [] do
+               Enum.map(tool_calls, fn tc ->
+                 %{
+                   id: tc["id"],
+                   name: tc["name"],
+                   arguments: tc["input"]
+                 }
+               end)
+             else
+               nil
+             end,
            model: response["model"],
            usage: response["usage"]
          }}
@@ -132,5 +155,17 @@ defmodule Nex.Agent.LLM.Anthropic do
       nil -> nil
       m -> m["content"]
     end
+  end
+
+  defp transform_tools(tools) do
+    Enum.map(tools, fn tool ->
+      input_schema = Map.get(tool, "input_schema") || %{}
+
+      %{
+        name: tool["name"],
+        description: tool["description"],
+        input_schema: input_schema
+      }
+    end)
   end
 end
