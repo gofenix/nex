@@ -300,7 +300,7 @@ defmodule Nex.Agent.Gateway do
           model: config.model,
           api_key: Nex.Agent.Config.get_current_api_key(config),
           base_url: Nex.Agent.Config.get_current_base_url(config),
-          auto_apply: false
+          auto_apply: true
         ]
 
         {:ok, _} = Nex.Agent.Harness.start_link(opts)

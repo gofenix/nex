@@ -6,10 +6,10 @@ defmodule Nex.Agent.Skills do
 
       # Load all skills
       :ok = Nex.Agent.Skills.load()
-      
+
       # List available skills
       skills = Nex.Agent.Skills.list()
-      
+
       # Execute a skill
       {:ok, result} = Nex.Agent.Skills.execute("explain-code", "some arguments")
 
@@ -241,22 +241,26 @@ defmodule Nex.Agent.Skills do
   end
 
   defp execute_elixir_skill(skill, arguments, _opts) do
-    # Dynamically compile and load the skill module
-    module_name =
-      Module.concat(Nex.Agent.Skills, String.replace(skill.name, "-", "_") |> String.capitalize())
+    # Use unique module name based on skill name hash to avoid conflicts
+    name_hash = :crypto.hash(:md5, skill.name) |> Base.encode16() |> String.slice(0, 8)
+    module_name = Module.concat(Nex.Agent.Skills.Runtime, "Skill_#{name_hash}")
 
     try do
-      # Try to compile the code
       code = skill.code
 
-      # Use Evolution to load the code
-      case Evolution.upgrade_module(module_name, code, validate: true, backup: false) do
-        {:ok, _version} ->
-          # Call the execute function
-          apply(module_name, :execute, [arguments, %{}])
+      # Check if module is already loaded and code matches
+      if Code.ensure_loaded?(module_name) do
+        # Module exists, call execute directly
+        apply(module_name, :execute, [arguments, %{}])
+      else
+        # Use Evolution to load the code
+        case Evolution.upgrade_module(module_name, code, validate: true, backup: false) do
+          {:ok, _version} ->
+            apply(module_name, :execute, [arguments, %{}])
 
-        {:error, reason} ->
-          {:error, "Failed to compile skill: #{reason}"}
+          {:error, reason} ->
+            {:error, "Failed to compile skill: #{reason}"}
+        end
       end
     rescue
       e ->

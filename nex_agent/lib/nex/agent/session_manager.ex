@@ -103,7 +103,7 @@ defmodule Nex.Agent.SessionManager do
         end
       end)
       |> Enum.reject(&is_nil/1)
-      |> Enum.sort_by(& &1["updated_at"], {:desc, DateTime})
+      |> Enum.sort_by(& &1.updated_at, :desc)
 
     {:reply, sessions, state}
   end

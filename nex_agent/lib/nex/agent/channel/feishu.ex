@@ -853,7 +853,10 @@ defmodule Nex.Agent.Channel.Feishu do
     else
       {:error, reason} ->
         Logger.warning("[Feishu] Card send failed, falling back to text: #{inspect(reason)}")
-        send_text(payload, chat_id, content, state)
+        case send_text(payload, chat_id, content, state) do
+          {:ok, new_state} -> {:ok, new_state}
+          {:error, text_reason} -> {:error, text_reason, state}
+        end
     end
   end
 

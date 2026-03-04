@@ -559,14 +559,10 @@ defmodule Nex.Agent.Runner do
   end
 
   defp execute_tool(name, args, _opts) do
-    skill_name =
-      if String.starts_with?(name, "skill_") do
-        String.replace_prefix(name, "skill_", "")
-      else
-        name
-      end
+    # Remove skill_ prefix if present (all skills in for_llm have this prefix)
+    skill_name = String.replace_prefix(name, "skill_", "")
 
-    case Skills.execute(skill_name, args["input"] || args[:input] || "") do
+    case Skills.execute(skill_name, args["input"] || args[:input] || "", invoked_by: :model) do
       {:ok, result} -> result
       {:error, reason} -> "Error executing skill #{skill_name}: #{inspect(reason)}"
     end

@@ -156,8 +156,14 @@ defmodule Nex.Agent.Session do
     dir = Path.join([@sessions_dir, safe_filename(key)])
     path = Path.join(dir, "messages.jsonl")
 
-    unless File.exists?(path), do: nil
+    unless File.exists?(path) do
+      nil
+    else
+      load_from_path(path, key)
+    end
+  end
 
+  defp load_from_path(path, key) do
     case File.read(path) do
       {:ok, content} ->
         lines = String.split(content, "\n", trim: true)

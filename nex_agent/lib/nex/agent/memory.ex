@@ -168,23 +168,37 @@ defmodule Nex.Agent.Memory do
     |> String.split("## ")
     |> Enum.reject(&(&1 == ""))
     |> Enum.map(&parse_entry/1)
+    |> Enum.reject(&is_nil/1)
   end
 
   defp parse_entry(entry) do
     [header | lines] = String.split(entry, "\n", parts: 2)
 
-    [timestamp, id, task_result] = String.split(header, " - ", parts: 3)
-    [task, result] = String.split(task_result, ": ", parts: 2)
+    parts = String.split(header, " - ", parts: 3)
 
-    body = if length(lines) > 0, do: hd(lines), else: ""
+    case parts do
+      [timestamp, id, task_result] ->
+        case String.split(task_result, ": ", parts: 2) do
+          [task, result] ->
+            body = if length(lines) > 0, do: hd(lines), else: ""
 
-    %{
-      timestamp: String.trim(timestamp),
-      id: String.trim(id),
-      task: String.trim(task),
-      result: String.trim(result),
-      body: String.trim(body)
-    }
+            %{
+              timestamp: String.trim(timestamp),
+              id: String.trim(id),
+              task: String.trim(task),
+              result: String.trim(result),
+              body: String.trim(body)
+            }
+
+          _ ->
+            nil
+        end
+
+      _ ->
+        nil
+    end
+  rescue
+    _ -> nil
   end
 
   defp format_entry(timestamp, id, task, result, metadata) do
@@ -295,13 +309,19 @@ defmodule Nex.Agent.Memory do
 
     messages = session.messages
     keep_count = div(memory_window, 2)
+    total_len = length(messages)
+
+    # Calculate how many messages to consolidate
+    start_idx = session.last_consolidated
+    end_idx = max(total_len - keep_count, start_idx)
+    count = end_idx - start_idx
 
     old_messages =
-      Enum.slice(
-        messages,
-        session.last_consolidated,
-        length(messages) - keep_count - session.last_consolidated
-      )
+      if count > 0 do
+        Enum.slice(messages, start_idx, count)
+      else
+        []
+      end
 
     if old_messages == [] do
       {:ok, session}

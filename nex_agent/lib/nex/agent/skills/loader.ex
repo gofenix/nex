@@ -10,7 +10,7 @@ defmodule Nex.Agent.Skills.Loader do
       disable-model-invocation: false
       allowed-tools: Read, Grep
       ---
-      
+
       When explaining code, always include:
       1. Start with an analogy
       2. Draw a diagram
@@ -90,12 +90,12 @@ defmodule Nex.Agent.Skills.Loader do
   defp parse_skill_file(path, _name) do
     content = File.read!(path)
 
-    # Split by --- frontmatter delimiter (at start of line)
-    case String.split(content, "\n---\n", parts: 2) do
-      [frontmatter, body] ->
+    # Split by --- frontmatter delimiter
+    case Regex.run(~r/^---\n(.*?)\n---\n(.*)$/s, content) do
+      [_, frontmatter, body] ->
         parse_skill(frontmatter, body, path)
 
-      [_] ->
+      nil ->
         # No frontmatter, treat entire content as body
         parse_skill("", content, path)
     end

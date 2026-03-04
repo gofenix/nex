@@ -181,7 +181,15 @@ defmodule Nex.Agent.ContextBuilder do
 
     entry =
       if tool_call_id = Map.get(m, "tool_call_id") do
-        Map.put(entry, "tool_call_id", tool_call_id)
+        entry
+        |> Map.put("tool_call_id", tool_call_id)
+        |> then(fn e ->
+          if name = Map.get(m, "name") do
+            Map.put(e, "name", name)
+          else
+            e
+          end
+        end)
       else
         entry
       end

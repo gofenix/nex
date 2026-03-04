@@ -222,14 +222,16 @@ defmodule Nex.Agent.InboundWorker do
   defp ensure_agent(state, key) do
     case Map.fetch(state.agents, key) do
       {:ok, agent} ->
-        {:ok, agent, state}
+        # Reload session from SessionManager to get latest state
+        session = Nex.Agent.SessionManager.get_or_create(key)
+        updated_agent = %{agent | session: session}
+        {:ok, updated_agent, put_in(state.agents[key], updated_agent)}
 
       :error ->
         opts = agent_start_opts(state.config, key)
-        [_channel, _chat_id] = String.split(key, ":", parts: 2)
 
         session = Nex.Agent.SessionManager.get_or_create(key)
-        Logger.info("InboundWorker using session=#{session.key} for key=#{key}")
+        Logger.info("InboundWorker creating new agent session=#{session.key} for key=#{key}")
 
         provider = Keyword.get(opts, :provider, :openai)
         model = Keyword.get(opts, :model, "gpt-4o")
@@ -249,7 +251,6 @@ defmodule Nex.Agent.InboundWorker do
           max_iterations: max_iterations
         }
 
-        Nex.Agent.SessionManager.save(session)
         {:ok, agent, put_in(state.agents[key], agent)}
     end
   end
