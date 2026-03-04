@@ -426,7 +426,7 @@ defmodule Nex.Agent.Channel.Feishu do
   defp send_ws_ack(_, _), do: :ok
 
   defp handle_ws_event_payload(payload, state) do
-    Logger.debug("[Feishu] WS event payload keys=#{inspect(Map.keys(payload))}")
+    Logger.info("[Feishu] WS event payload=#{inspect(payload, limit: 500, printable_limit: 500)}")
 
     case normalize_event(payload) do
       {:ok, inbound} ->
@@ -493,6 +493,7 @@ defmodule Nex.Agent.Channel.Feishu do
 
       if allowed?(Map.get(inbound, :sender_id), state.allow_from) do
         add_reaction(message_id, state)
+        Logger.info("[Feishu] Publishing inbound to bus content=#{inspect(Map.get(inbound, :content))}")
         Bus.publish(:inbound, inbound)
       else
         Logger.warning(
@@ -514,8 +515,13 @@ defmodule Nex.Agent.Channel.Feishu do
     message = event && (Map.get(event, "message") || Map.get(event, :message))
     sender = event && (Map.get(event, "sender") || Map.get(event, :sender))
 
+    Logger.debug(
+      "[Feishu] normalize_event keys=#{inspect(Map.keys(payload))} event_nil=#{is_nil(event)} message_nil=#{is_nil(message)} sender_nil=#{is_nil(sender)}"
+    )
+
     cond do
       not is_map(event) or not is_map(message) or not is_map(sender) ->
+        Logger.debug("[Feishu] normalize_event -> :ignore (event/message/sender missing) event=#{inspect(event)}")
         :ignore
 
       true ->
@@ -539,17 +545,25 @@ defmodule Nex.Agent.Channel.Feishu do
 
     {content, _media_paths} = extract_content(msg_type, content_json, message_id)
 
+    Logger.debug(
+      "[Feishu] normalize_message msg_type=#{inspect(msg_type)} sender_type=#{inspect(sender_type)} sender_id=#{inspect(sender_id)} chat_id=#{inspect(chat_id)} content=#{inspect(content)}"
+    )
+
     cond do
       sender_type == "bot" ->
+        Logger.debug("[Feishu] ignored: sender_type=bot")
         :ignore
 
       is_nil(sender_id) or sender_id == "" ->
+        Logger.debug("[Feishu] ignored: sender_id nil/empty, sender=#{inspect(sender)}")
         :ignore
 
       is_nil(chat_id) or to_string(chat_id) == "" ->
+        Logger.debug("[Feishu] ignored: chat_id nil/empty")
         :ignore
 
-      is_nil(content) ->
+      is_nil(content) or content == "" ->
+        Logger.debug("[Feishu] ignored: content nil/empty, msg_type=#{inspect(msg_type)} content_json=#{inspect(content_json)}")
         :ignore
 
       true ->

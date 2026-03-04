@@ -33,7 +33,9 @@ defmodule Nex.Agent.LLM.Anthropic do
           {"x-api-key", api_key},
           {"anthropic-version", "2023-06-01"},
           {"content-type", "application/json"}
-        ]
+        ],
+        receive_timeout: 600_000,
+        connect_options: [timeout: 30_000]
       )
 
     case result do

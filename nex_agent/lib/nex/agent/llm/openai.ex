@@ -31,7 +31,9 @@ defmodule Nex.Agent.LLM.OpenAI do
            headers: [
              {"authorization", "Bearer #{api_key}"},
              {"content-type", "application/json"}
-           ]
+           ],
+           receive_timeout: 600_000,
+           connect_options: [timeout: 30_000]
          ) do
       {:ok, %{status: 200, body: response}} ->
         choice = hd(response["choices"])
@@ -40,6 +42,7 @@ defmodule Nex.Agent.LLM.OpenAI do
         {:ok,
          %{
            content: message["content"],
+           reasoning_content: message["reasoning_content"],
            tool_calls: message["tool_calls"] || [],
            model: response["model"],
            usage: response["usage"]

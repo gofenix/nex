@@ -33,7 +33,9 @@ defmodule Nex.Agent.LLM.OpenRouter do
              {"content-type", "application/json"},
              {"http-referer", "https://nex.dev"},
              {"x-title", "Nex Agent"}
-           ]
+           ],
+           receive_timeout: 600_000,
+           connect_options: [timeout: 30_000]
          ) do
       {:ok, %{status: 200, body: response}} ->
         choice = hd(response["choices"])

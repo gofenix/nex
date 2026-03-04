@@ -172,40 +172,57 @@ defmodule Nex.Agent.ContextBuilder do
   defp clean_history_entry(%{"role" => role, "content" => content} = m) do
     entry = %{"role" => role, "content" => content || ""}
 
-    if tool_calls = Map.get(m, "tool_calls") do
-      Map.put(entry, "tool_calls", tool_calls)
-    else
-      entry
-    end
-    |> then(fn entry ->
+    entry =
+      if tool_calls = Map.get(m, "tool_calls") do
+        Map.put(entry, "tool_calls", tool_calls)
+      else
+        entry
+      end
+
+    entry =
       if tool_call_id = Map.get(m, "tool_call_id") do
         Map.put(entry, "tool_call_id", tool_call_id)
       else
         entry
       end
-    end)
+
+    entry =
+      if rc = Map.get(m, "reasoning_content") do
+        Map.put(entry, "reasoning_content", rc)
+      else
+        entry
+      end
+
+    entry
   end
 
   defp clean_history_entry(m) when is_map(m) do
     %{"role" => Map.get(m, "role", "user"), "content" => Map.get(m, "content", "")}
   end
 
-  defp build_user_content(text, nil), do: text
+  defp build_user_content(text, nil), do: %{"role" => "user", "content" => text}
 
   defp build_user_content(text, media) when is_list(media) and media != [] do
-    text
+    %{"role" => "user", "content" => text}
   end
 
   @doc """
   Add assistant message to messages list.
   """
-  @spec add_assistant_message([message()], String.t() | nil, [map()] | nil) :: [message()]
-  def add_assistant_message(messages, content, tool_calls \\ nil) do
+  @spec add_assistant_message([message()], String.t() | nil, [map()] | nil, String.t() | nil) :: [message()]
+  def add_assistant_message(messages, content, tool_calls \\ nil, reasoning_content \\ nil) do
     msg = %{"role" => "assistant", "content" => content || ""}
 
     msg =
       if tool_calls && tool_calls != [] do
         Map.put(msg, "tool_calls", tool_calls)
+      else
+        msg
+      end
+
+    msg =
+      if reasoning_content do
+        Map.put(msg, "reasoning_content", reasoning_content)
       else
         msg
       end

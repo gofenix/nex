@@ -46,13 +46,18 @@ defmodule Nex.Agent.Session do
   """
   @spec add_message(t(), String.t(), String.t(), keyword()) :: t()
   def add_message(%__MODULE__{} = session, role, content, opts \\ []) do
+    extra =
+      opts
+      |> Enum.reject(fn {_k, v} -> is_nil(v) end)
+      |> Enum.into(%{}, fn {k, v} -> {to_string(k), v} end)
+
     msg =
       %{
         "role" => role,
         "content" => content,
         "timestamp" => DateTime.utc_now() |> DateTime.to_iso8601()
       }
-      |> Map.merge(Map.new(opts))
+      |> Map.merge(extra)
 
     %{session | messages: session.messages ++ [msg], updated_at: DateTime.utc_now()}
   end
@@ -77,11 +82,35 @@ defmodule Nex.Agent.Session do
         "content" => Map.get(m, "content", "") || ""
       }
 
-      if tool_calls = Map.get(m, "tool_calls") do
-        Map.put(entry, "tool_calls", tool_calls)
-      else
-        entry
-      end
+      entry =
+        if tool_calls = Map.get(m, "tool_calls") do
+          Map.put(entry, "tool_calls", tool_calls)
+        else
+          entry
+        end
+
+      entry =
+        if tool_call_id = Map.get(m, "tool_call_id") do
+          Map.put(entry, "tool_call_id", tool_call_id)
+        else
+          entry
+        end
+
+      entry =
+        if name = Map.get(m, "name") do
+          Map.put(entry, "name", name)
+        else
+          entry
+        end
+
+      entry =
+        if rc = Map.get(m, "reasoning_content") do
+          Map.put(entry, "reasoning_content", rc)
+        else
+          entry
+        end
+
+      entry
     end)
   end
 

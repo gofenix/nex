@@ -12,6 +12,7 @@ defmodule Nex.Agent.Runner do
   @default_max_iterations 10
   @memory_window 50
   @max_tool_result_length 2000
+  @tool_hint_preview_length 220
 
   @doc """
   Run agent loop with session and prompt.
@@ -86,39 +87,44 @@ defmodule Nex.Agent.Runner do
       case call_llm(messages, opts) do
         {:ok, response} ->
           content = response.content
+          reasoning_content = Map.get(response, :reasoning_content) || Map.get(response, "reasoning_content")
           tool_calls = Map.get(response, :tool_calls) || Map.get(response, "tool_calls")
 
           if tool_calls && tool_calls != [] do
             Logger.info("[Runner] LLM requests #{length(tool_calls)} tool call(s)")
+            Logger.debug("[Runner] raw tool_calls=#{inspect(tool_calls, limit: 20)}")
 
             tool_call_dicts =
               Enum.map(tool_calls, fn tc ->
+                func = Map.get(tc, :function) || Map.get(tc, "function") || %{}
+                name = Map.get(tc, :name) || Map.get(tc, "name") || Map.get(func, "name") || Map.get(func, :name)
+                arguments = Map.get(tc, :arguments) || Map.get(tc, "arguments") || Map.get(func, "arguments") || Map.get(func, :arguments) || %{}
+
                 %{
                   "id" => Map.get(tc, :id) || Map.get(tc, "id"),
                   "type" => "function",
                   "function" => %{
-                    "name" => Map.get(tc, :name) || Map.get(tc, "name"),
-                    "arguments" =>
-                      Jason.encode!(Map.get(tc, :arguments) || Map.get(tc, "arguments") || %{})
+                    "name" => name,
+                    "arguments" => if(is_binary(arguments), do: arguments, else: Jason.encode!(arguments))
                   }
                 }
               end)
 
             maybe_send_progress(on_progress, content, tool_call_dicts)
 
-            messages = ContextBuilder.add_assistant_message(messages, content, tool_call_dicts)
+            messages = ContextBuilder.add_assistant_message(messages, content, tool_call_dicts, reasoning_content)
 
             session =
-              Session.add_message(session, "assistant", content, tool_calls: tool_call_dicts)
+              Session.add_message(session, "assistant", content, tool_calls: tool_call_dicts, reasoning_content: reasoning_content)
 
-            {new_messages, results} = execute_tools(session, messages, tool_calls, opts)
+            {new_messages, results, session} = execute_tools(session, messages, tool_calls, opts)
 
             maybe_publish_tool_results(results, opts)
 
             run_loop(session, new_messages, iteration + 1, max_iterations, opts)
           else
             Logger.info("[Runner] LLM finished: #{String.slice(content || "", 0, 100)}")
-            session = Session.add_message(session, "assistant", content || "")
+            session = Session.add_message(session, "assistant", content || "", reasoning_content: reasoning_content)
             {:ok, content || "", session}
           end
 
@@ -153,11 +159,38 @@ defmodule Nex.Agent.Runner do
       args = get_in(tc, ["function", "arguments"]) || ""
 
       args_preview =
-        if String.length(args) > 60, do: String.slice(args, 0, 57) <> "...", else: args
+        args
+        |> normalize_tool_hint_args(name)
+        |> truncate_tool_hint(@tool_hint_preview_length)
 
       "#{name}(#{args_preview})"
     end)
   end
+
+  defp normalize_tool_hint_args(args, tool_name) when is_binary(args) do
+    case Jason.decode(args) do
+      {:ok, decoded} ->
+        normalize_tool_hint_args(decoded, tool_name)
+
+      _ ->
+        args
+    end
+  end
+
+  defp normalize_tool_hint_args(%{"command" => command}, "bash") when is_binary(command), do: command
+  defp normalize_tool_hint_args(%{command: command}, "bash") when is_binary(command), do: command
+
+  defp normalize_tool_hint_args(args, _tool_name) when is_map(args) do
+    inspect(args, limit: :infinity, printable_limit: 500)
+  end
+
+  defp normalize_tool_hint_args(args, _tool_name), do: to_string(args)
+
+  defp truncate_tool_hint(text, max_len) when is_binary(text) and byte_size(text) > max_len do
+    String.slice(text, 0, max_len - 3) <> "..."
+  end
+
+  defp truncate_tool_hint(text, _max_len), do: text
 
   defp strip_think_tags(nil), do: nil
 
@@ -354,9 +387,10 @@ defmodule Nex.Agent.Runner do
   defp execute_tools(session, messages, tool_calls, opts) do
     results =
       Enum.map(tool_calls, fn tc ->
-        tool_name = Map.get(tc, :name) || Map.get(tc, "name")
+        func = Map.get(tc, :function) || Map.get(tc, "function") || %{}
+        tool_name = Map.get(tc, :name) || Map.get(tc, "name") || Map.get(func, "name") || Map.get(func, :name)
         tool_call_id = Map.get(tc, :id) || Map.get(tc, "id")
-        args = Map.get(tc, :arguments) || Map.get(tc, "arguments") || %{}
+        args = Map.get(tc, :arguments) || Map.get(tc, "arguments") || Map.get(func, "arguments") || Map.get(func, :arguments) || %{}
 
         args =
           if is_binary(args) do
@@ -376,12 +410,14 @@ defmodule Nex.Agent.Runner do
         {tool_call_id, tool_name, truncated}
       end)
 
-    new_messages =
-      Enum.reduce(results, messages, fn {tool_call_id, tool_name, result}, acc ->
-        ContextBuilder.add_tool_result(acc, tool_call_id, tool_name, result)
+    {new_messages, session} =
+      Enum.reduce(results, {messages, session}, fn {tool_call_id, tool_name, result}, {msgs, sess} ->
+        msgs = ContextBuilder.add_tool_result(msgs, tool_call_id, tool_name, result)
+        sess = Session.add_message(sess, "tool", result, tool_call_id: tool_call_id, name: tool_name)
+        {msgs, sess}
       end)
 
-    {new_messages, results}
+    {new_messages, results, session}
   end
 
   defp execute_tool("read", args, _opts) do
@@ -546,41 +582,50 @@ defmodule Nex.Agent.Runner do
     base_url = Keyword.get(opts, :base_url)
     tools = Keyword.get(opts, :tools, [])
 
-    case provider do
-      :anthropic ->
-        case Nex.Agent.LLM.Anthropic.chat(messages,
-               model: model,
-               api_key: api_key,
-               tools: tools
-             ) do
-          {:ok, response} ->
-            tool_calls = Map.get(response, :tool_calls) || Map.get(response, "tool_calls")
+    llm_chat =
+      case provider do
+        :anthropic -> &Nex.Agent.LLM.Anthropic.chat/2
+        :openai -> &Nex.Agent.LLM.OpenAI.chat/2
+        :openrouter -> &Nex.Agent.LLM.OpenRouter.chat/2
+        :ollama -> &Nex.Agent.LLM.Ollama.chat/2
+        _ -> nil
+      end
 
-            if tool_calls && length(tool_calls) > 0 do
-              tc = List.first(tool_calls)
-              args = Map.get(tc, :arguments) || Map.get(tc, "arguments") || %{}
+    if is_nil(llm_chat) do
+      {:error, "Unsupported provider for consolidation: #{provider}"}
+    else
+      case llm_chat.(messages,
+             model: model,
+             api_key: api_key,
+             base_url: base_url,
+             tools: tools
+           ) do
+        {:ok, response} ->
+          tool_calls = Map.get(response, :tool_calls) || Map.get(response, "tool_calls")
 
-              args =
-                if is_binary(args) do
-                  case Jason.decode(args) do
-                    {:ok, map} -> map
-                    _ -> %{}
-                  end
-                else
-                  args
+          if tool_calls && length(tool_calls) > 0 do
+            tc = List.first(tool_calls)
+            func = Map.get(tc, :function) || Map.get(tc, "function") || %{}
+            args = Map.get(tc, :arguments) || Map.get(tc, "arguments") || Map.get(func, "arguments") || Map.get(func, :arguments) || %{}
+
+            args =
+              if is_binary(args) do
+                case Jason.decode(args) do
+                  {:ok, map} -> map
+                  _ -> %{}
                 end
+              else
+                args
+              end
 
-              {:ok, args}
-            else
-              {:error, "No tool call in response"}
-            end
+            {:ok, args}
+          else
+            {:error, "No tool call in response"}
+          end
 
-          error ->
-            error
-        end
-
-      _ ->
-        {:error, "Unsupported provider for consolidation: #{provider}"}
+        error ->
+          error
+      end
     end
   end
 end
