@@ -197,6 +197,8 @@ defmodule Nex.Agent.Gateway do
     if not Nex.Agent.Config.valid?(state.config) do
       {:error, :invalid_config}
     else
+      ensure_system_prompt_started()
+      ensure_session_manager_started()
       ensure_bus_started()
       ensure_cron_started()
       ensure_subagent_started(state.config)
@@ -222,8 +224,32 @@ defmodule Nex.Agent.Gateway do
     stop_subagent()
     stop_cron()
     stop_bus()
+    stop_session_manager()
+    stop_system_prompt()
 
     %{state | status: :stopped, started_at: nil}
+  end
+
+  defp ensure_system_prompt_started do
+    case Process.whereis(Nex.Agent.SystemPrompt) do
+      nil ->
+        {:ok, _} = Nex.Agent.SystemPrompt.start_link()
+        :ok
+
+      _pid ->
+        :ok
+    end
+  end
+
+  defp ensure_session_manager_started do
+    case Process.whereis(Nex.Agent.SessionManager) do
+      nil ->
+        {:ok, _} = Nex.Agent.SessionManager.start_link()
+        :ok
+
+      _pid ->
+        :ok
+    end
   end
 
   defp ensure_bus_started do
@@ -301,6 +327,20 @@ defmodule Nex.Agent.Gateway do
 
   defp stop_bus do
     case Process.whereis(Nex.Agent.Bus) do
+      nil -> :ok
+      pid -> GenServer.stop(pid, :shutdown)
+    end
+  end
+
+  defp stop_session_manager do
+    case Process.whereis(Nex.Agent.SessionManager) do
+      nil -> :ok
+      pid -> GenServer.stop(pid, :shutdown)
+    end
+  end
+
+  defp stop_system_prompt do
+    case Process.whereis(Nex.Agent.SystemPrompt) do
       nil -> :ok
       pid -> GenServer.stop(pid, :shutdown)
     end
