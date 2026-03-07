@@ -133,13 +133,14 @@ defmodule Nex.Agent.Session do
   # Drop orphaned assistant tool_calls and orphaned tool results.
   defp sanitize_tool_pairs(messages) do
     # Process sequentially: track pending tool_call_ids per assistant turn
-    {result, _pending} =
+    {result, pending} =
       Enum.reduce(messages, {[], MapSet.new()}, fn m, {acc, pending} ->
         cond do
           m["role"] == "assistant" && is_list(m["tool_calls"]) && m["tool_calls"] != [] ->
             # New assistant turn with tool_calls.
             # First, strip any still-pending tool_calls from previous assistant
             # (they had no matching results). Then set new pending.
+            acc = strip_pending_tool_calls(acc, pending)
             tc_ids = m["tool_calls"] |> Enum.map(&(&1["id"])) |> MapSet.new()
             {acc ++ [m], tc_ids}
 
@@ -164,7 +165,8 @@ defmodule Nex.Agent.Session do
         end
       end)
 
-    result
+    # Strip any remaining orphaned tool_calls at the end of history
+    strip_pending_tool_calls(result, pending)
   end
 
   # Remove unmatched tool_call entries from the last assistant message

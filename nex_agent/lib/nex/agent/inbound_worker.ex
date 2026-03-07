@@ -78,8 +78,9 @@ defmodule Nex.Agent.InboundWorker do
   def handle_info({:async_result, key, {:ok, result, updated_agent}, payload}, state) do
     state = put_in(state.agents[key], updated_agent)
     state = %{state | active_tasks: Map.delete(state.active_tasks, key)}
+    from_cron = get_in(payload, [:metadata, "_from_cron"]) == true
 
-    unless result == :message_sent do
+    unless result == :message_sent or from_cron do
       publish_outbound(payload, result)
     end
 
@@ -90,7 +91,12 @@ defmodule Nex.Agent.InboundWorker do
   def handle_info({:async_result, key, {:error, reason, updated_agent}, payload}, state) do
     state = put_in(state.agents[key], updated_agent)
     state = %{state | active_tasks: Map.delete(state.active_tasks, key)}
-    publish_outbound(payload, "Error: #{format_reason(reason)}")
+    from_cron = get_in(payload, [:metadata, "_from_cron"]) == true
+
+    unless from_cron do
+      publish_outbound(payload, "Error: #{format_reason(reason)}")
+    end
+
     {:noreply, state}
   end
 
@@ -188,7 +194,8 @@ defmodule Nex.Agent.InboundWorker do
     case ensure_agent(state, key) do
       {:ok, agent, state} ->
         parent = self()
-        on_progress = build_progress_callback(payload)
+        from_cron = get_in(payload, [:metadata, "_from_cron"]) == true
+        on_progress = if from_cron, do: nil, else: build_progress_callback(payload)
 
         {:ok, pid} =
           Task.Supervisor.start_child(Nex.Agent.TaskSupervisor, fn ->

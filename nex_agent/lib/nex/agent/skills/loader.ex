@@ -153,6 +153,7 @@ defmodule Nex.Agent.Skills.Loader do
       disable_model_invocation: full_metadata["disable-model-invocation"] == "true",
       allowed_tools: parse_allowed_tools(full_metadata["allowed-tools"]),
       user_invocable: full_metadata["user-invocable"] != "false",
+      always: full_metadata["always"] == "true",
       context: full_metadata["context"],
       agent: full_metadata["agent"],
       argument_hint: full_metadata["argument-hint"],

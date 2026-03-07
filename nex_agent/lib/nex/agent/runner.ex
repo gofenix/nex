@@ -384,24 +384,29 @@ defmodule Nex.Agent.Runner do
   defp execute_tools(session, messages, tool_calls, opts) do
     ctx = build_tool_ctx(opts)
 
+    # Pre-extract tool metadata before async execution so it survives task crashes
+    indexed_calls =
+      Enum.map(tool_calls, fn tc ->
+        func = Map.get(tc, :function) || Map.get(tc, "function") || %{}
+
+        tool_name =
+          Map.get(tc, :name) || Map.get(tc, "name") || Map.get(func, "name") ||
+            Map.get(func, :name)
+
+        tool_call_id = Map.get(tc, :id) || Map.get(tc, "id") || generate_tool_call_id()
+
+        args =
+          Map.get(tc, :arguments) || Map.get(tc, "arguments") || Map.get(func, "arguments") ||
+            Map.get(func, :arguments) || %{}
+
+        {tool_call_id, tool_name, args}
+      end)
+
     results =
-      tool_calls
+      indexed_calls
       |> Task.async_stream(
-        fn tc ->
-          func = Map.get(tc, :function) || Map.get(tc, "function") || %{}
-
-          tool_name =
-            Map.get(tc, :name) || Map.get(tc, "name") || Map.get(func, "name") ||
-              Map.get(func, :name)
-
-          tool_call_id = Map.get(tc, :id) || Map.get(tc, "id") || generate_tool_call_id()
-
-          args =
-            Map.get(tc, :arguments) || Map.get(tc, "arguments") || Map.get(func, "arguments") ||
-              Map.get(func, :arguments) || %{}
-
+        fn {tool_call_id, tool_name, args} ->
           args = parse_args(args)
-
           Logger.info("[Runner] Executing tool: #{tool_name}(#{inspect(args)})")
 
           result = execute_tool(tool_name, args, ctx)
@@ -413,11 +418,14 @@ defmodule Nex.Agent.Runner do
         timeout: 60_000,
         on_timeout: :kill_task
       )
+      |> Enum.zip(indexed_calls)
       |> Enum.map(fn
-        {:ok, result} -> result
-        {:exit, reason} ->
-          Logger.error("[Runner] Tool task exited: #{inspect(reason)}")
-          {generate_tool_call_id(), "unknown", "Error: tool timed out or crashed (#{inspect(reason)})"}
+        {{:ok, result}, _meta} ->
+          result
+
+        {{:exit, reason}, {tool_call_id, tool_name, _args}} ->
+          Logger.error("[Runner] Tool task exited: #{tool_name} #{inspect(reason)}")
+          {tool_call_id, tool_name, "Error: tool timed out or crashed (#{inspect(reason)})"}
       end)
 
     {new_messages, session} =

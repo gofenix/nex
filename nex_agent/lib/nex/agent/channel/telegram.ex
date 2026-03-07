@@ -9,8 +9,8 @@ defmodule Nex.Agent.Channel.Telegram do
   alias Nex.Agent.{Bus, Config}
 
   @telegram_api "https://api.telegram.org"
-  @default_poll_interval_ms 1_000
-  @default_poll_timeout_seconds 1
+  @default_poll_interval_ms 500
+  @default_poll_timeout_seconds 30
   @default_send_timeout_ms 15_000
 
   defstruct [
@@ -18,7 +18,7 @@ defmodule Nex.Agent.Channel.Telegram do
     :allow_from,
     :reply_to_message,
     :proxy,
-    :req_options,
+    :finch_name,
     :http_get_fun,
     :http_post_fun,
     :offset,
@@ -31,7 +31,7 @@ defmodule Nex.Agent.Channel.Telegram do
           allow_from: [String.t()],
           reply_to_message: boolean(),
           proxy: String.t() | nil,
-          req_options: keyword(),
+          finch_name: atom(),
           http_get_fun: (String.t(), map() -> {:ok, map()} | {:error, term()}),
           http_post_fun: (String.t(), map() -> {:ok, map()} | {:error, term()}),
           offset: integer() | nil,
@@ -61,13 +61,14 @@ defmodule Nex.Agent.Channel.Telegram do
     config = Keyword.get(opts, :config, Config.load())
     telegram = Config.telegram(config)
     proxy = normalize_proxy(Map.get(telegram, "proxy"))
+    finch_name = start_finch_pool(proxy)
 
     state = %__MODULE__{
       token: Map.get(telegram, "token", ""),
       allow_from: Config.telegram_allow_from(config),
       reply_to_message: Config.telegram_reply_to_message?(config),
       proxy: proxy,
-      req_options: req_options(proxy),
+      finch_name: finch_name,
       http_get_fun: Keyword.get(opts, :http_get_fun, &default_http_get/3),
       http_post_fun: Keyword.get(opts, :http_post_fun, &default_http_post/3),
       offset: nil,
@@ -134,12 +135,6 @@ defmodule Nex.Agent.Channel.Telegram do
         state
     end
   end
-
-  defp maybe_finch_opt([]), do: [finch: Req.Finch]
-  defp maybe_finch_opt(_connect_options), do: []
-
-  defp maybe_connect_options_opt([]), do: []
-  defp maybe_connect_options_opt(connect_options), do: [connect_options: connect_options]
 
   defp drop_pending_updates(state) do
     case telegram_get(state, "getUpdates", %{timeout: 0}) do
@@ -282,12 +277,12 @@ defmodule Nex.Agent.Channel.Telegram do
   end
 
   defp telegram_get(state, method, params) do
-    state.http_get_fun.(build_url(state, method), params, state.req_options)
+    state.http_get_fun.(build_url(state, method), params, [finch: state.finch_name])
     |> normalize_req_response()
   end
 
   defp telegram_post(state, method, body) do
-    state.http_post_fun.(build_url(state, method), body, state.req_options)
+    state.http_post_fun.(build_url(state, method), body, [finch: state.finch_name])
     |> normalize_req_response()
   end
 
@@ -296,64 +291,74 @@ defmodule Nex.Agent.Channel.Telegram do
   defp normalize_req_response({:error, reason}), do: {:error, reason}
 
   defp build_url(state, method) do
-    if is_binary(state.proxy) and state.proxy != "" do
-      # proxy is configured for compatibility with config schema;
-      # Req transport-level proxy wiring can be added later if needed.
-      :ok
-    end
-
     "#{@telegram_api}/bot#{state.token}/#{method}"
   end
 
   defp default_http_get(url, params, req_options) do
-    connect_options = Keyword.get(req_options, :connect_options, [])
+    finch_name = Keyword.get(req_options, :finch, Req.Finch)
 
-    options =
-      [
-        params: params,
-        receive_timeout: (@default_poll_timeout_seconds + 2) * 1000,
-        retry: false
-      ] ++
-        maybe_finch_opt(connect_options) ++
-        maybe_connect_options_opt(connect_options)
-
-    Req.get(url, options)
+    Req.get(url,
+      params: params,
+      receive_timeout: (@default_poll_timeout_seconds + 2) * 1000,
+      retry: false,
+      finch: finch_name
+    )
   end
 
   defp default_http_post(url, body, req_options) do
-    connect_options = Keyword.get(req_options, :connect_options, [])
+    finch_name = Keyword.get(req_options, :finch, Req.Finch)
 
-    options =
-      [
-        json: body,
-        receive_timeout: @default_send_timeout_ms + 5_000,
-        retry: false
-      ] ++
-        maybe_finch_opt(connect_options) ++
-        maybe_connect_options_opt(connect_options)
-
-    Req.post(url, options)
+    Req.post(url,
+      json: body,
+      receive_timeout: @default_send_timeout_ms + 5_000,
+      retry: false,
+      finch: finch_name
+    )
   end
 
   defp normalize_proxy(proxy) when is_binary(proxy) and proxy != "", do: proxy
   defp normalize_proxy(_), do: nil
 
-  defp req_options(nil), do: []
+  defp start_finch_pool(nil) do
+    Req.Finch
+  end
 
-  defp req_options(proxy) do
+  defp start_finch_pool(proxy) do
+    case parse_proxy(proxy) do
+      {:ok, proxy_tuple} ->
+        name = :"Nex.Agent.TelegramFinch"
+
+        case Finch.start_link(
+               name: name,
+               pools: %{default: [conn_opts: [proxy: proxy_tuple]]}
+             ) do
+          {:ok, _pid} ->
+            Logger.info("[Telegram] Started Finch pool with proxy #{proxy}")
+            name
+
+          {:error, {:already_started, _pid}} ->
+            name
+
+          {:error, reason} ->
+            Logger.warning("[Telegram] Failed to start proxy Finch pool: #{inspect(reason)}, falling back to direct")
+            Req.Finch
+        end
+
+      :error ->
+        Logger.warning("[Telegram] Invalid proxy #{inspect(proxy)}, falling back to direct")
+        Req.Finch
+    end
+  end
+
+  defp parse_proxy(proxy) do
     case URI.parse(proxy) do
       %{scheme: scheme, host: host, port: port}
       when scheme in ["http", "https"] and is_binary(host) ->
         proxy_port = port || if(scheme == "https", do: 443, else: 80)
-
-        proxy_tuple =
-          {String.to_atom(scheme), host, proxy_port, []}
-
-        [connect_options: [proxy: proxy_tuple]]
+        {:ok, {String.to_atom(scheme), host, proxy_port, []}}
 
       _ ->
-        Logger.warning("Invalid telegram proxy ignored: #{inspect(proxy)}")
-        []
+        :error
     end
   end
 

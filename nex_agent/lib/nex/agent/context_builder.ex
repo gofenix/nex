@@ -36,6 +36,9 @@ defmodule Nex.Agent.ContextBuilder do
     workspace_path = Path.expand(workspace)
     cwd = File.cwd!() |> Path.basename()
 
+    home = System.get_env("HOME", "~")
+    skills_path = Path.join(home, ".nex/agent/skills")
+
     identity = """
     # Nex Agent
 
@@ -48,7 +51,7 @@ defmodule Nex.Agent.ContextBuilder do
     Workspace: #{workspace_path}
     - Memory: #{workspace_path}/memory/MEMORY.md
     - History: #{workspace_path}/memory/HISTORY.md
-    - Skills: #{workspace_path}/skills/
+    - Skills: #{skills_path}/
 
     ## Guidelines
     - State intent before tool calls, but NEVER predict results before receiving them.

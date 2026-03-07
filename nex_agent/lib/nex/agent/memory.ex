@@ -496,6 +496,10 @@ defmodule Nex.Agent.Memory do
           Logger.info("[Memory] Consolidation done, last_consolidated=#{new_last_consolidated}")
           {:ok, updated_session}
 
+        {:ok, result} ->
+          Logger.warning("[Memory] Consolidation returned unexpected result: #{inspect(result)}")
+          {:error, :unexpected_result}
+
         {:error, reason} ->
           {:error, reason}
       end

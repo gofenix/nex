@@ -261,10 +261,15 @@ defmodule Nex.Agent.Cron do
 
   defp execute_job(job) do
     Task.Supervisor.start_child(Nex.Agent.TaskSupervisor, fn ->
+      content =
+        job.message <>
+          "\n\n[CRON] This is a scheduled task. Use the `message` tool to deliver results to the user. " <>
+          "If there is nothing meaningful to report, do NOT call message — just reply with a short text and it will be silently discarded."
+
       payload = %{
         channel: job.channel || "cron",
         chat_id: job.chat_id || "",
-        content: job.message,
+        content: content,
         metadata: %{"_from_cron" => true, "job_id" => job.id, "job_name" => job.name}
       }
 
@@ -571,7 +576,8 @@ defmodule Nex.Agent.Cron do
     Task.Supervisor.start_child(Nex.Agent.TaskSupervisor, fn ->
       dir = Path.dirname(@jobs_file)
       File.mkdir_p!(dir)
-      tmp_path = @jobs_file <> ".tmp"
+      suffix = :crypto.strong_rand_bytes(4) |> Base.encode16(case: :lower)
+      tmp_path = @jobs_file <> ".tmp.#{suffix}"
       File.write!(tmp_path, encoded)
       File.rename!(tmp_path, @jobs_file)
     end)

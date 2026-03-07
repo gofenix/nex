@@ -6,16 +6,21 @@ defmodule Nex.Agent.Tool.SkillList do
   @behaviour Nex.Agent.Tool.Behaviour
 
   @api_url "https://skills.sh/api/search"
-  @default_list_query ".."  # Search query that returns broad results for listing
+  @default_list_query ".."
+  @skills_dir Path.join(System.get_env("HOME", "~"), ".nex/agent/skills")
 
   def name, do: "skill_list"
-  def description, do: "List available skills from skills.sh registry or locally installed skills"
+
+  def description,
+    do:
+      "List available skills or read a specific skill's full content. Use scope=local to list installed skills, detail=<name> to read full content of a skill."
+
   def category, do: :evolution
 
   def definition do
     %{
       name: "skill_list",
-      description: "List available skills from skills.sh registry or locally installed skills",
+      description: description(),
       parameters: %{
         type: "object",
         properties: %{
@@ -25,10 +30,26 @@ defmodule Nex.Agent.Tool.SkillList do
             description:
               "registry: from skills.sh leaderboard, local: installed skills, all: both",
             default: "all"
+          },
+          detail: %{
+            type: "string",
+            description: "Skill name to read full content (e.g. 'busydog'). Returns the complete SKILL.md file."
           }
         }
       }
     }
+  end
+
+  def execute(%{"detail" => skill_name}, _ctx) when is_binary(skill_name) and skill_name != "" do
+    path = Path.join([@skills_dir, skill_name, "SKILL.md"])
+
+    case File.read(path) do
+      {:ok, content} ->
+        {:ok, %{name: skill_name, content: content, message: "Skill '#{skill_name}' content"}}
+
+      {:error, :enoent} ->
+        {:error, "Skill '#{skill_name}' not found at #{path}"}
+    end
   end
 
   def execute(%{"scope" => "local"}, _ctx) do
@@ -50,7 +71,6 @@ defmodule Nex.Agent.Tool.SkillList do
   end
 
   def execute(%{"scope" => "registry"}, _ctx) do
-    # Use search API with a broad query to get popular skills
     url = "#{@api_url}?q=#{@default_list_query}"
 
     case System.cmd("curl", ["-s", "-L", url], stderr_to_stdout: true) do
@@ -75,7 +95,6 @@ defmodule Nex.Agent.Tool.SkillList do
   end
 
   def execute(_args, ctx) do
-    # Default to "all"
     execute(%{"scope" => "all"}, ctx)
   end
 

@@ -76,8 +76,7 @@ defmodule Nex.Agent.Onboarding do
       skills_dir(),
       Path.join(b, "sessions"),
       Path.join(b, "evolution"),
-      Path.join(workspace_dir(), "memory"),
-      Path.join(workspace_dir(), "skills")
+      Path.join(workspace_dir(), "memory")
     ]
 
     Enum.each(dirs, &File.mkdir_p!/1)
