@@ -1,223 +1,186 @@
 # Nex
-
-**The simplest way to build HTMX apps in Elixir**
-
-Nex is a minimalist web framework for **indie hackers, startups, and teams** who want to ship real products fast without enterprise complexity. Build modern web applications with server-side rendering, zero JavaScript complexity, and instant hot reloading.
-
-## Philosophy
-
-Nex is designed for building **real applications** that work in production:
-- 🚀 **Rapid development** - Ship features fast, not prototypes
-- 🎯 **Indie hackers & startups** - Build profitable products without enterprise complexity
-- 📊 **Internal tools & dashboards** - Admin panels, data dashboards, operational tools
-- 🔄 **Real-time applications** - Live dashboards, chat apps, streaming data with SSE
-- 🌐 **Server-side rendering done right** - Modern web apps without JavaScript overhead
-
-Nex is **not**:
-- ❌ A Phoenix competitor (use Phoenix for enterprise apps)
-- ❌ A full-stack framework (no built-in ORM, auth, or asset pipeline)
-- ❌ For complex SPAs (use LiveView or React for that)
-
-## Quick Start
-
-```bash
-# Install the project generator
-mix archive.install hex nex_new
-
-# Create a new project
-mix nex.new my_app
-cd my_app
-
-# Start development server
-mix nex.dev
-```
-
-Visit `http://localhost:4000` to see your app running.
-
-## Core Features
-
-### 🤖 AI-Native & Vibe Coding
-- **Locality of Behavior (LoB)** - UI and logic in one file, perfect for AI agents.
-- **Unified Interface** - Single `use Nex` for Pages, APIs, and Components.
-- **Zero-Config Routing** - Paths are routes, reducing AI hallucinations.
-
-### 📁 Routing & Pages
-- **File-based Routing** - Drop a file in `src/pages/`, get a route automatically.
-- **🔀 Dynamic Routes** - Support for `[id]`, `[slug]`, `[...path]` patterns.
-- **🎯 Convention over Configuration** - No route configuration needed.
-
-### ⚡ Frontend Integration
-- **HTMX-first** - Built-in HTMX integration, SSR without JavaScript complexity.
-- **🛡️ Built-in Security** - Automatic CSRF validation on all state-changing requests.
-- **📝 HTML Templates** - Type-safe HEEx templates.
-
-### 🔄 Real-time & APIs
-- **🌊 SSE Streaming** - Native `Nex.stream/1` API for AI responses and live updates.
-- **📡 JSON APIs** - Clean API routes with Next.js-aligned `req` object.
-- **Integrated State** - Page-scoped state management with `Nex.Store`.
-
-## Project Structure
-
-```
-my_app/
-├── src/
-│   ├── pages/           # Page modules (auto-routed)
-│   │   ├── index.ex     # GET /
-│   │   └── [id].ex      # GET /:id
-│   ├── api/             # API endpoints (JSON)
-│   │   └── todos/
-│   │       └── index.ex # GET/POST /api/todos
-│   ├── components/      # Reusable components
-│   └── layouts.ex       # Layout template
-├── mix.exs
-└── Dockerfile           # Production deployment
-```
-
-## Usage Examples
-
-### Simple Counter with State
-
-```elixir
-defmodule MyApp.Pages.Index do
-  use Nex
-
-  def mount(_params) do
-    %{count: Nex.Store.get(:count, 0)}
-  end
-
-  def render(assigns) do
-    ~H"""
-    <div class="text-center py-12">
-      <h1 class="text-4xl font-bold mb-4">Counter</h1>
-      <div id="counter-display" class="text-6xl font-bold mb-8">{@count}</div>
-      <div class="space-x-2">
-        <button hx-post="/decrement" hx-target="#counter-display" hx-swap="outerHTML">-</button>
-        <button hx-post="/reset" hx-target="#counter-display" hx-swap="outerHTML">Reset</button>
-        <button hx-post="/increment" hx-target="#counter-display" hx-swap="outerHTML">+</button>
-      </div>
-    </div>
-    """
-  end
-
-  def increment(_params) do
-    count = Nex.Store.update(:count, 0, &(&1 + 1))
-    ~H"<div id="counter-display" class="text-6xl font-bold mb-8">{count}</div>"
-  end
-
-  def decrement(_params) do
-    count = Nex.Store.update(:count, 0, &(&1 - 1))
-    ~H"<div id="counter-display" class="text-6xl font-bold mb-8">{count}</div>"
-  end
-
-  def reset(_params) do
-    Nex.Store.put(:count, 0)
-    ~H"<div id="counter-display" class="text-6xl font-bold mb-8">0</div>"
-  end
-end
-```
-
-### Page with HTMX Handler
-
-```elixir
-defmodule MyApp.Pages.Todos do
-  use Nex
-
-  def mount(_params) do
-    %{todos: fetch_todos()}
-  end
-
-  def render(assigns) do
-    ~H"""
-    <h1>My Todos</h1>
-    <form hx-post="/add_todo" hx-target="#todos" hx-swap="beforeend">
-      <input type="text" name="title" required />
-      <button>Add</button>
-    </form>
-    <ul id="todos">
-      <li :for={todo <- @todos}>{todo.title}</li>
-    </ul>
-    """
-  end
-
-  # HTMX POST handler
-  def add_todo(%{"title" => title}) do
-    todo = create_todo(title)
-    ~H"<li>{@todo.title}</li>"
-  end
-end
-```
-
-### Server-Sent Events (Real-time Streaming)
-
-```elixir
-defmodule MyApp.Api.Chat.Stream do
-  use Nex
-
-  def get(%{query: %{"message" => msg}}) do
-    Nex.stream(fn send ->
-      # Stream response character by character
-      msg
-      |> String.graphemes()
-      |> Enum.each(fn char ->
-        send.(%{event: "message", data: char})
-        Process.sleep(50)
-      end)
-    end)
-  end
-end
-```
-
-### JSON API Endpoint (Next.js Style)
-
-```elixir
-defmodule MyApp.Api.Todos.Index do
-  use Nex
-
-  def get(_req) do
-    Nex.json(%{data: fetch_todos()})
-  end
-
-  def post(req) do
-    title = req.body["title"]
-    todo = create_todo(title)
-    Nex.json(%{data: todo}, status: 201)
-  end
-end
-```
-
-## Deployment
-
-Every Nex project includes a production-ready Dockerfile:
-
-```bash
-docker build -t my_app .
-docker run -p 4000:4000 my_app
-```
-
-Deploy to any platform that supports Elixir:
-- **Railway** - Easiest option, auto-deploy from Git
-- **Fly.io** - Global deployment with edge computing
-- **Render** - Simple and straightforward
-- **Traditional VPS** - Full control with Elixir installed
-
-## Examples
-
-Check out the `examples/` directory for complete working applications:
-- **chatbot** - AI chat with streaming responses using SSE
-- **chatbot_sse** - Real-time streaming with HTMX SSE extension
-- **todos** - Classic todo app with HTMX interactions
-- **guestbook** - Simple guestbook with persistence
-- **dynamic_routes** - Comprehensive showcase of all routing patterns
-
-## Documentation
-
-- [**Official Documentation**](https://nex-framework.up.railway.app/docs)
-- [GitHub Repository](https://github.com/gofenix/nex)
-- [Hex Package: nex_core](https://hex.pm/packages/nex_core)
-- [Hex Package: nex_new](https://hex.pm/packages/nex_new)
-- [HexDocs: nex_core](https://hexdocs.pm/nex_core)
-- [HexDocs: nex_new](https://hexdocs.pm/nex_new)
-
-## License
-
-MIT
+ 
+ **The simplest way to build HTMX apps in Elixir**
+ 
+ Nex is the main product line in this repository: a minimalist, HTMX-first toolkit for building server-rendered Elixir apps fast.
+ 
+ This monorepo contains two product lines:
+ 
+ - **Nex** — the main product, including the web framework, installer, environment helper, database layer, docs site, examples, and showcases
+ - **nex_agent** — a separate agent product line with its own README, positioning, and launch narrative
+ 
+ ## Why Nex
+ 
+ Nex is built for developers who want to ship real products without dragging in SPA complexity or framework ceremony.
+ 
+ - **HTMX-first** — server-rendered UX without a large frontend stack
+ - **Minimal API surface** — one `use Nex` entry point for pages, APIs, and components
+ - **File-based routing** — routes come from the filesystem, not route config
+ - **Fast iteration** — hot reloading, simple project structure, and low boilerplate
+ - **AI-friendly locality** — UI and behavior live close together, which makes the codebase easier for both humans and agents to modify
+ 
+ ## What Nex Is and Is Not
+ 
+ Nex is a pragmatic framework for:
+ 
+ - indie products
+ - internal tools and dashboards
+ - HTMX-first web apps
+ - JSON APIs and streaming endpoints
+ - teams that want SSR with less complexity
+ 
+ Nex is not trying to be:
+ 
+ - a Phoenix replacement for every use case
+ - a batteries-included enterprise platform
+ - the best fit for complex SPAs
+ 
+ ## Quick Start
+ 
+ ```bash
+ mix archive.install hex nex_new
+ mix nex.new my_app
+ cd my_app
+ mix nex.dev
+ ```
+ 
+ Then open `http://localhost:4000`.
+ 
+ ## Example Project Structure
+ 
+ ```
+ my_app/
+ ├── src/
+ │   ├── pages/
+ │   │   ├── index.ex
+ │   │   └── [id].ex
+ │   ├── api/
+ │   │   └── todos/
+ │   │       └── index.ex
+ │   ├── components/
+ │   └── layouts.ex
+ ├── mix.exs
+ └── Dockerfile
+ ```
+ 
+ ## Core Capabilities
+ 
+ ### Pages and Routing
+ 
+ - File-based routing from `src/pages/`
+ - Dynamic segments like `[id]`, `[slug]`, and `[...path]`
+ - Convention-over-configuration module structure
+ 
+ ### HTMX and SSR
+ 
+ - HTML-first rendering with HEEx templates
+ - HTMX integration out of the box
+ - Automatic CSRF handling for state-changing requests
+ - Partial updates without SPA plumbing
+ 
+ ### APIs and Realtime
+ 
+ - JSON APIs with a simple request object
+ - Native SSE streaming with `Nex.stream/1`
+ - WebSocket support for user-defined handlers
+ - Shared request-time helpers for cookies, session, and flash
+ 
+ ### Developer Experience
+ 
+ - Unified `use Nex` entry point
+ - Low-boilerplate layouts and page modules
+ - Built-in static file serving
+ - Examples and showcases in the same repository
+ 
+ ## Monorepo Map
+ 
+ ### Main Product Line: Nex
+ 
+ - `framework/` — the core Nex framework published as `nex_core`
+ - `installer/` — `mix nex.new` project generator
+ - `nex_env/` — environment variable helper package
+ - `nex_base/` — schema-less database layer and query builder
+ - `examples/` — focused examples for learning specific capabilities
+ - `showcase/` — larger apps that demonstrate real-world usage
+ - `website/` — the official site built with Nex itself
+ 
+ ### Separate Product Line: nex_agent
+ 
+ - `nex_agent/` — agent runtime and tooling product line with separate positioning
+ 
+ If you are here for the agent product, start with [`nex_agent/README.md`](nex_agent/README.md).
+ 
+ ## Start Here
+ 
+ If you want the fastest path into Nex, use this sequence:
+ 
+ 1. Read this README
+ 2. Create a fresh app with `mix nex.new`
+ 3. Open one focused example
+ 4. Open one showcase app once the basics click
+ 
+ ## Recommended Examples
+ 
+ These are the best starting points for understanding the main Nex product line:
+ 
+ - [`examples/counter`](examples/counter) — minimal state + HTMX loop
+ - [`examples/todos`](examples/todos) — CRUD-style page actions
+ - [`examples/dynamic_routes`](examples/dynamic_routes) — routing conventions and path patterns
+ - [`examples/upload`](examples/upload) — file upload handling
+ - [`examples/todos_api`](examples/todos_api) — JSON API structure
+ 
+ ## Recommended Showcases
+ 
+ For more realistic product-shaped examples:
+ 
+ - [`showcase/bestof_ex`](showcase/bestof_ex) — a larger Nex application structure
+ - [`showcase/agent_console`](showcase/agent_console) — a UI-heavy showcase built on Nex
+ 
+ ## A Tiny Example
+ 
+ ```elixir
+ defmodule MyApp.Pages.Index do
+   use Nex
+ 
+   def mount(_params) do
+     %{count: Nex.Store.get(:count, 0)}
+   end
+ 
+   def render(assigns) do
+     ~H"""
+     <div>
+       <h1>Counter</h1>
+       <div id="counter-display">{@count}</div>
+       <button hx-post="/increment" hx-target="#counter-display" hx-swap="outerHTML">+</button>
+     </div>
+     """
+   end
+ 
+   def increment(_params) do
+     count = Nex.Store.update(:count, 0, &(&1 + 1))
+     ~H"<div id="counter-display">{count}</div>"
+   end
+ end
+ ```
+ 
+ ## Documentation and Packages
+ 
+ - [Official Documentation](https://nex-framework.up.railway.app/docs)
+ - [Hex Package: nex_core](https://hex.pm/packages/nex_core)
+ - [Hex Package: nex_new](https://hex.pm/packages/nex_new)
+ - [HexDocs: nex_core](https://hexdocs.pm/nex_core)
+ - [HexDocs: nex_new](https://hexdocs.pm/nex_new)
+ 
+ ## Open Source
+ 
+ If you want to contribute or evaluate the repository for adoption, start here:
+ 
+ - [Contributing Guide](CONTRIBUTING.md)
+ - [Security Policy](SECURITY.md)
+ - [Code of Conduct](CODE_OF_CONDUCT.md)
+ - [Versioning](VERSIONING.md)
+ - [Changelog](CHANGELOG.md)
+ 
+ ## License
+ 
+ MIT
