@@ -4,14 +4,20 @@ defmodule Nex.Agent.InboundWorkerTest do
   alias Nex.Agent.{Bus, Config, InboundWorker}
 
   setup do
-    stop_if_running(Nex.Agent.InboundWorker)
-    stop_if_running(Nex.Agent.Bus)
+    # Ensure required services are running (started by Application supervisor,
+    # but may have been stopped by prior test cascading)
+    ensure_started(Nex.Agent.Bus, fn -> Bus.start_link() end)
+    ensure_started(Nex.Agent.SessionManager, fn -> Nex.Agent.SessionManager.start_link() end)
 
-    {:ok, _} = Bus.start_link()
+    ensure_started(Nex.Agent.TaskSupervisor, fn ->
+      Task.Supervisor.start_link(name: Nex.Agent.TaskSupervisor)
+    end)
+
+    # Stop the application-managed InboundWorker so we can start our own with mocks
+    stop_if_running(Nex.Agent.InboundWorker)
 
     on_exit(fn ->
       stop_if_running(Nex.Agent.InboundWorker)
-      stop_if_running(Nex.Agent.Bus)
     end)
 
     :ok
@@ -109,6 +115,12 @@ defmodule Nex.Agent.InboundWorkerTest do
     assert new_msg.content == "New session started."
 
     assert Agent.get(aborted, & &1) == 1
+  end
+
+  defp ensure_started(name, start_fn) do
+    unless Process.whereis(name) do
+      start_fn.()
+    end
   end
 
   defp stop_if_running(name) do

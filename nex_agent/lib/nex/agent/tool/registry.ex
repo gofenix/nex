@@ -152,7 +152,7 @@ defmodule Nex.Agent.Tool.Registry do
         {:reply, {:error, "Unknown tool: #{name}. [Analyze the error and try a different approach.]"}, state}
 
       module ->
-        Task.start(fn ->
+        Task.Supervisor.start_child(Nex.Agent.TaskSupervisor, fn ->
           result =
             try do
               module.execute(args, ctx)

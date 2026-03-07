@@ -16,7 +16,8 @@ defmodule Nex.Agent.InboundWorker do
     :agent_prompt_fun,
     :agent_abort_fun,
     agents: %{},
-    active_tasks: %{}
+    active_tasks: %{},
+    agent_last_active: %{}
   ]
 
   @type agent_start_fun :: (keyword() -> {:ok, term()} | {:error, term()})
@@ -30,7 +31,8 @@ defmodule Nex.Agent.InboundWorker do
           agent_prompt_fun: agent_prompt_fun(),
           agent_abort_fun: agent_abort_fun(),
           agents: %{String.t() => term()},
-          active_tasks: %{String.t() => pid()}
+          active_tasks: %{String.t() => pid()},
+          agent_last_active: %{String.t() => integer()}
         }
 
   @spec start_link(keyword()) :: GenServer.on_start()
@@ -52,10 +54,12 @@ defmodule Nex.Agent.InboundWorker do
       agent_prompt_fun: Keyword.get(opts, :agent_prompt_fun, &Nex.Agent.prompt/3),
       agent_abort_fun: Keyword.get(opts, :agent_abort_fun, &Nex.Agent.abort/1),
       agents: %{},
-      active_tasks: %{}
+      active_tasks: %{},
+      agent_last_active: %{}
     }
 
     Bus.subscribe(:inbound)
+    Process.send_after(self(), :cleanup_stale_agents, 600_000)
     {:ok, state}
   end
 
@@ -122,6 +126,30 @@ defmodule Nex.Agent.InboundWorker do
   end
 
   @impl true
+  def handle_info(:cleanup_stale_agents, state) do
+    now = System.system_time(:second)
+    # 1 hour TTL
+    stale_cutoff = now - 3600
+
+    stale_keys =
+      state.agent_last_active
+      |> Enum.filter(fn {key, last_active} ->
+        last_active < stale_cutoff and not Map.has_key?(state.active_tasks, key)
+      end)
+      |> Enum.map(&elem(&1, 0))
+
+    if stale_keys != [] do
+      Logger.info("[InboundWorker] Cleaning up #{length(stale_keys)} stale agent session(s)")
+    end
+
+    agents = Map.drop(state.agents, stale_keys)
+    agent_last_active = Map.drop(state.agent_last_active, stale_keys)
+
+    Process.send_after(self(), :cleanup_stale_agents, 600_000)
+    {:noreply, %{state | agents: agents, agent_last_active: agent_last_active}}
+  end
+
+  @impl true
   def handle_info(_message, state), do: {:noreply, state}
 
   defp dispatch_inbound(payload, state) do
@@ -162,8 +190,8 @@ defmodule Nex.Agent.InboundWorker do
         parent = self()
         on_progress = build_progress_callback(payload)
 
-        pid =
-          spawn(fn ->
+        {:ok, pid} =
+          Task.Supervisor.start_child(Nex.Agent.TaskSupervisor, fn ->
             try do
               result =
                 state.agent_prompt_fun.(agent, content,
@@ -184,7 +212,17 @@ defmodule Nex.Agent.InboundWorker do
 
         Process.monitor(pid)
         Process.send_after(self(), {:check_timeout, key, pid}, 600_000)
-        %{state | active_tasks: Map.put(state.active_tasks, key, pid)}
+
+        %{
+          state
+          | active_tasks: Map.put(state.active_tasks, key, pid),
+            agent_last_active: Map.put(state.agent_last_active, key, System.system_time(:second))
+        }
+
+      other ->
+        Logger.error("[InboundWorker] Failed to ensure agent for #{key}: #{inspect(other)}")
+        publish_outbound(payload, "Error: failed to initialize agent")
+        state
     end
   end
 
@@ -247,7 +285,7 @@ defmodule Nex.Agent.InboundWorker do
         {:ok, updated_agent, put_in(state.agents[key], updated_agent)}
 
       :error ->
-        opts = agent_start_opts(state.config, key)
+        opts = agent_start_opts(key)
 
         session = Nex.Agent.SessionManager.get_or_create(key)
         Logger.info("InboundWorker creating new agent session=#{session.key} for key=#{key}")
@@ -274,7 +312,8 @@ defmodule Nex.Agent.InboundWorker do
     end
   end
 
-  defp agent_start_opts(config, session_key) do
+  defp agent_start_opts(session_key) do
+    config = Config.load()
     [channel, chat_id] = String.split(session_key, ":", parts: 2)
     provider = String.to_atom(config.provider)
     home = System.get_env("HOME", File.cwd!())

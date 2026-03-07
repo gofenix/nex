@@ -97,12 +97,12 @@ defmodule Nex.Agent.Harness do
 
   @impl true
   def init(opts) do
+    # Self-load config if provider/model/api_key not provided
+    opts = maybe_load_config(opts)
     auto_apply = Keyword.get(opts, :auto_apply, false)
     interval = Keyword.get(opts, :reflection_interval, @default_reflection_interval)
 
-    if Process.whereis(Bus) do
-      Bus.subscribe(:tool_result)
-    end
+    Bus.subscribe(:tool_result)
 
     state = %__MODULE__{
       opts: opts,
@@ -187,10 +187,16 @@ defmodule Nex.Agent.Harness do
     else
       Logger.info("[Harness] Running reflection on #{length(state.results)} results")
 
-      reflection_opts =
-        state.opts
-        |> Keyword.take([:provider, :model, :api_key, :base_url])
-        |> Keyword.put(:auto_apply, state.auto_apply)
+      # Reload config each time to pick up changes
+      config = Nex.Agent.Config.load()
+
+      reflection_opts = [
+        provider: String.to_atom(config.provider),
+        model: config.model,
+        api_key: Nex.Agent.Config.get_current_api_key(config),
+        base_url: Nex.Agent.Config.get_current_base_url(config),
+        auto_apply: state.auto_apply
+      ]
 
       case Reflection.reflect_llm(state.results, reflection_opts) do
         {:ok, result} ->
@@ -204,6 +210,10 @@ defmodule Nex.Agent.Harness do
           }
 
           {:ok, result, new_state}
+
+        {:error, reason} ->
+          Logger.warning("[Harness] Reflection failed: #{inspect(reason)}")
+          {:error, reason, state}
       end
     end
   end
@@ -215,4 +225,23 @@ defmodule Nex.Agent.Harness do
   end
 
   defp schedule_reflection(state, _), do: state
+
+  defp maybe_load_config(opts) do
+    if Keyword.has_key?(opts, :api_key) do
+      opts
+    else
+      config = Nex.Agent.Config.load()
+
+      Keyword.merge(
+        [
+          provider: String.to_atom(config.provider),
+          model: config.model,
+          api_key: Nex.Agent.Config.get_current_api_key(config),
+          base_url: Nex.Agent.Config.get_current_base_url(config),
+          auto_apply: true
+        ],
+        opts
+      )
+    end
+  end
 end

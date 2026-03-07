@@ -94,7 +94,6 @@ defmodule Nex.Agent.Subagent do
 
   @impl true
   def init(state) do
-    Process.flag(:trap_exit, true)
     {:ok, state}
   end
 
@@ -105,10 +104,12 @@ defmodule Nex.Agent.Subagent do
     session_key = opts[:session_key]
     server = self()
 
-    pid =
-      spawn_link(fn ->
+    {:ok, pid} =
+      Task.Supervisor.start_child(Nex.Agent.TaskSupervisor, fn ->
         run_subagent_loop(server, task_id, task_description, label, opts)
       end)
+
+    Process.monitor(pid)
 
     task = %{
       id: task_id,
@@ -182,7 +183,7 @@ defmodule Nex.Agent.Subagent do
   end
 
   @impl true
-  def handle_info({:EXIT, pid, reason}, state) do
+  def handle_info({:DOWN, _ref, :process, pid, reason}, state) do
     case find_task_by_pid(state, pid) do
       nil ->
         {:noreply, state}

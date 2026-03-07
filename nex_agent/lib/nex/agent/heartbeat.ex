@@ -32,6 +32,7 @@ defmodule Nex.Agent.Heartbeat do
     :running,
     last_executions: %{},
     last_maintenance: nil,
+    maintenance_running: false,
     execution_history: []
   ]
 
@@ -42,6 +43,7 @@ defmodule Nex.Agent.Heartbeat do
           running: boolean(),
           last_executions: %{String.t() => integer()},
           last_maintenance: integer() | nil,
+          maintenance_running: boolean(),
           execution_history: list()
         }
 
@@ -137,6 +139,24 @@ defmodule Nex.Agent.Heartbeat do
     {:noreply, state}
   end
 
+  @impl true
+  def handle_info({:maintenance_done, results}, state) do
+    now = System.system_time(:second)
+
+    history =
+      Enum.map(results, fn {task, result} ->
+        {to_string(task), now, result}
+      end)
+
+    {:noreply,
+     %{
+       state
+       | last_maintenance: now,
+         maintenance_running: false,
+         execution_history: (history ++ state.execution_history) |> Enum.take(@max_history)
+     }}
+  end
+
   # ── Scheduling ──
 
   defp schedule_tick(state) do
@@ -168,27 +188,27 @@ defmodule Nex.Agent.Heartbeat do
   # ── Built-in Maintenance ──
 
   defp maybe_run_maintenance(state, now) do
-    if state.last_maintenance && now - state.last_maintenance < @maintenance_cooldown_seconds do
+    if state.maintenance_running do
       state
     else
-      Logger.info("[Heartbeat] Running daily maintenance...")
+      if state.last_maintenance && now - state.last_maintenance < @maintenance_cooldown_seconds do
+        state
+      else
+        Logger.info("[Heartbeat] Running daily maintenance (async)...")
+        heartbeat = self()
 
-      results = [
-        {:session_gc, run_session_gc()},
-        {:log_archive, run_log_archive()},
-        {:evolution_cleanup, run_evolution_cleanup()}
-      ]
+        Task.Supervisor.start_child(Nex.Agent.TaskSupervisor, fn ->
+          results = [
+            {:session_gc, run_session_gc()},
+            {:log_archive, run_log_archive()},
+            {:evolution_cleanup, run_evolution_cleanup()}
+          ]
 
-      history =
-        Enum.map(results, fn {task, result} ->
-          {to_string(task), now, result}
+          send(heartbeat, {:maintenance_done, results})
         end)
 
-      %{
-        state
-        | last_maintenance: now,
-          execution_history: (history ++ state.execution_history) |> Enum.take(@max_history)
-      }
+        %{state | maintenance_running: true}
+      end
     end
   end
 
@@ -484,7 +504,7 @@ defmodule Nex.Agent.Heartbeat do
   defp run_user_task(task, state, now) do
     Logger.info("[Heartbeat] Running task: #{task.name}")
 
-    spawn(fn ->
+    Task.Supervisor.start_child(Nex.Agent.TaskSupervisor, fn ->
       payload = %{
         channel: "heartbeat",
         chat_id: "",

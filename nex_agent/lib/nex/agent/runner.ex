@@ -53,7 +53,7 @@ defmodule Nex.Agent.Runner do
     if unconsolidated >= @memory_window do
       Logger.info("[Runner] Triggering async memory consolidation: #{unconsolidated} messages")
 
-      Task.start(fn ->
+      Task.Supervisor.start_child(Nex.Agent.TaskSupervisor, fn ->
         Memory.consolidate(session, provider, model,
           api_key: api_key,
           base_url: base_url,

@@ -260,7 +260,7 @@ defmodule Nex.Agent.Cron do
   # ── Job Execution ──
 
   defp execute_job(job) do
-    spawn(fn ->
+    Task.Supervisor.start_child(Nex.Agent.TaskSupervisor, fn ->
       payload = %{
         channel: job.channel || "cron",
         chat_id: job.chat_id || "",
@@ -565,10 +565,16 @@ defmodule Nex.Agent.Cron do
   defp deserialize_schedule(other), do: other
 
   defp save_jobs(jobs) do
-    File.mkdir_p!(Path.dirname(@jobs_file))
-
     data = Enum.map(jobs, &serialize_job/1)
-    File.write!(@jobs_file, Jason.encode!(data, pretty: true))
+    encoded = Jason.encode!(data, pretty: true)
+
+    Task.Supervisor.start_child(Nex.Agent.TaskSupervisor, fn ->
+      dir = Path.dirname(@jobs_file)
+      File.mkdir_p!(dir)
+      tmp_path = @jobs_file <> ".tmp"
+      File.write!(tmp_path, encoded)
+      File.rename!(tmp_path, @jobs_file)
+    end)
   end
 
   defp serialize_job(j) do

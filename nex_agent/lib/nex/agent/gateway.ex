@@ -1,14 +1,12 @@
 defmodule Nex.Agent.Gateway do
   @moduledoc """
-  Gateway - 后台服务管理
+  Gateway - Channel orchestrator.
 
-  负责：
-  - 启动/停止 Bus
-  - 启动/停止 Cron
-  - 启动/停止 Inbound Worker
-  - 按配置启动/停止 Telegram Channel
-  - 管理 Agent 进程
-  - 提供 HTTP API（可选）
+  Manages the lifecycle of channel processes (Telegram, Feishu, Discord, Slack, DingTalk)
+  via the ChannelSupervisor (DynamicSupervisor). All infrastructure and worker services
+  are managed by the OTP supervision tree in Application.
+
+  Provides start/stop/status/send_message public API.
   """
 
   use GenServer
@@ -24,130 +22,31 @@ defmodule Nex.Agent.Gateway do
           started_at: integer() | nil
         }
 
-  @doc """
-  启动 Gateway
-  """
   @spec start_link(keyword()) :: GenServer.on_start()
   def start_link(opts \\ []) do
     name = Keyword.get(opts, :name, __MODULE__)
     GenServer.start_link(__MODULE__, opts, name: name)
   end
 
-  defp ensure_inbound_worker_started(config) do
-    case Process.whereis(Nex.Agent.InboundWorker) do
-      nil ->
-        {:ok, _} = Nex.Agent.InboundWorker.start_link(config: config)
-        :ok
-
-      _pid ->
-        :ok
-    end
-  end
-
-  defp ensure_telegram_channel_started(config) do
-    if Nex.Agent.Config.telegram_enabled?(config) do
-      case Process.whereis(Nex.Agent.Channel.Telegram) do
-        nil ->
-          {:ok, _} = Nex.Agent.Channel.Telegram.start_link(config: config)
-          :ok
-
-        _pid ->
-          :ok
-      end
-    else
-      :ok
-    end
-  end
-
-  defp ensure_feishu_channel_started(config) do
-    if Nex.Agent.Config.feishu_enabled?(config) do
-      case Process.whereis(Nex.Agent.Channel.Feishu) do
-        nil ->
-          {:ok, _} = Nex.Agent.Channel.Feishu.start_link(config: config)
-          _ = Nex.Agent.Channel.Feishu.start_websocket()
-          :ok
-
-        _pid ->
-          _ = Nex.Agent.Channel.Feishu.start_websocket()
-          :ok
-      end
-    else
-      :ok
-    end
-  end
-
-  defp ensure_discord_channel_started(config) do
-    if Nex.Agent.Config.discord_enabled?(config) do
-      case Process.whereis(Nex.Agent.Channel.Discord) do
-        nil ->
-          {:ok, _} = Nex.Agent.Channel.Discord.start_link(config: config)
-          :ok
-
-        _pid ->
-          :ok
-      end
-    else
-      :ok
-    end
-  end
-
-  defp ensure_slack_channel_started(config) do
-    if Nex.Agent.Config.slack_enabled?(config) do
-      case Process.whereis(Nex.Agent.Channel.Slack) do
-        nil ->
-          {:ok, _} = Nex.Agent.Channel.Slack.start_link(config: config)
-          :ok
-
-        _pid ->
-          :ok
-      end
-    else
-      :ok
-    end
-  end
-
-  defp ensure_dingtalk_channel_started(config) do
-    if Nex.Agent.Config.dingtalk_enabled?(config) do
-      case Process.whereis(Nex.Agent.Channel.DingTalk) do
-        nil ->
-          {:ok, _} = Nex.Agent.Channel.DingTalk.start_link(config: config)
-          :ok
-
-        _pid ->
-          :ok
-      end
-    else
-      :ok
-    end
-  end
-
-  @doc """
-  启动所有服务
-  """
+  @doc "Start all channels and heartbeat tick."
   @spec start() :: :ok | {:error, term()}
   def start do
     GenServer.call(__MODULE__, :start, :infinity)
   end
 
-  @doc """
-  停止所有服务
-  """
+  @doc "Stop all channels and heartbeat tick."
   @spec stop() :: :ok
   def stop do
     GenServer.call(__MODULE__, :stop, :infinity)
   end
 
-  @doc """
-  获取状态
-  """
+  @doc "Get gateway status and service health."
   @spec status() :: map()
   def status do
     GenServer.call(__MODULE__, :status)
   end
 
-  @doc """
-  发送消息给 Agent
-  """
+  @doc "Send a message through the agent."
   @spec send_message(String.t()) :: {:ok, String.t()} | {:error, term()}
   def send_message(message) do
     GenServer.call(__MODULE__, {:send_message, message}, :infinity)
@@ -157,8 +56,6 @@ defmodule Nex.Agent.Gateway do
 
   @impl true
   def init(_opts) do
-    Process.flag(:trap_exit, true)
-
     state = %__MODULE__{
       config: Nex.Agent.Config.load(),
       status: :stopped,
@@ -179,7 +76,6 @@ defmodule Nex.Agent.Gateway do
     end
   end
 
-  @impl true
   def handle_call(:start, _from, state) do
     {:reply, {:error, :already_started}, state}
   end
@@ -190,7 +86,6 @@ defmodule Nex.Agent.Gateway do
     {:reply, :ok, new_state}
   end
 
-  @impl true
   def handle_call(:stop, _from, state) do
     {:reply, :ok, state}
   end
@@ -226,7 +121,7 @@ defmodule Nex.Agent.Gateway do
 
   @impl true
   def handle_call({:send_message, message}, _from, %{status: :running} = state) do
-    case do_send_message(state, message) do
+    case do_send_message(message) do
       {:ok, response} ->
         {:reply, {:ok, response}, state}
 
@@ -235,296 +130,101 @@ defmodule Nex.Agent.Gateway do
     end
   end
 
-  @impl true
   def handle_call({:send_message, _message}, _from, state) do
     {:reply, {:error, :not_running}, state}
   end
 
-  @impl true
-  def handle_info({:EXIT, pid, reason}, state) do
-    if reason != :shutdown and reason != :normal do
-      Logger.warning("[Gateway] Child process #{inspect(pid)} exited: #{inspect(reason)}")
-      state = maybe_restart_critical_service(pid, state)
-      {:noreply, state}
-    else
-      {:noreply, state}
-    end
-  end
+  # --- Private ---
 
   defp do_start(state) do
-    if not Nex.Agent.Config.valid?(state.config) do
+    # Reload config to pick up any changes
+    config = Nex.Agent.Config.load()
+    state = %{state | config: config}
+
+    if not Nex.Agent.Config.valid?(config) do
       {:error, :invalid_config}
     else
-      ensure_system_prompt_started()
-      ensure_session_manager_started()
-      ensure_tool_registry_started()
-      ensure_bus_started()
-      ensure_cron_started()
-      ensure_memory_index_started()
-      ensure_heartbeat_started()
-      ensure_subagent_started(state.config)
-      ensure_inbound_worker_started(state.config)
-      ensure_harness_started(state.config)
-      ensure_telegram_channel_started(state.config)
-      ensure_feishu_channel_started(state.config)
-      ensure_discord_channel_started(state.config)
-      ensure_slack_channel_started(state.config)
-      ensure_dingtalk_channel_started(state.config)
+      # Start heartbeat tick
+      _ = Nex.Agent.Heartbeat.start()
 
-      {:ok,
-       %{
-         state
-         | status: :running,
-           started_at: System.system_time(:second)
-       }}
+      # Start channels via DynamicSupervisor
+      start_channels(config)
+
+      {:ok, %{state | status: :running, started_at: System.system_time(:second)}}
     end
   end
 
   defp do_stop(state) do
-    stop_dingtalk_channel()
-    stop_slack_channel()
-    stop_discord_channel()
-    stop_feishu_channel()
-    stop_telegram_channel()
-    stop_harness()
-    stop_inbound_worker()
-    stop_subagent()
-    stop_cron()
-    stop_heartbeat()
-    stop_memory_index()
-    stop_bus()
-    stop_tool_registry()
-    stop_session_manager()
-    stop_system_prompt()
+    # Stop heartbeat tick
+    _ = Nex.Agent.Heartbeat.stop()
+
+    # Terminate all channel children
+    stop_channels()
 
     %{state | status: :stopped, started_at: nil}
   end
 
-  defp ensure_system_prompt_started do
-    case Process.whereis(Nex.Agent.SystemPrompt) do
-      nil ->
-        {:ok, _} = Nex.Agent.SystemPrompt.start_link()
-        :ok
+  defp start_channels(config) do
+    channel_specs(config)
+    |> Enum.each(fn spec ->
+      case DynamicSupervisor.start_child(Nex.Agent.ChannelSupervisor, spec) do
+        {:ok, _pid} -> :ok
+        {:error, {:already_started, _pid}} -> :ok
+        {:error, reason} ->
+          Logger.warning("[Gateway] Failed to start channel: #{inspect(reason)}")
+      end
+    end)
 
-      _pid ->
-        :ok
+    # Special: Feishu needs websocket started after the GenServer
+    if Nex.Agent.Config.feishu_enabled?(config) and Process.whereis(Nex.Agent.Channel.Feishu) do
+      _ = Nex.Agent.Channel.Feishu.start_websocket()
     end
   end
 
-  defp ensure_session_manager_started do
-    case Process.whereis(Nex.Agent.SessionManager) do
-      nil ->
-        {:ok, _} = Nex.Agent.SessionManager.start_link()
-        :ok
-
-      _pid ->
-        :ok
+  defp stop_channels do
+    # Stop Feishu websocket first
+    if Process.whereis(Nex.Agent.Channel.Feishu) do
+      _ = Nex.Agent.Channel.Feishu.stop_websocket()
     end
+
+    DynamicSupervisor.which_children(Nex.Agent.ChannelSupervisor)
+    |> Enum.each(fn {_, pid, _, _} ->
+      DynamicSupervisor.terminate_child(Nex.Agent.ChannelSupervisor, pid)
+    end)
   end
 
-  defp ensure_tool_registry_started do
-    case Process.whereis(Nex.Agent.Tool.Registry) do
-      nil ->
-        {:ok, _} = Nex.Agent.Tool.Registry.start_link()
-        :ok
+  defp channel_specs(config) do
+    specs = []
 
-      _pid ->
-        :ok
-    end
+    specs =
+      if Nex.Agent.Config.telegram_enabled?(config),
+        do: [{Nex.Agent.Channel.Telegram, config: config} | specs],
+        else: specs
+
+    specs =
+      if Nex.Agent.Config.feishu_enabled?(config),
+        do: [{Nex.Agent.Channel.Feishu, config: config} | specs],
+        else: specs
+
+    specs =
+      if Nex.Agent.Config.discord_enabled?(config),
+        do: [{Nex.Agent.Channel.Discord, config: config} | specs],
+        else: specs
+
+    specs =
+      if Nex.Agent.Config.slack_enabled?(config),
+        do: [{Nex.Agent.Channel.Slack, config: config} | specs],
+        else: specs
+
+    specs =
+      if Nex.Agent.Config.dingtalk_enabled?(config),
+        do: [{Nex.Agent.Channel.DingTalk, config: config} | specs],
+        else: specs
+
+    specs
   end
 
-  defp ensure_bus_started do
-    case Process.whereis(Nex.Agent.Bus) do
-      nil ->
-        {:ok, _} = Nex.Agent.Bus.start_link()
-        :ok
-
-      _pid ->
-        :ok
-    end
-  end
-
-  defp ensure_cron_started do
-    case Process.whereis(Nex.Agent.Cron) do
-      nil ->
-        {:ok, _} = Nex.Agent.Cron.start_link()
-        :ok
-
-      _pid ->
-        :ok
-    end
-  end
-
-  defp ensure_memory_index_started do
-    case Process.whereis(Nex.Agent.Memory.Index) do
-      nil ->
-        {:ok, _} = Nex.Agent.Memory.Index.start_link()
-        :ok
-
-      _pid ->
-        :ok
-    end
-  end
-
-  defp ensure_heartbeat_started do
-    case Process.whereis(Nex.Agent.Heartbeat) do
-      nil ->
-        {:ok, _} = Nex.Agent.Heartbeat.start_link()
-        _ = Nex.Agent.Heartbeat.start()
-        :ok
-
-      _pid ->
-        :ok
-    end
-  end
-
-  defp ensure_subagent_started(config) do
-    case Process.whereis(Nex.Agent.Subagent) do
-      nil ->
-        opts = [
-          provider: String.to_atom(config.provider),
-          model: config.model,
-          api_key: Nex.Agent.Config.get_current_api_key(config),
-          base_url: Nex.Agent.Config.get_current_base_url(config)
-        ]
-
-        {:ok, _} = Nex.Agent.Subagent.start_link(opts)
-        :ok
-
-      _pid ->
-        :ok
-    end
-  end
-
-  defp ensure_harness_started(config) do
-    case Process.whereis(Nex.Agent.Harness) do
-      nil ->
-        opts = [
-          provider: String.to_atom(config.provider),
-          model: config.model,
-          api_key: Nex.Agent.Config.get_current_api_key(config),
-          base_url: Nex.Agent.Config.get_current_base_url(config),
-          auto_apply: true
-        ]
-
-        {:ok, _} = Nex.Agent.Harness.start_link(opts)
-        :ok
-
-      _pid ->
-        :ok
-    end
-  end
-
-  defp stop_subagent do
-    case Process.whereis(Nex.Agent.Subagent) do
-      nil -> :ok
-      pid -> GenServer.stop(pid, :shutdown)
-    end
-  end
-
-  defp stop_harness do
-    case Process.whereis(Nex.Agent.Harness) do
-      nil -> :ok
-      pid -> GenServer.stop(pid, :shutdown)
-    end
-  end
-
-  defp stop_bus do
-    case Process.whereis(Nex.Agent.Bus) do
-      nil -> :ok
-      pid -> GenServer.stop(pid, :shutdown)
-    end
-  end
-
-  defp stop_tool_registry do
-    case Process.whereis(Nex.Agent.Tool.Registry) do
-      nil -> :ok
-      pid -> GenServer.stop(pid, :shutdown)
-    end
-  end
-
-  defp stop_session_manager do
-    case Process.whereis(Nex.Agent.SessionManager) do
-      nil -> :ok
-      pid -> GenServer.stop(pid, :shutdown)
-    end
-  end
-
-  defp stop_system_prompt do
-    case Process.whereis(Nex.Agent.SystemPrompt) do
-      nil -> :ok
-      pid -> GenServer.stop(pid, :shutdown)
-    end
-  end
-
-  defp stop_cron do
-    case Process.whereis(Nex.Agent.Cron) do
-      nil -> :ok
-      pid -> GenServer.stop(pid, :shutdown)
-    end
-  end
-
-  defp stop_heartbeat do
-    case Process.whereis(Nex.Agent.Heartbeat) do
-      nil -> :ok
-      pid -> GenServer.stop(pid, :shutdown)
-    end
-  end
-
-  defp stop_memory_index do
-    case Process.whereis(Nex.Agent.Memory.Index) do
-      nil -> :ok
-      pid -> GenServer.stop(pid, :shutdown)
-    end
-  end
-
-  defp stop_inbound_worker do
-    case Process.whereis(Nex.Agent.InboundWorker) do
-      nil -> :ok
-      pid -> GenServer.stop(pid, :shutdown)
-    end
-  end
-
-  defp stop_telegram_channel do
-    case Process.whereis(Nex.Agent.Channel.Telegram) do
-      nil -> :ok
-      pid -> GenServer.stop(pid, :shutdown)
-    end
-  end
-
-  defp stop_feishu_channel do
-    case Process.whereis(Nex.Agent.Channel.Feishu) do
-      nil ->
-        :ok
-
-      pid ->
-        _ = Nex.Agent.Channel.Feishu.stop_websocket()
-        GenServer.stop(pid, :shutdown)
-    end
-  end
-
-  defp stop_discord_channel do
-    case Process.whereis(Nex.Agent.Channel.Discord) do
-      nil -> :ok
-      pid -> GenServer.stop(pid, :shutdown)
-    end
-  end
-
-  defp stop_slack_channel do
-    case Process.whereis(Nex.Agent.Channel.Slack) do
-      nil -> :ok
-      pid -> GenServer.stop(pid, :shutdown)
-    end
-  end
-
-  defp stop_dingtalk_channel do
-    case Process.whereis(Nex.Agent.Channel.DingTalk) do
-      nil -> :ok
-      pid -> GenServer.stop(pid, :shutdown)
-    end
-  end
-
-  defp do_send_message(_state, message) do
+  defp do_send_message(message) do
     config = Nex.Agent.Config.load()
 
     api_key = Nex.Agent.Config.get_current_api_key(config)
@@ -549,36 +249,6 @@ defmodule Nex.Agent.Gateway do
 
       {:error, reason} ->
         {:error, reason}
-    end
-  end
-
-  defp maybe_restart_critical_service(pid, state) do
-    cond do
-      pid == Process.whereis(Nex.Agent.InboundWorker) or
-          not is_nil(state.config) and Process.whereis(Nex.Agent.InboundWorker) == nil ->
-        Logger.info("[Gateway] Restarting InboundWorker...")
-
-        try do
-          ensure_inbound_worker_started(state.config)
-        rescue
-          e -> Logger.error("[Gateway] Failed to restart InboundWorker: #{Exception.message(e)}")
-        end
-
-        state
-
-      Process.whereis(Nex.Agent.Tool.Registry) == nil ->
-        Logger.info("[Gateway] Restarting ToolRegistry...")
-
-        try do
-          ensure_tool_registry_started()
-        rescue
-          e -> Logger.error("[Gateway] Failed to restart ToolRegistry: #{Exception.message(e)}")
-        end
-
-        state
-
-      true ->
-        state
     end
   end
 end
