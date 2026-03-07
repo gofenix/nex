@@ -10,10 +10,12 @@ defmodule Nex.Agent.MCP.Discovery do
 
       # Auto-discover from PATH
       servers = Nex.Agent.MCP.Discovery.scan()
-      
+
       # Or use cached discovery
       servers = Nex.Agent.MCP.Discovery.list()
   """
+
+  require Logger
 
   @config_path "~/.nex/agent/mcp.json"
 
@@ -63,7 +65,7 @@ defmodule Nex.Agent.MCP.Discovery do
               []
 
             {:error, reason} ->
-              IO.puts(:stderr, "Warning: Failed to parse MCP config: #{inspect(reason)}")
+              Logger.warning("Failed to parse MCP config: #{inspect(reason)}")
               []
           end
 

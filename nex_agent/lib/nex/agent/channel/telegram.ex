@@ -108,7 +108,7 @@ defmodule Nex.Agent.Channel.Telegram do
 
   @impl true
   def handle_info({:bus_message, :telegram_outbound, payload}, state) when is_map(payload) do
-    Logger.warning("Telegram received outbound message: #{inspect(payload)}")
+    Logger.debug("Telegram outbound message: #{inspect(payload)}")
     _ = do_send(payload, state)
     {:noreply, state}
   end
@@ -119,7 +119,7 @@ defmodule Nex.Agent.Channel.Telegram do
   defp poll_updates(state) do
     case telegram_get(state, "getUpdates", update_params(state.offset)) do
       {:ok, %{"ok" => true, "result" => updates}} when is_list(updates) ->
-        Logger.warning("Telegram poll ok updates_count=#{length(updates)}")
+        Logger.debug("Telegram poll updates_count=#{length(updates)}")
         handle_updates(updates, state)
 
       {:ok, %{"ok" => false} = body} ->
@@ -164,7 +164,7 @@ defmodule Nex.Agent.Channel.Telegram do
       case normalize_update(update) do
         {:ok, inbound} ->
           if allowed?(inbound.sender_id, acc.allow_from) do
-            Logger.warning(
+            Logger.info(
               "Telegram inbound accepted sender=#{inbound.sender_id} chat_id=#{inbound.chat_id}"
             )
 

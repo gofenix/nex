@@ -69,7 +69,7 @@ defmodule Nex.Agent.Heartbeat do
   @doc """
   Start the heartbeat loop
   """
-  @spec start :: :ok
+  @spec start() :: :ok | {:error, :disabled}
   def start do
     GenServer.call(__MODULE__, :start)
   end
@@ -77,7 +77,7 @@ defmodule Nex.Agent.Heartbeat do
   @doc """
   Stop the heartbeat loop
   """
-  @spec stop :: :ok
+  @spec stop() :: :ok
   def stop do
     GenServer.call(__MODULE__, :stop)
   end
@@ -85,7 +85,7 @@ defmodule Nex.Agent.Heartbeat do
   @doc """
   Get heartbeat status
   """
-  @spec status :: map()
+  @spec status() :: map()
   def status do
     GenServer.call(__MODULE__, :status)
   end
@@ -143,7 +143,7 @@ defmodule Nex.Agent.Heartbeat do
 
   @impl true
   def handle_info(:tick, state) do
-    execute_heartbeat(state)
+    _ = execute_heartbeat(state)
     schedule_tick()
     {:noreply, state}
   end

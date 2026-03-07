@@ -61,7 +61,7 @@ defmodule Nex.Agent.Subagent do
   @doc """
   List all tasks.
   """
-  @spec list :: list(task_entry())
+  @spec list() :: list(task_entry())
   def list do
     GenServer.call(__MODULE__, :list)
   end

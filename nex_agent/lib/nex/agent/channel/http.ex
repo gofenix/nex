@@ -4,6 +4,7 @@ defmodule Nex.Agent.Channel.HTTP do
   """
 
   use GenServer
+  require Logger
   alias Nex.Agent.Bus
 
   defstruct [:port, :enabled]
@@ -38,7 +39,7 @@ defmodule Nex.Agent.Channel.HTTP do
   @doc """
   Stop the HTTP server
   """
-  @spec stop_server :: :ok
+  @spec stop_server() :: :ok
   def stop_server do
     GenServer.call(__MODULE__, :stop_server)
   end
@@ -63,22 +64,20 @@ defmodule Nex.Agent.Channel.HTTP do
 
   @impl true
   def handle_call({:start_server, port}, _from, state) do
-    # In a real implementation, this would start a Plug/Cowboy server
-    # For now, we just acknowledge the request
-    IO.puts("HTTP Channel would start on port #{port}")
+    Logger.info("HTTP Channel would start on port #{port}")
     {:reply, :ok, %{state | port: port}}
   end
 
   @impl true
   def handle_call(:stop_server, _from, state) do
-    IO.puts("HTTP Channel stopping")
+    Logger.info("HTTP Channel stopping")
     {:reply, :ok, %{state | enabled: false}}
   end
 
   @doc """
   Handle incoming HTTP request (to be called by Plug)
   """
-  def handle_incoming(conn, body) do
+  def handle_incoming(_conn, body) do
     case Jason.decode(body) do
       {:ok, %{"message" => message, "chat_id" => chat_id}} ->
         Bus.publish(:inbound, %{

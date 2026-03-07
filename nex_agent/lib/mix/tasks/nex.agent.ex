@@ -8,6 +8,8 @@ defmodule Mix.Tasks.Nex.Agent do
 
   @shortdoc "Nex Agent CLI"
 
+  @gateway_pid_path Path.join(System.get_env("HOME", "."), ".nex/agent/gateway.pid")
+
   def run(args) do
     # Ensure Finch is started for HTTP requests
     ensure_finch_started()
@@ -36,6 +38,8 @@ defmodule Mix.Tasks.Nex.Agent do
       args == ["onboard"] -> run_onboard()
       args == ["status"] -> run_status()
       args == ["gateway"] -> run_gateway()
+      args == ["gateway", "stop"] -> run_gateway_stop()
+      args == ["gateway", "restart"] -> run_gateway_restart()
       List.starts_with?(args, ["config"]) -> run_config(args)
       opts[:message] != nil -> run_single(opts)
       true -> run_interactive()
@@ -61,6 +65,8 @@ defmodule Mix.Tasks.Nex.Agent do
     Mix.shell().info("  mix nex.agent onboard          Initialize")
     Mix.shell().info("  mix nex.agent -m \"hello\"       Single message")
     Mix.shell().info("  mix nex.agent gateway          Start gateway")
+    Mix.shell().info("  mix nex.agent gateway stop     Stop gateway")
+    Mix.shell().info("  mix nex.agent gateway restart  Restart gateway")
     Mix.shell().info("  mix nex.agent status           Show status")
     Mix.shell().info("  mix nex.agent gateway --log    Enable debug logs")
     Mix.shell().info("  mix nex.agent --log-level debug|info|warning|error")
@@ -107,6 +113,14 @@ defmodule Mix.Tasks.Nex.Agent do
   defp run_gateway do
     Mix.shell().info("Starting Gateway...")
 
+    case stop_existing_gateway_if_present() do
+      :ok -> :ok
+
+      {:error, reason} ->
+        Mix.shell().error("Failed to stop existing gateway: #{inspect(reason)}")
+        System.halt(1)
+    end
+
     lock_socket =
       case acquire_gateway_lock() do
         {:ok, socket} ->
@@ -129,9 +143,29 @@ defmodule Mix.Tasks.Nex.Agent do
         :ok
     end
 
+    persist_gateway_pid!()
+    register_gateway_cleanup(lock_socket)
     Process.put(:gateway_lock_socket, lock_socket)
     Nex.Agent.Gateway.start()
     Process.sleep(:infinity)
+  end
+
+  defp run_gateway_stop do
+    case stop_existing_gateway() do
+      :ok -> Mix.shell().info("Gateway stopped")
+      {:error, :not_running} -> Mix.shell().info("Gateway is not running")
+      {:error, reason} -> Mix.raise("Failed to stop gateway: #{inspect(reason)}")
+    end
+  end
+
+  defp run_gateway_restart do
+    case stop_existing_gateway() do
+      :ok -> Mix.shell().info("Existing gateway stopped")
+      {:error, :not_running} -> Mix.shell().info("Gateway is not running, starting a new one")
+      {:error, reason} -> Mix.raise("Failed to stop gateway: #{inspect(reason)}")
+    end
+
+    run_gateway()
   end
 
   defp acquire_gateway_lock do
@@ -150,6 +184,96 @@ defmodule Mix.Tasks.Nex.Agent do
       {:ok, socket} -> {:ok, socket}
       {:error, :eaddrinuse} -> {:error, :already_running}
       other -> other
+    end
+  end
+
+  defp stop_existing_gateway do
+    with {:ok, pid_string} <- read_gateway_pid(),
+         {:ok, pid} <- parse_gateway_pid(pid_string),
+         :ok <- signal_gateway(pid),
+         :ok <- wait_for_gateway_exit(pid, 40) do
+      delete_gateway_pid_file()
+      :ok
+    else
+      {:error, :enoent} ->
+        {:error, :not_running}
+
+      {:error, :invalid_pid} ->
+        delete_gateway_pid_file()
+        {:error, :not_running}
+
+      {:error, :not_running} ->
+        delete_gateway_pid_file()
+        {:error, :not_running}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp stop_existing_gateway_if_present do
+    case stop_existing_gateway() do
+      :ok -> :ok
+      {:error, :not_running} -> :ok
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp read_gateway_pid do
+    case File.read(@gateway_pid_path) do
+      {:ok, pid_string} -> {:ok, String.trim(pid_string)}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp parse_gateway_pid(pid_string) do
+    case Integer.parse(pid_string) do
+      {pid, ""} when pid > 0 -> {:ok, pid}
+      _ -> {:error, :invalid_pid}
+    end
+  end
+
+  defp signal_gateway(pid) do
+    case System.cmd("kill", ["-TERM", Integer.to_string(pid)], stderr_to_stdout: true) do
+      {_output, 0} -> :ok
+      {_output, _status} -> {:error, :not_running}
+    end
+  end
+
+  defp wait_for_gateway_exit(_pid, 0), do: {:error, :timeout}
+
+  defp wait_for_gateway_exit(pid, attempts_left) do
+    case System.cmd("kill", ["-0", Integer.to_string(pid)], stderr_to_stdout: true) do
+      {_output, 0} ->
+        Process.sleep(100)
+        wait_for_gateway_exit(pid, attempts_left - 1)
+
+      {_output, _status} ->
+        :ok
+    end
+  end
+
+  defp persist_gateway_pid! do
+    File.mkdir_p!(Path.dirname(@gateway_pid_path))
+    File.write!(@gateway_pid_path, System.pid() <> "\n")
+  end
+
+  defp register_gateway_cleanup(lock_socket) do
+    System.at_exit(fn _status ->
+      cleanup_gateway_runtime(lock_socket)
+    end)
+  end
+
+  defp cleanup_gateway_runtime(lock_socket) do
+    _ = if is_port(lock_socket), do: :gen_tcp.close(lock_socket), else: :ok
+    delete_gateway_pid_file()
+  end
+
+  defp delete_gateway_pid_file do
+    case File.rm(@gateway_pid_path) do
+      :ok -> :ok
+      {:error, :enoent} -> :ok
+      {:error, _reason} -> :ok
     end
   end
 
