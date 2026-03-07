@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`nex_agent` gateway CLI**: `mix nex.agent gateway` now reuses a pidfile-managed lifecycle so you can stop or restart the existing gateway without manual `pkill`. Added `mix nex.agent gateway stop` and `mix nex.agent gateway restart` commands.
 - **`nex_agent` Telegram startup logs**: Normal polling and accepted-message logs are no longer emitted as warnings during startup.
 
+### Fixed
+- **`nex_agent` memory consolidation**: Empty or malformed tool-call payloads from the LLM no longer surface as repeated consolidation warnings. The consolidator now skips invalid results cleanly and only persists well-formed `history_entry` and `memory_update` payloads.
+
 ## [Nex 0.3.9] - 2026-02-21
 
 ### Fixed

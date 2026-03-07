@@ -482,19 +482,8 @@ defmodule Nex.Agent.Memory do
       ]
 
       case Nex.Agent.Runner.call_llm_for_consolidation(consolidation_messages, llm_opts) do
-        {:ok, %{"history_entry" => history_entry, "memory_update" => memory_update}} ->
-          append_history(history_entry)
-
-          if memory_update != current_memory && memory_update != "" do
-            write_long_term(memory_update)
-          end
-
-          new_last_consolidated = length(messages) - keep_count
-          updated_session = %{session | last_consolidated: new_last_consolidated}
-          Nex.Agent.SessionManager.save(updated_session)
-
-          Logger.info("[Memory] Consolidation done, last_consolidated=#{new_last_consolidated}")
-          {:ok, updated_session}
+        {:ok, result} when is_map(result) ->
+          handle_consolidation_result(result, session, messages, keep_count, current_memory)
 
         {:ok, result} ->
           Logger.warning("[Memory] Consolidation returned unexpected result: #{inspect(result)}")
@@ -503,6 +492,37 @@ defmodule Nex.Agent.Memory do
         {:error, reason} ->
           {:error, reason}
       end
+    end
+  end
+
+  defp handle_consolidation_result(result, session, messages, keep_count, current_memory) do
+    require Logger
+
+    history_entry = Map.get(result, "history_entry")
+    memory_update = Map.get(result, "memory_update")
+
+    cond do
+      not is_binary(history_entry) or String.trim(history_entry) == "" ->
+        Logger.debug("[Memory] Consolidation skipped: missing history_entry")
+        {:ok, session}
+
+      not is_binary(memory_update) ->
+        Logger.debug("[Memory] Consolidation skipped: missing memory_update")
+        {:ok, session}
+
+      true ->
+        append_history(history_entry)
+
+        if memory_update != current_memory && memory_update != "" do
+          write_long_term(memory_update)
+        end
+
+        new_last_consolidated = length(messages) - keep_count
+        updated_session = %{session | last_consolidated: new_last_consolidated}
+        Nex.Agent.SessionManager.save(updated_session)
+
+        Logger.info("[Memory] Consolidation done, last_consolidated=#{new_last_consolidated}")
+        {:ok, updated_session}
     end
   end
 end
