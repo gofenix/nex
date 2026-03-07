@@ -131,7 +131,7 @@ defmodule Nex.Agent.Runner do
         reasoning_content: reasoning_content
       )
 
-    {new_messages, results, session} = execute_tools(session, messages, tool_calls, opts)
+    {new_messages, results, session} = execute_tools(session, messages, tool_call_dicts, opts)
 
     maybe_publish_tool_results(results, opts)
 
