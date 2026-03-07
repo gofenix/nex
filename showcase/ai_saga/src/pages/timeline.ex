@@ -9,7 +9,7 @@ defmodule AiSaga.Pages.Timeline do
       |> NexBase.run()
 
     %{
-      title: "AI 论文时间线",
+      title: "AI Paper Timeline",
       papers: papers
     }
   end
@@ -18,12 +18,12 @@ defmodule AiSaga.Pages.Timeline do
     ~H"""
     <div class="max-w-4xl mx-auto space-y-8">
       <a href="/" class="back-link mb-6 inline-block">
-        ← 返回首页
+        ← Back to Home
       </a>
 
       <div class="page-header">
-        <h1>📅 AI 论文时间线</h1>
-        <p>按时间顺序探索人工智能的发展历程</p>
+        <h1>📅 AI Paper Timeline</h1>
+        <p>Explore the development of artificial intelligence in chronological order</p>
       </div>
 
       <div :if={length(@papers) > 0} class="relative">
@@ -34,7 +34,7 @@ defmodule AiSaga.Pages.Timeline do
                 <a href={"/paper/#{paper["slug"]}"} class="card block p-5">
                   <div class="flex items-center gap-3 mb-2">
                     <span class="year-tag font-bold">{paper["published_year"]}</span>
-                    <span :if={paper["is_paradigm_shift"] == 1} class="badge badge-yellow">范式变迁</span>
+                    <span :if={paper["is_paradigm_shift"] == 1} class="badge badge-yellow">Paradigm shift</span>
                   </div>
                   <h3 class="font-bold mb-2">{paper["title"]}</h3>
                   <p class="text-sm opacity-60 line-clamp-2">{paper["abstract"]}</p>
@@ -43,8 +43,8 @@ defmodule AiSaga.Pages.Timeline do
           </div>
         </div>
       <div :if={length(@papers) == 0} class="empty-state">
-          <p>暂无论文数据</p>
-          <p class="hint">请稍后再试</p>
+          <p>No paper data available yet</p>
+          <p class="hint">Please try again later</p>
         </div>
     </div>
     """

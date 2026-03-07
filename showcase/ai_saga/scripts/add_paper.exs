@@ -95,7 +95,7 @@ Briefly describe the impact on the field
 ## Historical Background
 Describe the historical context and research motivation when the paper was published
 
-Please generate content in Chinese, maintaining academic accuracy.
+Please generate content in English, maintaining academic accuracy.
 """
 
 IO.puts("=" |> String.duplicate(80))

@@ -1,161 +1,155 @@
-# AiSaga 论文详情 - 三视角整理完成
+# AiSaga Paper Summary - Three-Lens Dataset Complete
 
-## 概述
+## Overview
 
-所有10篇里程碑论文都已按照三视角格式整理完成：
+All 10 milestone papers have been organized using the three-lens format:
 
-1. **历史视角：承前启后** - 上一个范式、核心贡献、核心机制、为什么赢了
-2. **范式变迁视角** - 当时面临的挑战、解决方案、深远影响
-3. **人的视角** - 作者去向、名言引用
-4. **后续影响** - 范式转换、时间线
+1. **Historical Lens** - Previous paradigm, core contribution, core mechanism, and why it won
+2. **Paradigm Shift Lens** - Challenges at the time, solution, and long-term impact
+3. **Human Lens** - Author trajectories and notable quotes
+4. **Subsequent Influence** - Paradigm transitions and timeline
 
-## 论文列表
+## Paper List
 
-### 1. 感知机 (1958)
-- **作者**: Frank Rosenblatt
-- **范式**: 感知机与连接主义
-- **核心**: 第一个能够从数据中学习的学习算法
-- **历史意义**: 开创了连接主义领域
+### 1. Perceptron (1958)
+- **Author**: Frank Rosenblatt
+- **Paradigm**: Perceptron and Connectionism
+- **Core idea**: The first learning algorithm that could learn from data
+- **Historical significance**: Opened the era of connectionism
 
-### 2. Perceptrons批评 (1969)
-- **作者**: Marvin Minsky, Seymour Papert
-- **范式**: 感知机与连接主义
-- **核心**: 数学证明单层感知机无法解决XOR
-- **历史意义**: 引发第一次AI寒冬，但也指明了解决方向
+### 2. Perceptrons Critique (1969)
+- **Authors**: Marvin Minsky, Seymour Papert
+- **Paradigm**: Perceptron and Connectionism
+- **Core idea**: A mathematical proof that single-layer perceptrons cannot solve XOR
+- **Historical significance**: Triggered the first AI winter, while also pointing toward the eventual solution
 
-### 3. 反向传播 (1986)
-- **作者**: Rumelhart, Hinton, Williams
-- **范式**: 符号AI与专家系统
-- **核心**: 训练多层网络的算法
-- **历史意义**: 复兴神经网络，连接主义兴起
+### 3. Backpropagation (1986)
+- **Authors**: Rumelhart, Hinton, Williams
+- **Paradigm**: Symbolic AI and Expert Systems
+- **Core idea**: An algorithm for training multilayer neural networks
+- **Historical significance**: Revived neural networks and accelerated the return of connectionism
 
-### 4. 梯度问题 (1994)
-- **作者**: Bengio, Simard, Frasconi
-- **范式**: 符号AI与专家系统
-- **核心**: 证明RNN的梯度消失/爆炸问题
-- **历史意义**: 推动LSTM和注意力机制的研究
+### 4. Gradient Problems (1994)
+- **Authors**: Bengio, Simard, Frasconi
+- **Paradigm**: Symbolic AI and Expert Systems
+- **Core idea**: Demonstrated the vanishing and exploding gradient problem in RNNs
+- **Historical significance**: Motivated later work on LSTM and attention mechanisms
 
 ### 5. LSTM (1997)
-- **作者**: Hochreiter, Schmidhuber
-- **范式**: 统计学习与SVM
-- **核心**: 门控机制解决长期依赖
-- **历史意义**: 让RNN实用化，服务NLP二十年
+- **Authors**: Hochreiter, Schmidhuber
+- **Paradigm**: Statistical Learning and SVM
+- **Core idea**: A gating mechanism for long-term dependency modeling
+- **Historical significance**: Made RNNs practical and shaped NLP for two decades
 
 ### 6. AlexNet (2012)
-- **作者**: Krizhevsky, Sutskever, Hinton
-- **范式**: 深度学习
-- **核心**: GPU+大数据+深度CNN
-- **历史意义**: 引发深度学习革命
+- **Authors**: Krizhevsky, Sutskever, Hinton
+- **Paradigm**: Deep Learning
+- **Core idea**: GPU training, large-scale data, and deep CNNs
+- **Historical significance**: Triggered the deep learning revolution
 
 ### 7. ResNet (2015)
-- **作者**: He, Zhang, Ren, Sun
-- **范式**: 深度学习
-- **核心**: 残差连接训练超深网络
-- **历史意义**: 152层网络，超越人类水平
+- **Authors**: He, Zhang, Ren, Sun
+- **Paradigm**: Deep Learning
+- **Core idea**: Residual connections for training very deep networks
+- **Historical significance**: Enabled 152-layer networks and surpassed human-level benchmarks in some settings
 
 ### 8. Transformer (2017)
-- **作者**: Vaswani et al. (8位作者)
-- **范式**: 基础模型与Transformer
-- **核心**: 注意力取代循环
-- **历史意义**: 现代大语言模型的基础
+- **Authors**: Vaswani et al. (8 authors)
+- **Paradigm**: Foundation Models and Transformers
+- **Core idea**: Replaced recurrence with attention
+- **Historical significance**: Became the foundation of modern large language models
 
 ### 9. BERT (2018)
-- **作者**: Devlin, Chang, Lee, Toutanova
-- **范式**: 基础模型与Transformer
-- **核心**: 双向预训练
-- **历史意义**: 刷新NLP基准，预训练+微调范式
+- **Authors**: Devlin, Chang, Lee, Toutanova
+- **Paradigm**: Foundation Models and Transformers
+- **Core idea**: Bidirectional pretraining
+- **Historical significance**: Reset NLP benchmarks and popularized the pretrain-plus-finetune paradigm
 
 ### 10. GPT-3 (2020)
-- **作者**: Brown et al., OpenAI
-- **范式**: 基础模型与Transformer
-- **核心**: 规模化带来涌现能力
-- **历史意义**: 上下文学习，大语言模型时代
+- **Authors**: Brown et al., OpenAI
+- **Paradigm**: Foundation Models and Transformers
+- **Core idea**: Emergent capability through scale
+- **Historical significance**: In-context learning and the rise of the large language model era
 
-## 数据结构
+## Data Structure
 
-每篇论文包含以下字段：
+Each paper includes the following fields:
 
 ```elixir
 %{
-  # 基本信息
-  title: "论文标题",
-  slug: "url标识",
-  abstract: "中文摘要",
-  
-  # 历史视角
-  prev_paradigm: "上一个范式描述（含表格）",
-  core_contribution: "核心贡献（含关键洞察）",
-  core_mechanism: "核心机制（含公式和步骤）",
-  why_it_wins: "为什么赢了（含对比表格）",
-  
-  # 范式变迁视角
-  challenge: "当时面临的挑战",
-  solution: "解决方案",
-  impact: "深远影响",
-  
-  # 人的视角
-  author_destinies: "作者去向（含表格和名言）",
-  
-  # 后续影响
-  subsequent_impact: "后续影响（含时间线）",
-  
-  # 历史背景
-  history_context: "历史背景"
+  title: "Paper title",
+  slug: "url-friendly identifier",
+  abstract: "English abstract or summary",
+
+  prev_paradigm: "Previous paradigm description, optionally with tables",
+  core_contribution: "Core contribution, key insight, and summary",
+  core_mechanism: "Core mechanism, formulas, and procedural steps",
+  why_it_wins: "Why it won, including comparison tables if useful",
+
+  challenge: "Challenges faced at the time",
+  solution: "Solution introduced by the paper",
+  impact: "Long-term impact",
+
+  author_destinies: "Author trajectories, optionally with tables and quotes",
+
+  subsequent_impact: "Subsequent influence, optionally including timelines",
+
+  history_context: "Historical context"
 }
 ```
 
-## 特色内容
+## Notable Content Features
 
-### 1. 丰富的表格
-- 方法对比表格
-- 步骤拆解表格
-- 作者去向表格
-- 范式转换表格
+### 1. Rich tables
+- Method comparison tables
+- Step-by-step breakdown tables
+- Author trajectory tables
+- Paradigm transition tables
 
-### 2. 公式和代码
-- 感知机学习规则
-- 反向传播算法
-- LSTM门控方程
-- 注意力机制公式
-- 残差连接公式
+### 2. Equations and technical details
+- Perceptron learning rule
+- Backpropagation algorithm
+- LSTM gating equations
+- Attention mechanism formulas
+- Residual connection formulas
 
-### 3. 名言引用
-- Rosenblatt的愿景
-- Minsky的反思
-- Hinton的坚持
-- Noam Shazeer的神圣仁慈
-- 等等
+### 3. Quotes and researcher voices
+- Rosenblatt's vision
+- Minsky's reflections
+- Hinton's persistence
+- Noam Shazeer's remarks
+- And more
 
-### 4. 历史故事
-- 每篇论文都有详细的历史背景
-- 研究动机和团队组成
-- 当时的困境和突破
+### 4. Historical narrative
+- Detailed historical context for each paper
+- Research motivation and team background
+- The difficulties and breakthroughs of the time
 
-## 访问方式
+## Access
 
-所有论文详情页面都可以通过以下URL访问：
+All paper detail pages are accessible via:
 
 ```
 http://localhost:4000/paper/{slug}
 ```
 
-例如：
+For example:
 - `/paper/vaswani-shazeer-parmar-2017-transformer`
 - `/paper/krizhevsky-sutskever-hinton-2012-alexnet`
 - `/paper/rosenblatt-1958-perceptron`
 
-## 技术实现
+## Technical Implementation
 
-- 数据库：SQLite (MotherDuck风格)
-- 后端：Elixir + Nex框架
-- 前端：HEEx模板 + Tailwind CSS
-- 样式：奶油色背景、黄色强调、黑色边框
+- Database: SQLite with a MotherDuck-inspired style
+- Backend: Elixir + Nex framework
+- Frontend: HEEx templates + Tailwind CSS
+- Visual style: Cream background, yellow accents, and black borders
 
-## 未来扩展
+## Future Expansion
 
-可以按照相同格式添加更多论文：
-1. 创建新的种子文件
-2. 按照模板填充三视角内容
-3. 运行 `mix run priv/repo/seeds_xxx.exs`
+You can add more papers using the same format:
+1. Create a new seed file
+2. Fill it using the same three-lens structure
+3. Run `mix run priv/repo/seeds_xxx.exs`
 
-参考模板：`priv/repo/paper_template.md`
+Reference template: `priv/repo/paper_template.md`

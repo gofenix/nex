@@ -8,16 +8,16 @@ defmodule AiSaga.Pages.Author.Index do
       |> NexBase.order(:influence_score, :desc)
       |> NexBase.run()
 
-    # 区分知名人物和普通作者
+    # Split featured figures from other authors.
     {featured, others} = Enum.split_with(authors, fn a -> (a["influence_score"] || 0) >= 80 end)
 
-    # 计算统计数据
+    # Compute summary statistics.
     total_authors = length(authors)
     {:ok, [%{"count" => total_papers}]} =
       NexBase.sql("SELECT COUNT(*) as count FROM aisaga_papers")
 
     %{
-      title: "重要人物",
+      title: "Key Figures",
       featured: featured,
       others: others,
       stats: %{
@@ -32,20 +32,20 @@ defmodule AiSaga.Pages.Author.Index do
     ~H"""
     <div class="max-w-4xl mx-auto space-y-10">
       <a href="/" class="back-link mb-4 inline-block">
-        ← 返回首页
+        ← Back to Home
       </a>
 
       <div class="page-header">
-        <h1>AI 领域重要人物</h1>
-        <p>从感知机之父到Transformer发明者，探索推动人工智能发展的关键人物</p>
-        <div class="meta">{@stats.total_authors} 位学者 · {@stats.total_papers} 篇论文</div>
+        <h1>Key Figures in AI</h1>
+        <p>From the father of the Perceptron to the inventors of the Transformer, explore the people who shaped the progress of artificial intelligence.</p>
+        <div class="meta">{@stats.total_authors} scholars · {@stats.total_papers} papers</div>
       </div>
 
       <section :if={length(@featured) > 0}>
             <h2 class="section-title text-xl">
               <span>⭐</span>
-              领军人物
-              <span class="text-sm font-normal opacity-60">({@stats.featured_count} 位)</span>
+              Leading Figures
+              <span class="text-sm font-normal opacity-60">({@stats.featured_count})</span>
             </h2>
             <div class="grid md:grid-cols-2 gap-4">
               <a :for={author <- @featured} href={"/author/#{author["slug"]}"} class="card-yellow block p-6">
@@ -56,8 +56,8 @@ defmodule AiSaga.Pages.Author.Index do
                       <p class="text-sm opacity-70 mb-2 line-clamp-1">{author["affiliation"]}</p>
                       <p class="text-sm opacity-90 line-clamp-2 mb-3">{author["bio"]}</p>
                       <div class="flex items-center gap-3 text-xs font-mono">
-                        <span class="badge badge-black">影响力 {author["influence_score"]}</span>
-                        <span class="opacity-60">首篇 {author["first_paper_year"]}年</span>
+                        <span class="badge badge-black">Influence {author["influence_score"]}</span>
+                        <span class="opacity-60">First paper {author["first_paper_year"]}</span>
                       </div>
                     </div>
                   </div>
@@ -68,8 +68,8 @@ defmodule AiSaga.Pages.Author.Index do
       <section :if={length(@others) > 0}>
             <h2 class="section-title text-xl">
               <span>👥</span>
-              其他贡献者
-              <span class="text-sm font-normal opacity-60">({length(@others)} 位)</span>
+              Other Contributors
+              <span class="text-sm font-normal opacity-60">({length(@others)})</span>
             </h2>
             <div class="grid md:grid-cols-3 gap-3">
               <a :for={author <- @others} href={"/author/#{author["slug"]}"} class="card block p-4">
@@ -77,17 +77,17 @@ defmodule AiSaga.Pages.Author.Index do
                     <span class="text-xl">👤</span>
                     <h3 class="font-bold text-sm truncate">{author["name"]}</h3>
                   </div>
-                  <p class="text-xs opacity-60 mb-2 line-clamp-1">{author["affiliation"] || "暂无机构信息"}</p>
+                  <p class="text-xs opacity-60 mb-2 line-clamp-1">{author["affiliation"] || "No affiliation available"}</p>
                   <div class="text-xs font-mono opacity-40">
-                    影响力: {author["influence_score"] || 50}
+                    Influence: {author["influence_score"] || 50}
                   </div>
                 </a>
             </div>
           </section>
 
       <div :if={length(@featured) == 0 and length(@others) == 0} class="empty-state">
-          <p>暂无作者数据</p>
-          <p class="hint">请稍后再试</p>
+          <p>No author data available yet</p>
+          <p class="hint">Please try again later</p>
         </div>
     </div>
     """

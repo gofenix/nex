@@ -160,45 +160,45 @@ defmodule AiSaga.OpenAIClient do
     【HuggingFace Data】
     #{hf_str}
 
-    Please generate content in the following format (all in Chinese, keep it academic and accurate but concise):
+    Please generate content in the following format in English. Keep it academic, accurate, and concise.
 
-    ## 中文摘要
-    Translate the English abstract into a 100-150 word Chinese academic summary, briefly summarizing core contributions.
+    ## Abstract
+    Write a concise 100-150 word academic summary of the paper and its main contributions.
 
-    ## 上一个范式
+    ## Previous Paradigm
     Describe the mainstream methods before this paper, with table comparison and list of dilemmas.
 
-    ## 核心贡献
+    ## Core Contribution
     List 2-3 core innovations, with one-sentence summary.
 
-    ## 核心机制
+    ## Core Mechanism
     Core algorithm and key steps, can use code blocks or tables.
 
-    ## 为什么赢了
+    ## Why It Won
     Comparison table with previous methods (3 dimensions).
 
-    ## 当时面临的挑战
+    ## Challenges at the Time
     Core problems faced by the field (2-3 points).
 
-    ## 解决方案
+    ## Solution
     How the paper solves these (technical key points).
 
-    ## 深远影响
+    ## Long-Term Impact
     Specific changes and impact on the field.
 
-    ## 后续影响
+    ## Subsequent Influence
     Subsequent important works and timeline.
 
-    ## 作者去向
+    ## Author Trajectories
     Main authors' subsequent developments (table).
 
-    ## 历史背景
+    ## Historical Context
     Historical background when the paper was published (~100 words).
 
     Important notes:
-    1. All content in Chinese
-    2. Concise but professional, don't be overly verbose
-    3. Use tables and lists to organize information
+    1. All content must be in English
+    2. Keep it concise but professional
+    3. Use tables and lists where they improve clarity
     """
   end
 
@@ -287,7 +287,7 @@ defmodule AiSaga.OpenAIClient do
     |> String.replace_prefix("https://arxiv.org/abs/", "")
     |> String.replace_prefix("http://arxiv.org/abs/", "")
     |> case do
-      "未提供" -> nil
+      "not provided" -> nil
       "" -> nil
       value -> value
     end
@@ -346,17 +346,17 @@ defmodule AiSaga.OpenAIClient do
       |> Map.new()
 
     %{
-      chinese_abstract: sections["中文摘要"],
-      prev_paradigm: sections["上一个范式"],
-      core_contribution: sections["核心贡献"],
-      core_mechanism: sections["核心机制"],
-      why_it_wins: sections["为什么赢了"],
-      challenge: sections["当时面临的挑战"],
-      solution: sections["解决方案"],
-      impact: sections["深远影响"],
-      subsequent_impact: sections["后续影响"],
-      author_destinies: sections["作者去向"],
-      history_context: sections["历史背景"]
+      chinese_abstract: sections["Abstract"],
+      prev_paradigm: sections["Previous Paradigm"],
+      core_contribution: sections["Core Contribution"],
+      core_mechanism: sections["Core Mechanism"],
+      why_it_wins: sections["Why It Won"],
+      challenge: sections["Challenges at the Time"],
+      solution: sections["Solution"],
+      impact: sections["Long-Term Impact"],
+      subsequent_impact: sections["Subsequent Influence"],
+      author_destinies: sections["Author Trajectories"],
+      history_context: sections["Historical Context"]
     }
   end
 end

@@ -10,19 +10,19 @@ defmodule AiSaga.Api.GeneratePaper do
       {:ok, slug, title, reason} ->
         Nex.html("""
         <div id="generate-controls">
-          <button class="md-btn md-btn-primary border-white">✅ 已完成</button>
+          <button class="md-btn md-btn-primary border-white">✅ Completed</button>
         </div>
         <div id="generate-status">
-          <div class='text-sm font-bold' style='color: #4ade80;'>✅ 生成完成！</div>
-          <div class='text-sm mt-2'><span class='font-bold'>📖 论文链接:</span> <a href='/paper/#{slug}' class='underline hover:opacity-80' style='color: #6fc2ff;'>#{title}</a></div>
-          <div class='text-sm mt-2 p-3 bg-yellow-400/20 border border-yellow-400 rounded' style='color: var(--md-white);'><span class='font-bold'>💡 推荐理由:</span> #{reason}</div>
+          <div class='text-sm font-bold' style='color: #4ade80;'>✅ Generation completed!</div>
+          <div class='text-sm mt-2'><span class='font-bold'>📖 Paper link:</span> <a href='/paper/#{slug}' class='underline hover:opacity-80' style='color: #6fc2ff;'>#{title}</a></div>
+          <div class='text-sm mt-2 p-3 bg-yellow-400/20 border border-yellow-400 rounded' style='color: var(--md-white);'><span class='font-bold'>💡 Recommendation reason:</span> #{reason}</div>
         </div>
         """)
 
       {:error, message} ->
         Nex.html("""
         <div id="generate-controls">
-          <button class="md-btn border-white">❌ 生成失败</button>
+          <button class="md-btn border-white">❌ Generation Failed</button>
         </div>
         <div id="generate-status">
           <div class='text-sm' style='color: #f87171;'>❌ #{message}</div>
@@ -44,7 +44,7 @@ defmodule AiSaga.Api.GeneratePaper do
       {:ok, slug, new_paper.title, recommendation.reason}
     else
       {:error, reason} -> {:error, inspect(reason)}
-      _ -> {:error, "未知错误"}
+      _ -> {:error, "Unknown error"}
     end
   end
 end

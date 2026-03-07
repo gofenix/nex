@@ -8,17 +8,17 @@ defmodule AiSaga.Pages.Search do
     year_to = params["year_to"] || ""
     sort_by = params["sort"] || "relevance"
 
-    # 获取所有范式用于筛选
+    # Load all paradigms for filtering.
     {:ok, paradigms} =
       NexBase.from("aisaga_paradigms")
       |> NexBase.order(:start_year, :asc)
       |> NexBase.run()
 
-    # 构建搜索查询
+    # Build the search query.
     papers = search_papers(query, paradigm_slug, year_from, year_to, sort_by)
 
     %{
-      title: if(query != "", do: "搜索: #{query}", else: "搜索论文"),
+      title: if(query != "", do: "Search: #{query}", else: "Search Papers"),
       query: query,
       paradigm_slug: paradigm_slug,
       year_from: year_from,
@@ -30,7 +30,7 @@ defmodule AiSaga.Pages.Search do
   end
 
   defp search_papers(query, paradigm_slug, year_from, year_to, sort_by) do
-    # 基础查询
+    # Base query.
     base_query =
       if query != "" do
         NexBase.from("aisaga_papers")
@@ -41,10 +41,10 @@ defmodule AiSaga.Pages.Search do
         |> NexBase.select([:title, :slug, :abstract, :published_year, :is_paradigm_shift, :citations])
       end
 
-    # 范式筛选
+    # Paradigm filter.
     query_with_paradigm =
       if paradigm_slug != "" do
-        # 先获取范式ID
+        # Load the paradigm ID first.
         case NexBase.from("aisaga_paradigms") |> NexBase.select([:id]) |> NexBase.eq(:slug, paradigm_slug) |> NexBase.single() |> NexBase.run() do
           {:ok, [paradigm]} ->
             base_query |> NexBase.eq(:paradigm_id, paradigm["id"])
@@ -55,13 +55,13 @@ defmodule AiSaga.Pages.Search do
         base_query
       end
 
-    # 年份筛选
+    # Year range filter.
     query_with_year =
       query_with_paradigm
       |> maybe_add_year_filter(year_from, :gte, :published_year)
       |> maybe_add_year_filter(year_to, :lte, :published_year)
 
-    # 排序
+    # Sorting.
     final_query =
       case sort_by do
         "year_asc" ->
@@ -98,47 +98,47 @@ defmodule AiSaga.Pages.Search do
     ~H"""
     <div class="max-w-4xl mx-auto space-y-8">
       <a href="/" class="back-link mb-6 inline-block">
-        ← 返回首页
+        ← Back to Home
       </a>
 
       <div class="page-header">
-        <h1>🔍 搜索论文</h1>
-        <p>通过关键词、范式或年份筛选找到你感兴趣的论文</p>
+        <h1>🔍 Search Papers</h1>
+        <p>Find papers by filtering with keywords, paradigms, or publication years</p>
       </div>
 
-      <%!-- 搜索表单 --%>
+      <%!-- Search form --%>
       <form action="/search" method="get" class="space-y-4">
-        <%!-- 关键词搜索 --%>
+        <%!-- Keyword search --%>
         <div class="flex gap-3">
           <input
             type="text"
             name="q"
             value={@query}
-            placeholder="输入论文标题关键词..."
+            placeholder="Enter paper title keywords..."
             class="flex-1 px-4 py-3 border-2 border-black bg-white focus:outline-none focus:ring-2 focus:ring-[rgb(255,222,0)]"
             autofocus
           />
           <button type="submit" class="px-6 py-3 bg-[rgb(255,222,0)] border-2 border-black font-bold hover:bg-yellow-300 transition-colors">
-            搜索
+            Search
           </button>
         </div>
 
-        <%!-- 筛选条件 --%>
+        <%!-- Filters --%>
         <div class="grid md:grid-cols-4 gap-3 bg-gray-50 p-4 border-2 border-black">
-          <%!-- 范式筛选 --%>
+          <%!-- Paradigm filter --%>
           <div>
-            <label class="block text-xs font-mono opacity-60 mb-1">研究范式</label>
+            <label class="block text-xs font-mono opacity-60 mb-1">Research Paradigm</label>
             <select name="paradigm" class="w-full px-3 py-2 border-2 border-black bg-white focus:outline-none focus:ring-2 focus:ring-[rgb(255,222,0)]">
-              <option value="">全部范式</option>
+              <option value="">All Paradigms</option>
               <option :for={paradigm <- @paradigms} value={paradigm["slug"]} selected={@paradigm_slug == paradigm["slug"]}>
                   {paradigm["name"]}
                 </option>
             </select>
           </div>
 
-          <%!-- 年份范围 --%>
+          <%!-- Year range --%>
           <div>
-            <label class="block text-xs font-mono opacity-60 mb-1">起始年份</label>
+            <label class="block text-xs font-mono opacity-60 mb-1">Start Year</label>
             <input
               type="number"
               name="year_from"
@@ -149,7 +149,7 @@ defmodule AiSaga.Pages.Search do
           </div>
 
           <div>
-            <label class="block text-xs font-mono opacity-60 mb-1">结束年份</label>
+            <label class="block text-xs font-mono opacity-60 mb-1">End Year</label>
             <input
               type="number"
               name="year_to"
@@ -159,24 +159,24 @@ defmodule AiSaga.Pages.Search do
             />
           </div>
 
-          <%!-- 排序方式 --%>
+          <%!-- Sort order --%>
           <div>
-            <label class="block text-xs font-mono opacity-60 mb-1">排序方式</label>
+            <label class="block text-xs font-mono opacity-60 mb-1">Sort By</label>
             <select name="sort" class="w-full px-3 py-2 border-2 border-black bg-white focus:outline-none focus:ring-2 focus:ring-[rgb(255,222,0)]">
-              <option value="relevance" selected={@sort_by == "relevance"}>相关度</option>
-              <option value="year_desc" selected={@sort_by == "year_desc"}>最新优先</option>
-              <option value="year_asc" selected={@sort_by == "year_asc"}>最早优先</option>
-              <option value="citations" selected={@sort_by == "citations"}>引用数</option>
+              <option value="relevance" selected={@sort_by == "relevance"}>Relevance</option>
+              <option value="year_desc" selected={@sort_by == "year_desc"}>Newest First</option>
+              <option value="year_asc" selected={@sort_by == "year_asc"}>Oldest First</option>
+              <option value="citations" selected={@sort_by == "citations"}>Citation Count</option>
             </select>
           </div>
         </div>
       </form>
 
-      <%!-- 搜索结果 --%>
+      <%!-- Search results --%>
       <div :if={@query != "" or @paradigm_slug != "" or @year_from != "" or @year_to != ""}>
         <div class="flex items-center justify-between">
           <p class="text-sm font-mono opacity-60">
-            找到 {length(@papers)} 篇论文
+            Found {length(@papers)} papers
           </p>
           <div class="flex gap-2">
             <span :if={@paradigm_slug != "" and Enum.find(@paradigms, fn p -> p["slug"] == @paradigm_slug end)}
@@ -195,20 +195,20 @@ defmodule AiSaga.Pages.Search do
                   <div class="flex-1">
                     <div class="flex items-center gap-3 mb-2">
                       <span class="year-tag">{paper["published_year"]}</span>
-                      <span :if={paper["is_paradigm_shift"] == 1} class="badge badge-yellow">范式突破</span>
+                      <span :if={paper["is_paradigm_shift"] == 1} class="badge badge-yellow">Paradigm shift</span>
                     </div>
                     <h2 class="font-bold mb-2 line-clamp-2">{paper["title"]}</h2>
                     <p class="text-sm opacity-60 line-clamp-2 mb-3">{paper["abstract"]}</p>
                     <div class="flex items-center gap-4 text-xs font-mono opacity-50">
-                      <span>{paper["citations"]} 引用</span>
+                      <span>{paper["citations"]} citations</span>
                     </div>
                   </div>
                 </div>
               </a>
           </div>
         <div :if={length(@papers) == 0} class="empty-state">
-            <p>没有找到符合条件的论文</p>
-            <p class="hint">请尝试调整搜索条件</p>
+            <p>No papers matched your filters</p>
+            <p class="hint">Try adjusting your search criteria</p>
           </div>
       </div>
     </div>

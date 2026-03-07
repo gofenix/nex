@@ -7,7 +7,7 @@ defmodule AiSaga.Pages.Paradigm.Index do
       |> NexBase.order(:start_year, :asc)
       |> NexBase.run()
 
-    # 一次查询获取所有范式的统计数据（避免 N+1）
+    # Load all paradigm statistics in one query to avoid N+1 queries.
     {:ok, stats} =
       NexBase.sql(
         "SELECT paradigm_id, COUNT(*) as paper_count, COALESCE(SUM(CASE WHEN is_paradigm_shift = 1 THEN 1 ELSE 0 END), 0) as shift_count, COALESCE(SUM(citations), 0) as total_citations FROM aisaga_papers GROUP BY paradigm_id"
@@ -25,7 +25,7 @@ defmodule AiSaga.Pages.Paradigm.Index do
         })
       end)
 
-    # 计算总跨度
+    # Compute the total span.
     total_years =
       if length(paradigms) > 0 do
         first = List.first(paradigms)["start_year"]
@@ -37,7 +37,7 @@ defmodule AiSaga.Pages.Paradigm.Index do
       end
 
     %{
-      title: "AI 范式演进",
+      title: "AI Paradigm Evolution",
       paradigms: paradigms_with_stats,
       total_paradigms: length(paradigms),
       total_years: total_years
@@ -55,13 +55,13 @@ defmodule AiSaga.Pages.Paradigm.Index do
     ~H"""
     <div class="max-w-4xl mx-auto space-y-10">
       <a href="/" class="back-link mb-4 inline-block">
-        ← 返回首页
+        ← Back to Home
       </a>
 
       <div class="page-header">
-        <h1>AI 范式演进</h1>
-        <p>从1957年感知机诞生到2026年大模型时代，探索人工智能发展的五个重要阶段</p>
-        <div class="meta">{@total_paradigms} 个研究范式 · 跨越 {@total_years} 年</div>
+        <h1>AI Paradigm Evolution</h1>
+        <p>Explore five major stages in the evolution of artificial intelligence, from the Perceptron in 1957 to the era of foundation models.</p>
+        <div class="meta">{@total_paradigms} research paradigms · spanning {@total_years} years</div>
       </div>
 
       <div :if={length(@paradigms) > 0} class="relative">
@@ -81,12 +81,12 @@ defmodule AiSaga.Pages.Paradigm.Index do
                     </div>
                     <p class="text-sm opacity-70 mb-4 line-clamp-2">{paradigm["description"]}</p>
                     <div class="flex flex-wrap gap-2 text-xs font-mono">
-                      <span class="badge badge-gray">{paradigm["paper_count"]} 篇论文</span>
-                      <span :if={paradigm["shift_count"] > 0} class="badge badge-yellow">{paradigm["shift_count"]} 次突破</span>
+                      <span class="badge badge-gray">{paradigm["paper_count"]} papers</span>
+                      <span :if={paradigm["shift_count"] > 0} class="badge badge-yellow">{paradigm["shift_count"]} breakthroughs</span>
                     </div>
                     <div :if={paradigm["crisis"] || paradigm["revolution"]} class="mt-3 pt-3 border-t border-gray-200 text-xs">
-                        <span :if={paradigm["crisis"]} class="text-red-600 mr-3">⚠️ 面临挑战</span>
-                        <span :if={paradigm["revolution"]} class="text-green-600">🎉 革命突破</span>
+                        <span :if={paradigm["crisis"]} class="text-red-600 mr-3">⚠️ Challenges</span>
+                        <span :if={paradigm["revolution"]} class="text-green-600">🎉 Breakthrough</span>
                       </div>
                   </a>
                 </div>
@@ -94,8 +94,8 @@ defmodule AiSaga.Pages.Paradigm.Index do
           </div>
         </div>
       <div :if={length(@paradigms) == 0} class="empty-state">
-          <p>暂无范式数据</p>
-          <p class="hint">请稍后再试</p>
+          <p>No paradigm data available yet</p>
+          <p class="hint">Please try again later</p>
         </div>
     </div>
     """

@@ -1,201 +1,202 @@
-# AiSaga 论文添加工作流程
+# AiSaga Paper Addition Workflow
 
-## 概述
+## Overview
 
-AiSaga现在支持通过AI自动生成论文的三视角内容。你只需要提供论文的基本信息，AI会帮你生成完整的历史视角、范式变迁视角和人的视角内容。
+AiSaga supports AI-generated three-lens content for papers. You only need to provide the paper’s basic information, and AI will generate complete historical, paradigm-shift, and human-lens analysis.
 
-## 工作流程
+## Workflow
 
-### 第一步：准备论文信息
+### Step 1: Prepare paper information
 
-编辑 `scripts/add_paper.exs`，填入论文基本信息：
+Edit `scripts/add_paper.exs` and fill in the basic paper information:
 
 ```elixir
 paper_info = %{
-  title: "论文标题",
-  authors: ["作者1", "作者2"],
+  title: "Paper title",
+  authors: ["Author 1", "Author 2"],
   year: 2023,
   url: "https://arxiv.org/abs/xxxx.xxxxx",
-  abstract: "论文摘要",
-  paradigm_id: 5,  # 根据范式选择
-  is_paradigm_shift: 1,  # 1表示是范式变迁，0表示不是
-  shift_trigger: "范式变迁触发点描述"
+  abstract: "Paper abstract",
+  paradigm_id: 5,
+  is_paradigm_shift: 1,
+  shift_trigger: "Description of the paradigm-shift trigger"
 }
 ```
 
-### 第二步：生成AI Prompt
+### Step 2: Generate the AI prompt
 
-运行脚本生成Prompt：
+Run the script to generate the prompt:
 
 ```bash
 mix run scripts/add_paper.exs
 ```
 
-输出示例：
+Example output:
+
 ```
 ================================================================================
-新论文信息
+New Paper Information
 ================================================================================
-标题: Diffusion Models Beat GANs on Image Synthesis
-作者: Prafulla Dhariwal, Alex Nichol
-年份: 2021
-链接: https://arxiv.org/abs/2105.05233
+Title: Diffusion Models Beat GANs on Image Synthesis
+Authors: Prafulla Dhariwal, Alex Nichol
+Year: 2021
+Link: https://arxiv.org/abs/2105.05233
 
 ================================================================================
-AI Prompt (复制到ChatGPT/Claude)
+AI Prompt (copy to ChatGPT/Claude)
 ================================================================================
-请为以下AI论文生成详细的三视角分析内容：
+Please generate detailed three-perspective analysis content for the following AI paper:
 
-论文标题：Diffusion Models Beat GANs on Image Synthesis
-作者：Prafulla Dhariwal, Alex Nichol
-发表年份：2021
+Paper Title: Diffusion Models Beat GANs on Image Synthesis
+Authors: Prafulla Dhariwal, Alex Nichol
+Publication Year: 2021
 ...
 
 ================================================================================
-建议的URL标识: dhariwal-2021-diffusion
+Suggested URL Slug: dhariwal-2021-diffusion
 ================================================================================
 ```
 
-### 第三步：使用AI生成内容
+### Step 3: Generate content with AI
 
-1. 复制生成的Prompt
-2. 粘贴到ChatGPT-4、Claude或其他AI助手
-3. 等待AI生成完整内容（通常需要30-60秒）
+1. Copy the generated prompt
+2. Paste it into ChatGPT-4, Claude, or another AI assistant
+3. Wait for the full content to be generated, usually within 30-60 seconds
 
-### 第四步：保存AI返回的内容
+### Step 4: Save the AI response
 
-将AI生成的Markdown内容保存到文件：
+Save the AI-generated Markdown content to a file:
 
 ```bash
-# 创建文件并粘贴AI返回的内容
+# Create a file and paste the AI-generated content
 cat > dhariwal-2021-diffusion.md << 'EOF'
-[粘贴AI生成的内容]
+[Paste the AI-generated content here]
 EOF
 ```
 
-AI生成的内容格式示例：
+Example content format:
+
 ```markdown
-## 上一个范式
-**上一个范式：GANs + VAEs**
+## Previous Paradigm
+**Previous Paradigm: GANs + VAEs**
 
-在扩散模型之前，图像生成的主流范式是：
-```
-GANs（生成对抗网络）+ VAEs（变分自编码器）
-```
+Before diffusion models, the mainstream paradigm for image generation was:
 
-| 组件 | 贡献 | 问题 |
-|------|------|------|
-| **GANs** | 生成高质量图像 | 训练不稳定，模式崩溃 |
-| **VAEs** | 稳定的训练 | 生成质量较低，模糊 |
+GANs (Generative Adversarial Networks) + VAEs (Variational Autoencoders)
 
-**当时的困境**：
-- GANs训练困难，需要小心调参
-- 无法覆盖所有数据模式
+| Component | Contribution | Problem |
+|-----------|--------------|---------|
+| **GANs** | High-quality image generation | Unstable training, mode collapse |
+| **VAEs** | Stable training | Lower image quality, blur |
+
+**Challenges at the time:**
+- GAN training was difficult and required careful hyperparameter tuning
+- Models could not cover all data modes
 ...
 
-## 核心贡献
+## Core Contribution
 ...
 ```
 
-### 第五步：插入数据库
+### Step 5: Insert into the database
 
-运行插入脚本将内容保存到数据库：
+Run the insert script to save the content into the database:
 
 ```bash
 mix run scripts/insert_paper.exs dhariwal-2021-diffusion dhariwal-2021-diffusion.md
 ```
 
-### 第六步：验证
+### Step 6: Verify
 
-访问页面查看效果：
+Open the page and verify the result:
 
 ```
 http://localhost:4000/paper/dhariwal-2021-diffusion
 ```
 
-## 范式ID对照表
+## Paradigm ID Reference
 
-| ID | 范式名称 | 时间范围 |
-|----|---------|---------|
-| 1 | 感知机与连接主义 | 1957-1969 |
-| 2 | 符号AI与专家系统 | 1970-1987 |
-| 3 | 统计学习与SVM | 1990-2012 |
-| 4 | 深度学习 | 2012-2020 |
-| 5 | 基础模型与Transformer | 2017-现在 |
+| ID | Paradigm Name | Time Range |
+|----|---------------|------------|
+| 1 | Perceptron and Connectionism | 1957-1969 |
+| 2 | Symbolic AI and Expert Systems | 1970-1987 |
+| 3 | Statistical Learning and SVM | 1990-2012 |
+| 4 | Deep Learning | 2012-2020 |
+| 5 | Foundation Models and Transformers | 2017-Present |
 
-## AI Prompt模板
+## AI Prompt Template
 
-如果不想使用脚本，可以直接使用以下模板：
+If you do not want to use the script, you can use the following template directly:
 
 ```
-请为以下AI论文生成详细的三视角分析内容：
+Please generate detailed three-perspective analysis content for the following AI paper:
 
-论文标题：[论文标题]
-作者：[作者列表]
-发表年份：[年份]
-论文链接：[arXiv链接]
-摘要：[摘要]
+Paper Title: [Paper title]
+Authors: [Author list]
+Publication Year: [Year]
+Paper Link: [arXiv link]
+Abstract: [Abstract]
 
-请按照以下格式生成内容（使用Markdown格式）：
+Please generate content in the following Markdown format:
 
-## 上一个范式
-描述这篇论文出现之前的主流方法，包括：
-- 主流技术栈（用表格对比组件、贡献、问题）
-- 当时的困境
+## Previous Paradigm
+Describe the mainstream methods before this paper, including:
+- Main technology stack, using a table to compare components, contributions, and problems
+- The main difficulties at the time
 
-## 核心贡献
-- 突破性洞察（引用关键句子）
-- 2-3个核心创新点
-- 一句话总结
+## Core Contribution
+- Breakthrough insights, citing key sentences
+- 2-3 core innovations
+- A one-sentence summary
 
-## 核心机制
-- 核心公式（用代码块）
-- 步骤拆解（用表格）
-- 关键设计组件
+## Core Mechanism
+- Core formulas, using code blocks if helpful
+- Step-by-step breakdown, using tables if helpful
+- Key design components
 
-## 为什么赢了
-- 与之前方法的对比表格
-- 关键优势
+## Why It Won
+- A comparison table with previous methods
+- Key advantages
 
-## 当时面临的挑战
-简洁描述领域面临的核心问题
+## Challenges at the Time
+Briefly describe the core problems faced by the field
 
-## 解决方案
-简洁描述论文如何解决这些问题
+## Solution
+Briefly describe how the paper solved these problems
 
-## 深远影响
-简洁描述对领域的影响
+## Long-Term Impact
+Briefly describe the paper’s impact on the field
 
-## 后续影响
-- 范式转换表格（时代、核心、代表工作）
-- 后续重要工作的时间线
+## Subsequent Influence
+- A paradigm transition table, such as era, core idea, and representative work
+- A timeline of important subsequent work
 
-## 作者去向
-- 表格列出主要作者的后续发展
-- 名言引用（如果有）
+## Author Trajectories
+- A table of the main authors’ subsequent developments
+- Notable quotes, if any
 
-## 历史背景
-描述论文发表时的时代背景、研究动机
+## Historical Context
+Describe the historical background and research motivation at the time of publication
 
-请用中文生成，保持学术性和准确性。
+Please generate the result in English and keep it academically accurate.
 ```
 
-## 注意事项
+## Notes
 
-1. **AI质量**：建议使用ChatGPT-4或Claude-3.5-Sonnet以上模型
-2. **人工审核**：AI生成的内容可能需要人工审核和微调
-3. **学术准确性**：重要事实需要核实，特别是作者去向和后续影响
-4. **图片**：AI无法生成图片，如需图片需要手动添加
+1. **AI quality**: Use ChatGPT-4 or Claude-3.5-Sonnet or stronger models when possible
+2. **Human review**: AI-generated content may still need review and light editing
+3. **Academic accuracy**: Verify important facts, especially author trajectories and subsequent influence
+4. **Images**: AI does not generate images here; add them manually if needed
 
-## 批量添加
+## Batch Addition
 
-如果需要批量添加多篇论文，可以：
+If you need to add multiple papers in bulk, you can:
 
-1. 创建一个论文列表文件
-2. 编写循环脚本自动处理
-3. 或者使用AI的批量处理功能
+1. Create a paper list file
+2. Write a loop script to process them automatically
+3. Or use an AI tool's batch-processing workflow
 
-示例批量脚本思路：
+Example bulk script approach:
 ```elixir
 papers = [
   %{title: "...", authors: [...], ...},
@@ -205,29 +206,29 @@ papers = [
 
 Enum.each(papers, fn paper ->
   prompt = generate_prompt(paper)
-  # 调用AI API生成内容
-  # 保存到数据库
+  # Call the AI API to generate content
+  # Save to the database
 end)
 ```
 
-## 文件结构
+## File Structure
 
 ```
 ai_saga/
 ├── scripts/
-│   ├── add_paper.exs      # 生成AI Prompt
-│   └── insert_paper.exs   # 插入数据库
+│   ├── add_paper.exs      # Generate the AI prompt
+│   └── insert_paper.exs   # Insert into the database
 ├── priv/repo/
-│   └── seeds_all_papers.exs  # 现有的10篇论文数据
-└── WORKFLOW.md            # 本文档
+│   └── seeds_all_papers.exs  # Existing 10-paper dataset
+└── WORKFLOW.md            # This document
 ```
 
-## 示例
+## Example
 
-现有的10篇论文都是按照这个流程生成的，可以参考：
+The existing 10 papers were all produced with this workflow. You can refer to:
 - Transformer (2017)
 - BERT (2018)
 - GPT-3 (2020)
 - ...
 
-查看文件 `priv/repo/seeds_all_papers.exs` 了解具体格式。
+See `priv/repo/seeds_all_papers.exs` for the exact format.

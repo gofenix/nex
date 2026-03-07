@@ -426,7 +426,7 @@ eventSource.onerror = function() {
 - Let AI see all context and make decisions, don't pre-filter too aggressively
 
 **Prompt Priority Logic**
-- Clearly state priority in prompt: "优先从X推荐，如果X为空则从Y推荐"
+- Clearly state priority in prompt: "Prefer recommendations from X, and if X is empty then fall back to Y"
 - Provide fallback options within same prompt
 - Trust AI to follow instructions rather than hardcoding fallback lists
 
@@ -455,7 +455,7 @@ eventSource.onerror = function() {
 **Disable buttons during async operations**
 ```html
 <button disabled class="opacity-50 cursor-not-allowed">
-  ⏳ 生成中...
+  ⏳ Generating...
 </button>
 ```
 

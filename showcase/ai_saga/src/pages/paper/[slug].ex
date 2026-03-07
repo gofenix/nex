@@ -29,7 +29,7 @@ defmodule AiSaga.Pages.Paper.Slug do
           |> NexBase.in_list(:id, author_ids)
           |> NexBase.run()
 
-        # 按 author_links 的顺序排列
+        # Keep authors in the order defined by author_links.
         Enum.map(author_ids, fn id ->
           Enum.find(all_authors, fn a -> a["id"] == id end)
         end)
@@ -46,7 +46,7 @@ defmodule AiSaga.Pages.Paper.Slug do
     }
   end
 
-  # 将Markdown转换为HTML
+  # Convert Markdown to HTML.
   defp markdown_to_html(nil), do: ""
 
   defp markdown_to_html(text) do
@@ -60,20 +60,20 @@ defmodule AiSaga.Pages.Paper.Slug do
     ~H"""
     <div class="max-w-4xl mx-auto">
       <a href="/paper" class="back-link mb-6 inline-block">
-        ← 返回论文列表
+        ← Back to Papers
       </a>
 
       <article class="space-y-6">
-        <%!-- 基本信息头部 --%>
+        <%!-- Header --%>
         <header class="space-y-4 border-b-2 border-black pb-6">
           <div class="flex flex-wrap items-center gap-3">
             <a href={"/paradigm/#{@paradigm["slug"]}"} class="badge badge-blue">
               {@paradigm["name"]}
             </a>
             <span :if={@paper["is_paradigm_shift"] == 1} class="badge badge-yellow">
-              ⚡ 范式变迁
+              ⚡ Paradigm shift
             </span>
-            <span class="year-tag">{@paper["published_year"]}年</span>
+            <span class="year-tag">{@paper["published_year"]}</span>
           </div>
 
           <h1 class="text-3xl md:text-4xl font-black leading-tight">{@paper["title"]}</h1>
@@ -87,32 +87,32 @@ defmodule AiSaga.Pages.Paper.Slug do
             <span :if={@paper["arxiv_id"]}>•</span>
             <span>{@paper["citations"]} citations</span>
             <span>•</span>
-            <a href={@paper["url"]} target="_blank" class="hover:underline">查看原文 →</a>
+            <a href={@paper["url"]} target="_blank" class="hover:underline">Read original →</a>
           </div>
         </header>
 
-        <%!-- 摘要 --%>
+        <%!-- Abstract --%>
         <div class="prose max-w-none bg-gray-50 p-6 border-2 border-black">
           <p class="text-lg leading-relaxed">{@paper["abstract"]}</p>
         </div>
 
-        <%!-- 锚点导航 --%>
+        <%!-- Anchor navigation --%>
         <nav class="sticky top-0 z-10 card p-3 flex flex-wrap gap-2">
-          <a :if={@paper["prev_paradigm"]} href="#history" class="badge badge-yellow hover:bg-yellow-300 transition-colors">📜 历史视角</a>
-          <a href="#paradigm-shift" class="badge badge-blue hover:bg-blue-300 transition-colors">🔄 范式变迁</a>
-          <a :if={@paper["author_destinies"]} href="#people" class="badge" style="background: rgba(255,160,160,0.2); border-color: var(--md-black);">👤 人物视角</a>
-          <a :if={@paper["subsequent_impact"]} href="#impact" class="badge badge-gray hover:bg-gray-200 transition-colors">📈 后续影响</a>
+          <a :if={@paper["prev_paradigm"]} href="#history" class="badge badge-yellow hover:bg-yellow-300 transition-colors">📜 Historical Lens</a>
+          <a href="#paradigm-shift" class="badge badge-blue hover:bg-blue-300 transition-colors">🔄 Paradigm Shift</a>
+          <a :if={@paper["author_destinies"]} href="#people" class="badge" style="background: rgba(255,160,160,0.2); border-color: var(--md-black);">👤 Human Lens</a>
+          <a :if={@paper["subsequent_impact"]} href="#impact" class="badge badge-gray hover:bg-gray-200 transition-colors">📈 Subsequent Influence</a>
         </nav>
 
-        <%!-- 三个视角的内容 --%>
+        <%!-- Three-lens content --%>
         <div class="space-y-6">
 
-          <%!-- 一、历史视角：承前启后 --%>
+          <%!-- I. Historical lens --%>
           <section :if={@paper["prev_paradigm"]} id="history" class="space-y-4 scroll-mt-20">
-              <h2 class="text-2xl font-black border-b-2 border-black pb-2">📜 历史视角：承前启后</h2>
+              <h2 class="text-2xl font-black border-b-2 border-black pb-2">📜 Historical Lens</h2>
               <details class="bg-white border-2 border-black group" open>
                 <summary class="p-4 cursor-pointer font-bold flex items-center justify-between hover:bg-gray-50">
-                  <span>📖 上一个范式</span>
+                  <span>📖 Previous Paradigm</span>
                   <span class="text-xs opacity-60 group-open:rotate-180 transition-transform">▼</span>
                 </summary>
                 <div class="p-4 pt-0 prose max-w-none markdown-content border-t border-gray-200">
@@ -121,10 +121,10 @@ defmodule AiSaga.Pages.Paper.Slug do
               </details>
             </section>
 
-          <%!-- 核心贡献 --%>
+          <%!-- Core contribution --%>
           <details :if={@paper["core_contribution"]} class="bg-[rgb(255,222,0)] border-2 border-black group" open>
               <summary class="p-4 cursor-pointer font-bold flex items-center justify-between hover:bg-yellow-300">
-                <span>💡 核心贡献</span>
+                <span>💡 Core Contribution</span>
                 <span class="text-xs opacity-60 group-open:rotate-180 transition-transform">▼</span>
               </summary>
               <div class="p-4 pt-0 prose max-w-none markdown-content bg-white border-t-2 border-black">
@@ -132,10 +132,10 @@ defmodule AiSaga.Pages.Paper.Slug do
               </div>
             </details>
 
-          <%!-- 核心机制 --%>
+          <%!-- Core mechanism --%>
           <details :if={@paper["core_mechanism"]} class="bg-white border-2 border-black group" open>
               <summary class="p-4 cursor-pointer font-bold flex items-center justify-between hover:bg-gray-50">
-                <span>⚙️ 核心机制</span>
+                <span>⚙️ Core Mechanism</span>
                 <span class="text-xs opacity-60 group-open:rotate-180 transition-transform">▼</span>
               </summary>
               <div class="p-4 pt-0 prose max-w-none markdown-content border-t border-gray-200">
@@ -143,10 +143,10 @@ defmodule AiSaga.Pages.Paper.Slug do
               </div>
             </details>
 
-          <%!-- 为什么赢了 --%>
+          <%!-- Why it won --%>
           <details :if={@paper["why_it_wins"]} class="bg-[rgb(111,194,255)] border-2 border-black group" open>
               <summary class="p-4 cursor-pointer font-bold flex items-center justify-between hover:bg-blue-300">
-                <span>🏆 为什么赢了</span>
+                <span>🏆 Why It Won</span>
                 <span class="text-xs opacity-60 group-open:rotate-180 transition-transform">▼</span>
               </summary>
               <div class="p-4 pt-0 prose max-w-none markdown-content bg-white border-t-2 border-black">
@@ -154,14 +154,14 @@ defmodule AiSaga.Pages.Paper.Slug do
               </div>
             </details>
 
-          <%!-- 二、范式变迁视角 --%>
+          <%!-- II. Paradigm shift lens --%>
           <section id="paradigm-shift" class="space-y-4 scroll-mt-20">
-            <h2 class="text-2xl font-black border-b-2 border-black pb-2">🔄 范式变迁视角</h2>
+            <h2 class="text-2xl font-black border-b-2 border-black pb-2">🔄 Paradigm Shift Lens</h2>
 
-            <%!-- 挑战 --%>
+            <%!-- Challenges --%>
             <details class="bg-white border-2 border-red-200 group" open>
               <summary class="p-4 cursor-pointer font-bold flex items-center justify-between hover:bg-red-50 text-red-700">
-                <span>⚠️ 当时面临的挑战</span>
+                <span>⚠️ Challenges at the Time</span>
                 <span class="text-xs opacity-60 group-open:rotate-180 transition-transform">▼</span>
               </summary>
               <div class="p-4 pt-0 prose max-w-none markdown-content border-t border-red-100">
@@ -169,10 +169,10 @@ defmodule AiSaga.Pages.Paper.Slug do
               </div>
             </details>
 
-            <%!-- 解决方案 --%>
+            <%!-- Solution --%>
             <details class="bg-[rgb(255,222,0)] border-2 border-black group" open>
               <summary class="p-4 cursor-pointer font-bold flex items-center justify-between hover:bg-yellow-300">
-                <span>💡 解决方案</span>
+                <span>💡 Solution</span>
                 <span class="text-xs opacity-60 group-open:rotate-180 transition-transform">▼</span>
               </summary>
               <div class="p-4 pt-0 prose max-w-none markdown-content bg-white border-t-2 border-black">
@@ -180,10 +180,10 @@ defmodule AiSaga.Pages.Paper.Slug do
               </div>
             </details>
 
-            <%!-- 深远影响 --%>
+            <%!-- Long-term impact --%>
             <details class="bg-[rgb(111,194,255)] border-2 border-black group" open>
               <summary class="p-4 cursor-pointer font-bold flex items-center justify-between hover:bg-blue-300">
-                <span>🌊 深远影响</span>
+                <span>🌊 Long-Term Impact</span>
                 <span class="text-xs opacity-60 group-open:rotate-180 transition-transform">▼</span>
               </summary>
               <div class="p-4 pt-0 prose max-w-none markdown-content bg-white border-t-2 border-black">
@@ -192,12 +192,12 @@ defmodule AiSaga.Pages.Paper.Slug do
             </details>
           </section>
 
-          <%!-- 三、人的视角 --%>
+          <%!-- III. Human lens --%>
           <section :if={@paper["author_destinies"]} id="people" class="space-y-4 scroll-mt-20">
-              <h2 class="text-2xl font-black border-b-2 border-black pb-2">👤 人的视角：作者去向</h2>
+              <h2 class="text-2xl font-black border-b-2 border-black pb-2">👤 Human Lens: Author Trajectories</h2>
               <details class="bg-white border-2 border-black group" open>
                 <summary class="p-4 cursor-pointer font-bold flex items-center justify-between hover:bg-gray-50">
-                  <span>👥 作者后续发展</span>
+                  <span>👥 Author Trajectories</span>
                   <span class="text-xs opacity-60 group-open:rotate-180 transition-transform">▼</span>
                 </summary>
                 <div class="p-4 pt-0 prose max-w-none markdown-content border-t border-gray-200">
@@ -206,12 +206,12 @@ defmodule AiSaga.Pages.Paper.Slug do
               </details>
             </section>
 
-          <%!-- 后续影响 --%>
+          <%!-- Subsequent influence --%>
           <section :if={@paper["subsequent_impact"]} id="impact" class="space-y-4 scroll-mt-20">
-              <h2 class="text-2xl font-black border-b-2 border-black pb-2">📈 后续影响</h2>
+              <h2 class="text-2xl font-black border-b-2 border-black pb-2">📈 Subsequent Influence</h2>
               <details class="bg-gray-50 border-2 border-black group" open>
                 <summary class="p-4 cursor-pointer font-bold flex items-center justify-between hover:bg-gray-100">
-                  <span>📊 对后续研究的影响</span>
+                  <span>📊 Impact on Later Research</span>
                   <span class="text-xs opacity-60 group-open:rotate-180 transition-transform">▼</span>
                 </summary>
                 <div class="p-4 pt-0 prose max-w-none markdown-content border-t border-gray-200">
@@ -220,10 +220,10 @@ defmodule AiSaga.Pages.Paper.Slug do
               </details>
             </section>
 
-          <%!-- 原始历史背景（如果没有新格式） --%>
+          <%!-- Fallback historical context when the new format is absent --%>
           <details :if={!@paper["prev_paradigm"] && @paper["history_context"]} class="bg-gray-50 border-2 border-black group" open>
               <summary class="p-4 cursor-pointer font-bold flex items-center justify-between hover:bg-gray-100">
-                <span>📜 历史背景</span>
+                <span>📜 Historical Context</span>
                 <span class="text-xs opacity-60 group-open:rotate-180 transition-transform">▼</span>
               </summary>
               <div class="p-4 pt-0 prose max-w-none markdown-content border-t border-gray-200">

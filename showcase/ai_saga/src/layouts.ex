@@ -4,14 +4,14 @@ defmodule AiSaga.Layouts do
   def render(assigns) do
     ~H"""
     <!DOCTYPE html>
-    <html lang="zh-CN" data-theme="light">
+    <html lang="en" data-theme="light">
       <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>{@title} - AiSaga</title>
-        <meta name="description" content="用三重视角解读 AI 经典论文：历史学家的脉络、工程师的本质、记者的故事。" />
+        <meta name="description" content="Understand classic AI papers through three lenses: historical context, engineering essence, and the human story." />
         <meta property="og:title" content={@title} />
-        <meta property="og:description" content="用三重视角解读 AI 经典论文：历史学家的脉络、工程师的本质、记者的故事。" />
+        <meta property="og:description" content="Understand classic AI papers through three lenses: historical context, engineering essence, and the human story." />
         <meta property="og:type" content="website" />
         <meta name="twitter:card" content="summary" />
         <meta name="twitter:title" content={@title} />
@@ -332,22 +332,22 @@ defmodule AiSaga.Layouts do
           <div class="max-w-4xl mx-auto w-full px-6 py-4 flex items-center justify-between">
             <a href="/" class="text-2xl font-black tracking-tight hover:underline">🤖 AiSaga</a>
             <div class="hidden md:flex gap-4 text-sm font-medium">
-              <a href="/" class="nav-link">首页</a>
-              <a href="/paper" class="nav-link">论文</a>
-              <a href="/paradigm" class="nav-link">范式</a>
-              <a href="/timeline" class="nav-link">时间线</a>
-              <a href="/author" class="nav-link">人物</a>
-              <a href="/search" class="nav-link">搜索</a>
+              <a href="/" class="nav-link">Home</a>
+              <a href="/paper" class="nav-link">Papers</a>
+              <a href="/paradigm" class="nav-link">Paradigms</a>
+              <a href="/timeline" class="nav-link">Timeline</a>
+              <a href="/author" class="nav-link">Authors</a>
+              <a href="/search" class="nav-link">Search</a>
             </div>
-            <button onclick="document.getElementById('mobile-menu').classList.toggle('hidden')" class="md:hidden text-2xl leading-none" aria-label="菜单">☰</button>
+            <button onclick="document.getElementById('mobile-menu').classList.toggle('hidden')" class="md:hidden text-2xl leading-none" aria-label="Menu">☰</button>
           </div>
           <div id="mobile-menu" class="hidden md:hidden border-t-2 border-black px-6 py-4 space-y-3">
-            <a href="/" class="block text-sm font-medium hover:underline">首页</a>
-            <a href="/paper" class="block text-sm font-medium hover:underline">论文</a>
-            <a href="/paradigm" class="block text-sm font-medium hover:underline">范式</a>
-            <a href="/timeline" class="block text-sm font-medium hover:underline">时间线</a>
-            <a href="/author" class="block text-sm font-medium hover:underline">人物</a>
-            <a href="/search" class="block text-sm font-medium hover:underline">搜索</a>
+            <a href="/" class="block text-sm font-medium hover:underline">Home</a>
+            <a href="/paper" class="block text-sm font-medium hover:underline">Papers</a>
+            <a href="/paradigm" class="block text-sm font-medium hover:underline">Paradigms</a>
+            <a href="/timeline" class="block text-sm font-medium hover:underline">Timeline</a>
+            <a href="/author" class="block text-sm font-medium hover:underline">Authors</a>
+            <a href="/search" class="block text-sm font-medium hover:underline">Search</a>
           </div>
         </nav>
         <main class="max-w-4xl mx-auto px-6 py-8">
@@ -358,27 +358,27 @@ defmodule AiSaga.Layouts do
             <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
               <div>
                 <h4 class="font-black text-lg mb-3">🤖 AiSaga</h4>
-                <p class="text-sm opacity-60 leading-relaxed">用三重视角解读 AI 经典论文：历史学家的脉络、工程师的本质、记者的故事。</p>
+                <p class="text-sm opacity-60 leading-relaxed">Understand classic AI papers through three lenses: historical context, engineering essence, and the human story.</p>
               </div>
               <div>
-                <h4 class="font-bold text-sm mb-3 opacity-40 uppercase tracking-wider">探索</h4>
+                <h4 class="font-bold text-sm mb-3 opacity-40 uppercase tracking-wider">Explore</h4>
                 <div class="space-y-2 text-sm">
-                  <a href="/paper" class="block hover:underline opacity-60 hover:opacity-100">论文库</a>
-                  <a href="/paradigm" class="block hover:underline opacity-60 hover:opacity-100">范式演进</a>
-                  <a href="/author" class="block hover:underline opacity-60 hover:opacity-100">人物志</a>
-                  <a href="/timeline" class="block hover:underline opacity-60 hover:opacity-100">时间线</a>
+                  <a href="/paper" class="block hover:underline opacity-60 hover:opacity-100">Paper Library</a>
+                  <a href="/paradigm" class="block hover:underline opacity-60 hover:opacity-100">Paradigm Evolution</a>
+                  <a href="/author" class="block hover:underline opacity-60 hover:opacity-100">Author Profiles</a>
+                  <a href="/timeline" class="block hover:underline opacity-60 hover:opacity-100">Timeline</a>
                 </div>
               </div>
               <div>
-                <h4 class="font-bold text-sm mb-3 opacity-40 uppercase tracking-wider">功能</h4>
+                <h4 class="font-bold text-sm mb-3 opacity-40 uppercase tracking-wider">Features</h4>
                 <div class="space-y-2 text-sm">
-                  <a href="/search" class="block hover:underline opacity-60 hover:opacity-100">搜索论文</a>
-                  <a href="/generate" class="block hover:underline opacity-60 hover:opacity-100">AI 生成分析</a>
+                  <a href="/search" class="block hover:underline opacity-60 hover:opacity-100">Search Papers</a>
+                  <a href="/generate" class="block hover:underline opacity-60 hover:opacity-100">AI Analysis Generation</a>
                 </div>
               </div>
             </div>
             <div class="border-t border-black pt-6 flex flex-col md:flex-row justify-between items-center gap-2 text-sm opacity-40">
-              <span class="font-mono">AiSaga — 理解 AI 的起点</span>
+              <span class="font-mono">AiSaga — Where AI Understanding Begins</span>
               <span class="font-mono">Built with Nex Framework + Elixir</span>
             </div>
           </div>

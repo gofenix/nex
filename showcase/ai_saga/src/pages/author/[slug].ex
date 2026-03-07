@@ -8,7 +8,7 @@ defmodule AiSaga.Pages.Author.Slug do
       |> NexBase.single()
       |> NexBase.run()
 
-    # 获取作者的论文
+    # Load the author's papers.
     {:ok, links} =
       NexBase.from("aisaga_paper_authors")
       |> NexBase.eq(:author_id, author["id"])
@@ -29,7 +29,7 @@ defmodule AiSaga.Pages.Author.Slug do
         []
       end
 
-    # 获取合作者（共同发表论文的其他作者）
+    # Load collaborators who co-authored papers with this author.
 
     collaborators =
       if length(paper_ids) > 0 do
@@ -47,7 +47,7 @@ defmodule AiSaga.Pages.Author.Slug do
             |> NexBase.in_list(:id, collaborator_ids)
             |> NexBase.run()
 
-          # 统计合作次数
+          # Count collaboration frequency.
           collab_counts = Enum.frequencies(Enum.map(all_links, & &1["author_id"]))
 
           Enum.map(collab_authors, fn a ->
@@ -62,7 +62,7 @@ defmodule AiSaga.Pages.Author.Slug do
         []
       end
 
-    # 计算统计数据
+    # Compute summary statistics.
     paradigm_shifts = Enum.filter(papers, &(&1["is_paradigm_shift"] == 1))
     total_citations = Enum.sum(Enum.map(papers, &(&1["citations"] || 0)))
 
@@ -84,10 +84,10 @@ defmodule AiSaga.Pages.Author.Slug do
     ~H"""
     <div class="max-w-4xl mx-auto space-y-8">
       <a href="/author" class="back-link">
-        ← 返回人物列表
+        ← Back to Authors
       </a>
 
-      <%!-- 头部信息卡片 --%>
+      <%!-- Header card --%>
       <header class="card p-6 md:p-8">
         <div class="flex flex-col md:flex-row md:items-start gap-6">
           <div class="flex-shrink-0">
@@ -104,36 +104,36 @@ defmodule AiSaga.Pages.Author.Slug do
 
             <div class="flex flex-wrap items-center gap-4 text-sm">
               <span :if={@author["affiliation"]} class="px-3 py-1 bg-gray-100 border border-black">{@author["affiliation"]}</span>
-              <span :if={@author["first_paper_year"]} class="font-mono opacity-60">首篇论文: {@author["first_paper_year"]}年</span>
+              <span :if={@author["first_paper_year"]} class="font-mono opacity-60">First paper: {@author["first_paper_year"]}</span>
             </div>
 
-            <%!-- 影响力指标 --%>
+            <%!-- Influence metrics --%>
             <div class="flex flex-wrap gap-4 pt-4 border-t border-gray-200">
               <div class="stat-box stat-yellow">
                 <div class="number">{@author["influence_score"] || 50}</div>
-                <div class="label">影响力分数</div>
+                <div class="label">Influence Score</div>
               </div>
               <div class="stat-box stat-blue">
                 <div class="number">{@stats.total_papers}</div>
-                <div class="label">发表论文</div>
+                <div class="label">Papers</div>
               </div>
               <div class="stat-box stat-blue">
                 <div class="number">{@stats.total_citations}</div>
-                <div class="label">总引用数</div>
+                <div class="label">Citations</div>
               </div>
               <div :if={@stats.paradigm_shifts > 0} class="stat-box stat-black">
                   <div class="number">{@stats.paradigm_shifts}</div>
-                  <div class="label">范式突破</div>
+                  <div class="label">Paradigm Shifts</div>
                 </div>
             </div>
           </div>
         </div>
       </header>
 
-      <%!-- 合作者网络 --%>
+      <%!-- Collaborator network --%>
       <section :if={length(@collaborators) > 0} class="card p-6">
           <h2 class="section-title text-xl">
-            <span>🤝</span> 主要合作者
+            <span>🤝</span> Main Collaborators
           </h2>
           <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
             <a :for={collab <- @collaborators} href={"/author/#{collab["slug"]}"} class="flex items-center gap-3 p-3 border border-black hover:bg-gray-50 transition-colors">
@@ -142,17 +142,17 @@ defmodule AiSaga.Pages.Author.Slug do
                 </div>
                 <div class="flex-1 min-w-0">
                   <div class="font-bold text-sm truncate">{collab["name"]}</div>
-                  <div class="text-xs opacity-60">{collab["collab_count"]} 篇合作</div>
+                  <div class="text-xs opacity-60">{collab["collab_count"]} collaborations</div>
                 </div>
               </a>
           </div>
         </section>
 
-      <%!-- 论文列表 --%>
+      <%!-- Paper list --%>
       <section>
         <h2 class="section-title text-2xl">
-          <span>📝</span> 发表论文
-          <span class="text-sm font-normal opacity-60">({@stats.total_papers} 篇)</span>
+          <span>📝</span> Papers
+          <span class="text-sm font-normal opacity-60">({@stats.total_papers})</span>
         </h2>
         <div class="space-y-4">
           <a :for={paper <- @papers} href={"/paper/#{paper["slug"]}"} class="card block p-5">
@@ -160,13 +160,13 @@ defmodule AiSaga.Pages.Author.Slug do
                 <div class="flex-1">
                   <div class="flex items-center gap-3 mb-2">
                     <span class="year-tag">{paper["published_year"]}</span>
-                    <span :if={paper["is_paradigm_shift"] == 1} class="badge badge-yellow">范式突破</span>
+                    <span :if={paper["is_paradigm_shift"] == 1} class="badge badge-yellow">Paradigm shift</span>
                   </div>
                   <h3 class="font-bold mb-2 line-clamp-2">{paper["title"]}</h3>
                   <p class="text-sm opacity-60 line-clamp-2">{paper["abstract"]}</p>
                 </div>
                 <div class="text-right">
-                  <span class="text-sm font-mono opacity-40 block">{paper["citations"]} 引用</span>
+                  <span class="text-sm font-mono opacity-40 block">{paper["citations"]} citations</span>
                 </div>
               </div>
             </a>

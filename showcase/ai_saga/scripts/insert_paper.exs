@@ -39,16 +39,16 @@ Enum.each(sections, fn {key, _} -> IO.puts("  - #{key}") end)
 # Build paper data
 paper_data = %{
   slug: slug,
-  prev_paradigm: sections["上一个范式"],
-  core_contribution: sections["核心贡献"],
-  core_mechanism: sections["核心机制"],
-  why_it_wins: sections["为什么赢了"],
-  challenge: sections["当时面临的挑战"],
-  solution: sections["解决方案"],
-  impact: sections["深远影响"],
-  subsequent_impact: sections["后续影响"],
-  author_destinies: sections["作者去向"],
-  history_context: sections["历史背景"]
+  prev_paradigm: sections["Previous Paradigm"],
+  core_contribution: sections["Core Contribution"],
+  core_mechanism: sections["Core Mechanism"],
+  why_it_wins: sections["Why It Won"],
+  challenge: sections["Challenges at the Time"],
+  solution: sections["Solution"],
+  impact: sections["Long-Term Impact"],
+  subsequent_impact: sections["Subsequent Influence"],
+  author_destinies: sections["Author Trajectories"],
+  history_context: sections["Historical Context"]
 }
 
 # Insert to database

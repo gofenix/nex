@@ -9,7 +9,7 @@ defmodule AiSaga.Pages.Paper.Index do
       |> NexBase.run()
 
     %{
-      title: "所有论文",
+      title: "All Papers",
       papers: papers
     }
   end
@@ -18,12 +18,12 @@ defmodule AiSaga.Pages.Paper.Index do
     ~H"""
     <div class="max-w-4xl mx-auto space-y-8">
       <a href="/" class="back-link mb-6 inline-block">
-        ← 返回首页
+        ← Back to Home
       </a>
 
       <div class="page-header">
-        <h1>所有论文</h1>
-        <p class="text-base opacity-60">探索人工智能领域的重要研究成果</p>
+        <h1>All Papers</h1>
+        <p class="text-base opacity-60">Explore landmark research across the field of artificial intelligence</p>
       </div>
 
       <div :if={length(@papers) > 0} class="space-y-4">
@@ -32,18 +32,18 @@ defmodule AiSaga.Pages.Paper.Index do
                 <div class="flex-1">
                   <div class="flex items-center gap-3 mb-2">
                     <span class="year-tag">{paper["published_year"]}</span>
-                    <span :if={paper["is_paradigm_shift"] == 1} class="badge badge-yellow">范式变迁</span>
+                    <span :if={paper["is_paradigm_shift"] == 1} class="badge badge-yellow">Paradigm shift</span>
                   </div>
                   <h3 class="font-bold mb-2 line-clamp-2">{paper["title"]}</h3>
                   <p class="text-sm opacity-60 line-clamp-2">{paper["abstract"]}</p>
                 </div>
-                <span class="text-sm font-mono opacity-40">{paper["citations"]}</span>
+                <span class="text-sm font-mono opacity-40">{paper["citations"]} citations</span>
               </div>
             </a>
         </div>
       <div :if={length(@papers) == 0} class="empty-state">
-          <p>暂无论文数据</p>
-          <p class="hint">请稍后再试</p>
+          <p>No paper data available yet</p>
+          <p class="hint">Please try again later</p>
         </div>
     </div>
     """
