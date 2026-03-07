@@ -144,8 +144,10 @@ defmodule Nex.Agent.Gateway do
     if not Nex.Agent.Config.valid?(config) do
       {:error, :invalid_config}
     else
-      # Start heartbeat tick
-      _ = Nex.Agent.Heartbeat.start()
+      # Start heartbeat tick (may not be running if started outside OTP app)
+      if Process.whereis(Nex.Agent.Heartbeat) do
+        _ = Nex.Agent.Heartbeat.start()
+      end
 
       # Start channels via DynamicSupervisor
       start_channels(config)
@@ -156,7 +158,9 @@ defmodule Nex.Agent.Gateway do
 
   defp do_stop(state) do
     # Stop heartbeat tick
-    _ = Nex.Agent.Heartbeat.stop()
+    if Process.whereis(Nex.Agent.Heartbeat) do
+      _ = Nex.Agent.Heartbeat.stop()
+    end
 
     # Terminate all channel children
     stop_channels()
@@ -165,19 +169,23 @@ defmodule Nex.Agent.Gateway do
   end
 
   defp start_channels(config) do
-    channel_specs(config)
-    |> Enum.each(fn spec ->
-      case DynamicSupervisor.start_child(Nex.Agent.ChannelSupervisor, spec) do
-        {:ok, _pid} -> :ok
-        {:error, {:already_started, _pid}} -> :ok
-        {:error, reason} ->
-          Logger.warning("[Gateway] Failed to start channel: #{inspect(reason)}")
-      end
-    end)
+    if Process.whereis(Nex.Agent.ChannelSupervisor) do
+      channel_specs(config)
+      |> Enum.each(fn spec ->
+        case DynamicSupervisor.start_child(Nex.Agent.ChannelSupervisor, spec) do
+          {:ok, _pid} -> :ok
+          {:error, {:already_started, _pid}} -> :ok
+          {:error, reason} ->
+            Logger.warning("[Gateway] Failed to start channel: #{inspect(reason)}")
+        end
+      end)
 
-    # Special: Feishu needs websocket started after the GenServer
-    if Nex.Agent.Config.feishu_enabled?(config) and Process.whereis(Nex.Agent.Channel.Feishu) do
-      _ = Nex.Agent.Channel.Feishu.start_websocket()
+      # Special: Feishu needs websocket started after the GenServer
+      if Nex.Agent.Config.feishu_enabled?(config) and Process.whereis(Nex.Agent.Channel.Feishu) do
+        _ = Nex.Agent.Channel.Feishu.start_websocket()
+      end
+    else
+      Logger.warning("[Gateway] ChannelSupervisor not running, skipping channel startup")
     end
   end
 
@@ -187,10 +195,12 @@ defmodule Nex.Agent.Gateway do
       _ = Nex.Agent.Channel.Feishu.stop_websocket()
     end
 
-    DynamicSupervisor.which_children(Nex.Agent.ChannelSupervisor)
-    |> Enum.each(fn {_, pid, _, _} ->
-      DynamicSupervisor.terminate_child(Nex.Agent.ChannelSupervisor, pid)
-    end)
+    if Process.whereis(Nex.Agent.ChannelSupervisor) do
+      DynamicSupervisor.which_children(Nex.Agent.ChannelSupervisor)
+      |> Enum.each(fn {_, pid, _, _} ->
+        DynamicSupervisor.terminate_child(Nex.Agent.ChannelSupervisor, pid)
+      end)
+    end
   end
 
   defp channel_specs(config) do
