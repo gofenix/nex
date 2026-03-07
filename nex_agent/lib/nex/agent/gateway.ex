@@ -207,6 +207,8 @@ defmodule Nex.Agent.Gateway do
       services: %{
         bus: Process.whereis(Nex.Agent.Bus) != nil,
         cron: Process.whereis(Nex.Agent.Cron) != nil,
+        memory_index: Process.whereis(Nex.Agent.Memory.Index) != nil,
+        heartbeat: Process.whereis(Nex.Agent.Heartbeat) != nil,
         tool_registry: Process.whereis(Nex.Agent.Tool.Registry) != nil,
         inbound_worker: Process.whereis(Nex.Agent.InboundWorker) != nil,
         subagent: Process.whereis(Nex.Agent.Subagent) != nil,
@@ -258,6 +260,8 @@ defmodule Nex.Agent.Gateway do
       ensure_tool_registry_started()
       ensure_bus_started()
       ensure_cron_started()
+      ensure_memory_index_started()
+      ensure_heartbeat_started()
       ensure_subagent_started(state.config)
       ensure_inbound_worker_started(state.config)
       ensure_harness_started(state.config)
@@ -286,6 +290,8 @@ defmodule Nex.Agent.Gateway do
     stop_inbound_worker()
     stop_subagent()
     stop_cron()
+    stop_heartbeat()
+    stop_memory_index()
     stop_bus()
     stop_tool_registry()
     stop_session_manager()
@@ -342,6 +348,29 @@ defmodule Nex.Agent.Gateway do
     case Process.whereis(Nex.Agent.Cron) do
       nil ->
         {:ok, _} = Nex.Agent.Cron.start_link()
+        :ok
+
+      _pid ->
+        :ok
+    end
+  end
+
+  defp ensure_memory_index_started do
+    case Process.whereis(Nex.Agent.Memory.Index) do
+      nil ->
+        {:ok, _} = Nex.Agent.Memory.Index.start_link()
+        :ok
+
+      _pid ->
+        :ok
+    end
+  end
+
+  defp ensure_heartbeat_started do
+    case Process.whereis(Nex.Agent.Heartbeat) do
+      nil ->
+        {:ok, _} = Nex.Agent.Heartbeat.start_link()
+        _ = Nex.Agent.Heartbeat.start()
         :ok
 
       _pid ->
@@ -430,6 +459,20 @@ defmodule Nex.Agent.Gateway do
 
   defp stop_cron do
     case Process.whereis(Nex.Agent.Cron) do
+      nil -> :ok
+      pid -> GenServer.stop(pid, :shutdown)
+    end
+  end
+
+  defp stop_heartbeat do
+    case Process.whereis(Nex.Agent.Heartbeat) do
+      nil -> :ok
+      pid -> GenServer.stop(pid, :shutdown)
+    end
+  end
+
+  defp stop_memory_index do
+    case Process.whereis(Nex.Agent.Memory.Index) do
       nil -> :ok
       pid -> GenServer.stop(pid, :shutdown)
     end

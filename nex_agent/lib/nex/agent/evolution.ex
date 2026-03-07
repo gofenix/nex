@@ -237,9 +237,43 @@ defmodule Nex.Agent.Evolution do
   defp maybe_validate_code(false, _code), do: :ok
 
   defp maybe_validate_code(true, code) do
-    case validate_code(code) do
+    case validate_code_with_timeout(code) do
       :ok -> :ok
       {:error, reason} -> {:error, "Validation failed: #{reason}"}
+    end
+  end
+
+  defp validate_code_with_timeout(code) do
+    # Run validation in isolated process with timeout
+    # This catches infinite loops or hangs during parsing
+    parent = self()
+    timeout_ms = 3000
+    
+    pid = spawn(fn ->
+      result = 
+        try do
+          Code.string_to_quoted!(code)
+          :ok
+        rescue
+          e -> {:error, Exception.message(e)}
+        end
+      
+      send(parent, {:validation_result, result})
+    end)
+    
+    # Monitor the spawned process
+    ref = Process.monitor(pid)
+    
+    receive do
+      {:validation_result, result} -> 
+        Process.demonitor(ref, [:flush])
+        result
+      {:DOWN, ^ref, :process, ^pid, reason} ->
+        {:error, "Validation process crashed: #{inspect(reason)}"}
+    after
+      timeout_ms -> 
+        Process.exit(pid, :kill)
+        {:error, "Validation timeout (#{timeout_ms}ms) - possible infinite loop in code structure"}
     end
   end
 

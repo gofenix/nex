@@ -173,7 +173,14 @@ defmodule Nex.Agent.ContextBuilder do
         ) :: [message()]
   def build_messages(history, current_message, channel \\ nil, chat_id \\ nil, media \\ nil) do
     runtime_ctx = build_runtime_context(channel, chat_id)
-    merged_user_content = runtime_ctx <> "\n\n" <> current_message
+    memory_ctx = build_memory_context(current_message)
+
+    merged_user_content =
+      if memory_ctx != "" do
+        runtime_ctx <> "\n\n" <> memory_ctx <> "\n\n" <> current_message
+      else
+        runtime_ctx <> "\n\n" <> current_message
+      end
 
     [
       %{"role" => "system", "content" => build_system_prompt()},
@@ -181,6 +188,36 @@ defmodule Nex.Agent.ContextBuilder do
       build_user_content(merged_user_content, media)
     ]
     |> List.flatten()
+  end
+
+  defp build_memory_context(prompt) do
+    case Process.whereis(Nex.Agent.Memory.Index) do
+      nil ->
+        ""
+
+      _pid ->
+        results = Nex.Agent.Memory.Index.search(prompt, limit: 3)
+
+        relevant = Enum.filter(results, &(&1[:score] > 1.0))
+
+        if relevant == [] do
+          ""
+        else
+          snippets =
+            relevant
+            |> Enum.map(fn r ->
+              snippet = String.slice(r[:text] || "", 0..150)
+              source = r[:source] || "unknown"
+              "- [#{source}] #{snippet}"
+            end)
+            |> Enum.join("\n")
+            |> String.slice(0..499)
+
+          "## Relevant Memories\n\n#{snippets}"
+        end
+    end
+  rescue
+    _ -> ""
   end
 
   defp clean_history_entry(%{"role" => role, "content" => content} = m) do

@@ -72,6 +72,21 @@ defmodule Nex.Agent.Memory do
       {:ok, file} ->
         IO.write(file, entry)
         File.close(file)
+
+        # Notify index for incremental update
+        if Process.whereis(Nex.Agent.Memory.Index) do
+          doc_id = "daily:#{today}-#{entry_id}"
+
+          doc = %{
+            text: "#{task} #{result}",
+            task: task,
+            date: Date.utc_today(),
+            source: :daily
+          }
+
+          Nex.Agent.Memory.Index.add_document(doc_id, doc)
+        end
+
         :ok
 
       {:error, reason} ->
@@ -111,21 +126,27 @@ defmodule Nex.Agent.Memory do
   end
 
   @doc """
-  Search memories using BM25.
+  Search memories using BM25 via Memory.Index (with TF fallback).
   """
   @spec search(String.t(), keyword()) :: list(map())
   def search(query, opts \\ []) do
     limit = Keyword.get(opts, :limit, 10)
+    source = Keyword.get(opts, :source, :all)
 
-    # Read all memory files and search
-    all_entries = read_all_entries()
+    # Try Index first (100ms timeout built-in)
+    case Process.whereis(Nex.Agent.Memory.Index) do
+      nil ->
+        fallback_search(query, limit)
 
-    # Score and rank
-    all_entries
-    |> Enum.map(&score_entry(&1, query))
-    |> Enum.filter(&(&1.score > 0))
-    |> Enum.sort_by(& &1.score, :desc)
-    |> Enum.take(limit)
+      _pid ->
+        results = Nex.Agent.Memory.Index.search(query, limit: limit, source: source)
+
+        if results == [] do
+          fallback_search(query, limit)
+        else
+          results
+        end
+    end
   end
 
   @doc """
@@ -133,9 +154,10 @@ defmodule Nex.Agent.Memory do
   """
   @spec reindex() :: :ok
   def reindex do
-    # For now, just re-read and re-score
-    # In the future, could build an index file
-    :ok
+    case Process.whereis(Nex.Agent.Memory.Index) do
+      nil -> :ok
+      _pid -> Nex.Agent.Memory.Index.rebuild()
+    end
   end
 
   # Private functions
@@ -152,12 +174,16 @@ defmodule Nex.Agent.Memory do
     end
   end
 
-  defp read_all_entries do
+  @doc "Read all daily log entries. Used by Memory.Index for indexing."
+  def read_all_entries do
     if File.exists?(@memory_dir) do
       @memory_dir
       |> File.ls!()
       |> Enum.filter(&Regex.match?(~r/^\d{4}-\d{2}-\d{2}$/, &1))
-      |> Enum.flat_map(&read_date/1)
+      |> Enum.flat_map(fn date_str ->
+        read_date(date_str)
+        |> Enum.map(&Map.put(&1, :date_str, date_str))
+      end)
     else
       []
     end
@@ -212,7 +238,15 @@ defmodule Nex.Agent.Memory do
     "## #{timestamp} - #{id} - #{task}: #{result}#{meta_str}\n"
   end
 
-  # BM25 scoring (simplified)
+  # BM25 scoring (simplified fallback when Index is unavailable)
+
+  defp fallback_search(query, limit) do
+    read_all_entries()
+    |> Enum.map(&score_entry(&1, query))
+    |> Enum.filter(&(&1.score > 0))
+    |> Enum.sort_by(& &1.score, :desc)
+    |> Enum.take(limit)
+  end
 
   defp score_entry(entry, query) do
     # Combine all text fields
@@ -289,6 +323,60 @@ defmodule Nex.Agent.Memory do
       "## Long-term Memory\n\n#{long_term}"
     else
       ""
+    end
+  end
+
+  @doc """
+  Read HISTORY.md and parse into entries with timestamp and content.
+  """
+  @spec read_history() :: list(map())
+  def read_history do
+    history_file = Path.join(@memory_dir, "HISTORY.md")
+
+    if File.exists?(history_file) do
+      File.read!(history_file)
+      |> String.split(~r/(?=\[)/, trim: true)
+      |> Enum.map(fn entry ->
+        case Regex.run(~r/^\[([^\]]+)\]\s*(.+)/s, String.trim(entry)) do
+          [_, timestamp, content] ->
+            date =
+              case Date.from_iso8601(String.slice(timestamp, 0..9)) do
+                {:ok, d} -> d
+                _ -> nil
+              end
+
+            %{timestamp: timestamp, content: String.trim(content), date: date}
+
+          _ ->
+            nil
+        end
+      end)
+      |> Enum.reject(&is_nil/1)
+    else
+      []
+    end
+  end
+
+  @doc """
+  Read MEMORY.md and split into sections by `## ` headers.
+  """
+  @spec read_memory_sections() :: list(map())
+  def read_memory_sections do
+    memory_file = Path.join(@memory_dir, "MEMORY.md")
+
+    if File.exists?(memory_file) do
+      File.read!(memory_file)
+      |> String.split(~r/(?=^## )/m, trim: true)
+      |> Enum.filter(&String.starts_with?(&1, "## "))
+      |> Enum.map(fn section ->
+        [first_line | rest] = String.split(section, "\n", parts: 2)
+        <<"## ", header_rest::binary>> = first_line
+        header = String.trim(header_rest)
+        content = if rest == [], do: "", else: hd(rest) |> String.trim()
+        %{header: header, content: content}
+      end)
+    else
+      []
     end
   end
 

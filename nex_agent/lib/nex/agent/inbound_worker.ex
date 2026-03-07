@@ -311,6 +311,9 @@ defmodule Nex.Agent.InboundWorker do
       case channel do
         "telegram" -> :telegram_outbound
         "feishu" -> :feishu_outbound
+        "discord" -> :discord_outbound
+        "slack" -> :slack_outbound
+        "dingtalk" -> :dingtalk_outbound
         "http" -> :http_outbound
         _ -> :outbound
       end
