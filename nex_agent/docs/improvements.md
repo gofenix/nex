@@ -75,18 +75,6 @@ The allowed roots can be extended via the `NEX_ALLOWED_ROOTS` environment variab
 - Automatic rate-limit retry
 - `allow_from` channel allowlist
 
-**Configuration**:
-```json
-{
-  "discord": {
-    "enabled": true,
-    "token": "Bot MTIz...",
-    "allow_from": [],
-    "guild_id": null
-  }
-}
-```
-
 #### 5. New channel — Slack
 
 **File**: `lib/nex/agent/channel/slack.ex`
@@ -98,18 +86,6 @@ The allowed roots can be extended via the `NEX_ALLOWED_ROOTS` environment variab
 - Thread replies via `thread_ts`
 - Automatic bot identity detection
 
-**Configuration**:
-```json
-{
-  "slack": {
-    "enabled": true,
-    "app_token": "xapp-...",
-    "bot_token": "xoxb-...",
-    "allow_from": []
-  }
-}
-```
-
 #### 6. New channel — DingTalk
 
 **File**: `lib/nex/agent/channel/dingtalk.ex`
@@ -120,19 +96,6 @@ The allowed roots can be extended via the `NEX_ALLOWED_ROOTS` environment variab
 - Session webhook preferred for replies, Robot API as fallback
 - Supports both direct chat and group chat
 
-**Configuration**:
-```json
-{
-  "dingtalk": {
-    "enabled": true,
-    "app_key": "ding...",
-    "app_secret": "...",
-    "robot_code": "ding...",
-    "allow_from": []
-  }
-}
-```
-
 #### 7. New tool — ListDir
 
 **File**: `lib/nex/agent/tool/list_dir.ex`
@@ -142,16 +105,79 @@ The allowed roots can be extended via the `NEX_ALLOWED_ROOTS` environment variab
 - Supports recursive listing with `recursive: true`
 - Paths are validated by the Security sandbox
 
-**Tool definition**:
-```json
-{
-  "name": "list_dir",
-  "parameters": {
-    "path": "directory path",
-    "recursive": "whether to recurse (default: false)"
-  }
-}
-```
+#### 8. Token cost optimization — Cron lightweight mode
+
+**Files**: `inbound_worker.ex`, `agent.ex`, `runner.ex`, `tool/registry.ex`, `context_builder.ex`
+
+**Changes**:
+- Cron calls use `history_limit: 0` (zero history), `tools_filter: :cron` (6 tools only), `skip_consolidation: true`, `skip_skills: true`, `max_iterations: 3`
+- Cron uses ephemeral session (not saved to SessionManager, no user session pollution)
+- `:cron` tool filter allows only: bash, read, message, memory_search, web_search, web_fetch
+- `context_builder.ex` skips skills section when `skip_skills: true`
+
+**Impact**: ~85% token reduction per cron call. Prevents consolidation cascade from frequent cron execution.
+
+#### 9. Token cost optimization — Memory consolidation
+
+**Files**: `runner.ex`, `memory.ex`, `context_builder.ex`
+
+**Changes**:
+- `@memory_window` raised from 100 → 500 (consolidation frequency reduced 5x)
+- Consolidation capped at 80 messages (head 10 + tail 70)
+- Message truncation: 200 chars for user/assistant, 100 chars for tool results (down from 500)
+- MEMORY.md truncated to 2KB in consolidation prompt
+- MEMORY.md truncated to 3KB in system prompt
+- `@max_tool_result_length` reduced from 2000 → 500
+
+**Impact**: ~95% consolidation cost reduction. System prompt stays bounded regardless of MEMORY.md growth.
+
+#### 10. Token cost optimization — Harness reflection backoff
+
+**File**: `harness.ex`
+
+**Changes**:
+- Auto-reflection disabled by default (`@default_reflection_interval :disabled`)
+- Exponential backoff when enabled: no suggestions → double interval (15min → 30min → 1h → 2h → 4h max)
+- Suggestions found → reset to base interval
+- Manual reflection still available via `Harness.trigger_reflection()`
+- Daily memory review (LLM-driven pruning of outdated sections) still runs
+
+**Impact**: When enabled, reflection calls reduced from 96/day to ~10/day. When disabled, zero automatic LLM calls from Harness.
+
+#### 11. Agent loop resilience — Error recovery
+
+**File**: `runner.ex`
+
+**Changes**:
+- Multi-level error recovery pipeline:
+  - Transient errors (429, 500-504, timeout, connection) → retry after 2s
+  - 400 + tool definition error → retry without skill tools
+  - 400 + context too long → trim messages (keep first 2 + last half)
+- Single recovery attempt per request (`__recovered` flag prevents infinite loops)
+- `JsonRepair` module for malformed LLM tool arguments
+
+#### 12. Agent loop resilience — Loop detection
+
+**File**: `runner.ex`
+
+**Changes**:
+- Tracks tool call patterns across iterations via `_tool_history`
+- Same tool name pattern repeated 3 consecutive times → auto-break
+- Returns user-facing message suggesting different approach
+
+**Impact**: Prevents runaway iterations that waste tokens and confuse the user.
+
+#### 13. Session hygiene — Tool pair validation
+
+**File**: `session.ex`
+
+**Changes**:
+- `sanitize_tool_pairs/1` ensures every tool_use has matching tool_result
+- Orphaned tool_calls stripped with `Logger.warning` (no longer silent)
+- Orphaned tool results dropped
+- History alignment drops leading mid-turn fragments (tool/assistant without preceding user)
+
+**Impact**: Prevents malformed history from causing LLM API errors.
 
 ### Integration Changes
 
@@ -181,7 +207,9 @@ Added `discord`, `slack`, and `dingtalk` configuration sections, including:
 **File**: `lib/nex/agent/tool/registry.ex`
 
 - Added `Nex.Agent.Tool.ListDir` to `@default_tools`
-- Default tool count increased from 15 to 16
+- Added `:cron` tool filter (bash, read, message, memory_search, web_search, web_fetch)
+- Added `normalize_definition/1` for OpenAI-style nested tool definitions
+- Default tool count increased from 15 to 18+
 
 ---
 
@@ -191,12 +219,16 @@ Added `discord`, `slack`, and `dingtalk` configuration sections, including:
 
 | # | Improvement | Notes |
 |---|------|------|
-| 1 | **LiteLLM Integration** | Consider using LiteLLM's HTTP bridge to expand provider coverage |
-| 2 | **Provider Registry** | Unified provider metadata such as API key prefix detection and model-name mapping |
+| 1 | **LiteLLM Integration** | Consider using LiteLLM's HTTP bridge to expand provider coverage beyond 3 |
+| 2 | **Streaming in Runner** | Streaming exists in llm/anthropic.ex but is not used in the main runner loop |
+| 3 | **More channels** | WhatsApp, QQ, Matrix, Email — Nanobot supports 11 vs NexAgent's 6 |
+| 4 | **MCP enhancement** | browser_mcp.ex is minimal; Nanobot has more mature MCP with stdio + HTTP transport |
 
 ### Low Priority
 
 | # | Improvement | Notes |
 |---|------|------|
-| 3 | **Cron Tool** | Let the agent create scheduled tasks autonomously through a tool interface, since the Cron GenServer already exists |
-| 4 | **More Channels** | WhatsApp, QQ, Matrix, Email |
+| 5 | **Telemetry/metrics** | Add tool execution latency, error rates, token usage tracking |
+| 6 | **Oscillation detection** | Detect not just identical repeats but oscillating patterns (A→B→A→B) |
+| 7 | **Recovery retry improvement** | Allow 1 transient retry during recovery attempts (currently 0) |
+| 8 | **Provider plugin architecture** | Make it easier to add new LLM providers without writing full adapter |

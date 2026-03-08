@@ -107,7 +107,6 @@ defmodule Nex.Agent.Gateway do
         tool_registry: Process.whereis(Nex.Agent.Tool.Registry) != nil,
         inbound_worker: Process.whereis(Nex.Agent.InboundWorker) != nil,
         subagent: Process.whereis(Nex.Agent.Subagent) != nil,
-        harness: Process.whereis(Nex.Agent.Harness) != nil,
         telegram_channel: Process.whereis(Nex.Agent.Channel.Telegram) != nil,
         feishu_channel: Process.whereis(Nex.Agent.Channel.Feishu) != nil,
         discord_channel: Process.whereis(Nex.Agent.Channel.Discord) != nil,

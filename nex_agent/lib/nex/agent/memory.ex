@@ -558,12 +558,7 @@ defmodule Nex.Agent.Memory do
             value = pref["value"]
 
             if is_binary(field) and is_binary(value) do
-              Nex.Agent.Reflection.apply_suggestion(%{
-                type: :user_preference,
-                name: field,
-                action: value
-              })
-
+              update_user_preference(field, value)
               Logger.info("[Memory] Learned user preference: #{field} = #{value}")
             end
           end)
@@ -583,4 +578,32 @@ defmodule Nex.Agent.Memory do
 
   defp tool_choice_for(_provider, name),
     do: %{"type" => "function", "function" => %{"name" => name}}
+
+  defp update_user_preference(field, value) do
+    user_path = Path.join([System.get_env("HOME", "."), ".nex", "agent", "workspace", "USER.md"])
+    File.mkdir_p!(Path.dirname(user_path))
+
+    current = case File.read(user_path) do
+      {:ok, c} -> c
+      _ -> ""
+    end
+
+    timestamp = Date.utc_today() |> Date.to_string()
+    entry_line = "- **#{field}**: #{value} _(learned #{timestamp})_"
+
+    field_regex = ~r/^- \*\*#{Regex.escape(field)}\*\*:.*$/m
+
+    updated =
+      if Regex.match?(field_regex, current) do
+        String.replace(current, field_regex, entry_line)
+      else
+        if String.contains?(current, "## Auto-learned") do
+          String.replace(current, "## Auto-learned", "## Auto-learned\n#{entry_line}", global: false)
+        else
+          current <> "\n\n## Auto-learned\n#{entry_line}\n"
+        end
+      end
+
+    File.write(user_path, updated)
+  end
 end

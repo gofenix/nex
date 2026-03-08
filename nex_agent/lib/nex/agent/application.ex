@@ -18,8 +18,7 @@ defmodule Nex.Agent.Application do
       │   └── Heartbeat
       ├── WorkerSupervisor (:one_for_one)
       │   ├── InboundWorker
-      │   ├── Subagent
-      │   └── Harness
+      │   └── Subagent
       ├── ChannelSupervisor (DynamicSupervisor)
       └── Gateway (channel orchestrator)
 

@@ -1,6 +1,6 @@
 defmodule Nex.Agent.WorkerSupervisor do
   @moduledoc """
-  Supervisor for worker services: InboundWorker, Subagent, Harness.
+  Supervisor for worker services: InboundWorker, Subagent.
 
   All children are independent (:one_for_one). Each worker loads its own config
   during init so the supervisor can restart them without config parameters.
@@ -17,8 +17,7 @@ defmodule Nex.Agent.WorkerSupervisor do
     children = [
       Nex.Agent.Surgeon,
       Nex.Agent.InboundWorker,
-      Nex.Agent.Subagent,
-      Nex.Agent.Harness
+      Nex.Agent.Subagent
     ]
 
     Supervisor.init(children, strategy: :one_for_one)

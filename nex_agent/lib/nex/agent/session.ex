@@ -4,6 +4,8 @@ defmodule Nex.Agent.Session do
   Mirrors nanobot's session/manager.py Session class.
   """
 
+  require Logger
+
   defstruct [
     :key,
     :created_at,
@@ -78,10 +80,18 @@ defmodule Nex.Agent.Session do
     unconsolidated = Enum.drop(session.messages, session.last_consolidated)
     sliced = Enum.take(unconsolidated, -max_messages)
 
+    # Align to start of a complete turn (user message).
+    # Drop leading assistant/tool messages that are mid-turn fragments.
     aligned =
       case Enum.find_index(sliced, fn m -> Map.get(m, "role") == "user" end) do
-        nil -> sliced
-        idx -> Enum.drop(sliced, idx)
+        nil ->
+          # No user message — check if we start with a valid assistant turn
+          case sliced do
+            [%{"role" => "assistant"} | _] -> sliced
+            _ -> []
+          end
+        idx ->
+          Enum.drop(sliced, idx)
       end
 
     aligned
@@ -178,6 +188,8 @@ defmodule Nex.Agent.Session do
     if MapSet.size(pending) == 0 do
       messages
     else
+      Logger.warning("[Session] Stripping #{MapSet.size(pending)} orphaned tool_call(s): #{inspect(MapSet.to_list(pending))}")
+
       # Find the last assistant message with tool_calls and strip orphaned ones
       {rev_before, rev_after} =
         messages
