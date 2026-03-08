@@ -8,7 +8,6 @@ Security reports are welcome for issues affecting any maintained part of this re
 - `nex_base`
 - `nex_env`
 - `installer`
-- `nex_agent`
 - example and showcase applications when the issue represents a framework-level risk
 
 ## Reporting a Vulnerability

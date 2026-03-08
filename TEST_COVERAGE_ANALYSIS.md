@@ -5,33 +5,12 @@
 | Package | Real Coverage | Status |
 |---------|--------------|--------|
 | nex_env | 96.15% | ✅ |
-| nex_agent | 91.99% | ⚠️ Need +3% |
 | framework | 56.40% | ❌ |
 | nex_base | 64.57% | ❌ |
 
 ## Why Some Modules Have Low Coverage
 
-### 1. Nexus Agent
-
-**Low Coverage Modules:**
-- `Nex.Agent` (86.49%) - Main entry point
-- `Nex.Agent.Runner` (89.83%) - Agent execution loop
-- `Nex.Agent.Tool.Bash` (70.59%) - Shell command execution
-- `Nex.Agent.Tool.Edit` (85.71%) - File editing
-
-**Root Cause:**
-- `Bash.execute/2` uses `System.cmd/3` which is hard to mock
-- `Runner.run/3` requires actual LLM API calls (or complex mocking)
-- `Agent.start/1` creates real sessions with file system operations
-
-**Can Be Fixed:**
-- Add more unit tests for pure functions
-- Refactor Bash to accept execution strategy as dependency injection
-- Use Mox to mock LLM client behavior
-
----
-
-### 2. Framework
+### 1. Framework
 
 **Low Coverage Modules:**
 | Module | Coverage | Reason |
@@ -62,7 +41,7 @@ These modules are **integration points** - they require:
 
 ---
 
-### 3. NexBase
+### 2. NexBase
 
 **Low Coverage Modules:**
 | Module | Coverage | Reason |
@@ -156,9 +135,8 @@ Define a realistic target:
 For a project like Nex Framework:
 
 1. **Keep nex_env at 96%** - Pure functions, easy to test
-2. **Keep nex_agent around 90-92%** - Some refactoring possible
-3. **Accept framework at ~75%** - Core is testable, handlers need integration tests
-4. **Accept nex_base at ~65%** - DB-dependent by design
+2. **Accept framework at ~75%** - Core is testable, handlers need integration tests
+3. **Accept nex_base at ~65%** - DB-dependent by design
 
 This is **normal** for Elixir web frameworks. Even Phoenix core has modules that are integration-tested rather than unit-tested.
 
@@ -168,10 +146,8 @@ This is **normal** for Elixir web frameworks. Even Phoenix core has modules that
 
 If you want to refactor for better testability:
 
-1. **nex_agent/lib/nex/agent/tool/bash.ex** - Add runner injection
-2. **nex_agent/lib/nex/agent/runner.ex** - Add llm_client injection (already done partially)
-3. **framework/lib/nex/handler.ex** - Extract pure functions
-4. **nex_base** - Use Ecto sandbox or testcontainers
+1. **framework/lib/nex/handler.ex** - Extract pure functions
+2. **nex_base** - Use Ecto sandbox or testcontainers
 
 ---
 
@@ -180,7 +156,6 @@ If you want to refactor for better testability:
 ```bash
 # Real coverage (no ignore_modules)
 cd nex_env && mix test --cover
-cd nex_agent && mix test --cover  
 cd framework && mix test --cover
 cd nex_base && mix test --cover
 

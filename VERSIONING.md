@@ -15,7 +15,6 @@ Even if only one package is modified, all packages will upgrade their version nu
 | nex_core | framework/ | nex_core | 0.3.9 |
 | nex_env | nex_env/ | nex_env | 0.3.9 |
 | nex_base | nex_base/ | nex_base | 0.3.9 |
-| nex_agent | nex_agent/ | nex_agent | 0.3.9 |
 | nex_new | installer/ | nex_new | 0.3.9 |
 
 ## Version Number Locations
@@ -24,12 +23,10 @@ Even if only one package is modified, all packages will upgrade their version nu
 - `/framework/VERSION` - Framework version (synchronized)
 - `/nex_env/VERSION` - Environment version (synchronized)
 - `/nex_base/VERSION` - Database version (synchronized)
-- `/nex_agent/VERSION` - Agent version (synchronized)
 - `/installer/VERSION` - Installer version (synchronized)
 - `/framework/mix.exs` - nex_core package version
 - `/nex_env/mix.exs` - nex_env package version
 - `/nex_base/mix.exs` - nex_base package version
-- `/nex_agent/mix.exs` - nex_agent package version
 - `/installer/mix.exs` - nex_new package version
 
 ## Release Process

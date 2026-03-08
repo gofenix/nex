@@ -24,7 +24,7 @@ defmodule AgentConsole.MixProject do
       {:nex_core, path: "../../framework"},
       {:nex_base, path: "../../nex_base"},
       {:nex_env, path: "../../nex_env"},
-      {:nex_agent, path: "../../nex_agent"},
+      {:nex_agent, github: "gofenix/nex-agent"},
       {:jason, "~> 1.4"},
       {:req, "~> 0.5"}
     ]

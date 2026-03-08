@@ -2,15 +2,6 @@
 
 Thanks for your interest in contributing to Nex.
 
-## Scope
-
-This repository contains two product lines:
-
-- `Nex` — the main product line, including the web framework, installer, environment helper, database layer, examples, website, and showcases
-- `nex_agent` — a separate product line with its own positioning and usage narrative
-
-When opening an issue or pull request, make it clear which product line you are targeting.
-
 ## Before You Start
 
 Please read these files first:
@@ -31,14 +22,6 @@ Please read these files first:
 - Prefer small, focused pull requests over broad refactors
 
 ## Development Expectations
-
-### For documentation changes
-
-Please keep messaging consistent with the repository positioning:
-
-- `Nex` should be described as the main product
-- `nex_agent` should be described as a separate product line
-- Avoid mixing both narratives in the same intro section unless the relationship is explicitly explained
 
 ### For framework or package changes
 
@@ -61,7 +44,6 @@ Before opening a pull request, make sure you have:
 
 A good bug report includes:
 
-- Product line: `Nex` or `nex_agent`
 - Package or directory affected
 - Expected behavior
 - Actual behavior
@@ -75,7 +57,7 @@ Please explain:
 - The use case
 - Why the current behavior is insufficient
 - Why the proposed change fits the philosophy of the project
-- Whether the request is for `Nex`, `nex_agent`, or both
+- Whether the request fits the philosophy of the project
 
 ## Security
 

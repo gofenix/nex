@@ -2,13 +2,8 @@
  
  **The simplest way to build HTMX apps in Elixir**
  
- Nex is the main product line in this repository: a minimalist, HTMX-first toolkit for building server-rendered Elixir apps fast.
- 
- This monorepo contains two product lines:
- 
- - **Nex** — the main product, including the web framework, installer, environment helper, database layer, docs site, examples, and showcases
- - **nex_agent** — a separate agent product line with its own README, positioning, and launch narrative
- 
+ Nex is a minimalist, HTMX-first toolkit for building server-rendered Elixir apps fast.
+
  ## Why Nex
  
  Nex is built for developers who want to ship real products without dragging in SPA complexity or framework ceremony.
@@ -103,12 +98,6 @@
  - `examples/` — focused examples for learning specific capabilities
  - `showcase/` — larger apps that demonstrate real-world usage
  - `website/` — the official site built with Nex itself
- 
- ### Separate Product Line: nex_agent
- 
- - `nex_agent/` — agent runtime and tooling product line with separate positioning
- 
- If you are here for the agent product, start with [`nex_agent/README.md`](nex_agent/README.md).
  
  ## Start Here
  
