@@ -139,40 +139,41 @@ defmodule Nex.Agent.Runner do
     else
       opts = Keyword.put(opts, :_tool_history, tool_history)
 
-    maybe_send_progress(on_progress, content, tool_call_dicts)
+      maybe_send_progress(on_progress, content, tool_call_dicts)
 
-    messages =
-      ContextBuilder.add_assistant_message(messages, content, tool_call_dicts, reasoning_content)
+      messages =
+        ContextBuilder.add_assistant_message(messages, content, tool_call_dicts, reasoning_content)
 
-    session =
-      Session.add_message(session, "assistant", content,
-        tool_calls: tool_call_dicts,
-        reasoning_content: reasoning_content
-      )
+      session =
+        Session.add_message(session, "assistant", content,
+          tool_calls: tool_call_dicts,
+          reasoning_content: reasoning_content
+        )
 
-    {new_messages, results, session} = execute_tools(session, messages, tool_call_dicts, opts)
+      {new_messages, results, session} = execute_tools(session, messages, tool_call_dicts, opts)
 
-    maybe_publish_tool_results(results, opts)
+      maybe_publish_tool_results(results, opts)
 
-    # Check if message tool was used
-    message_sent = Enum.any?(results, fn {_id, name, _r, _args} -> name == "message" end)
+      # Check if message tool was used
+      message_sent = Enum.any?(results, fn {_id, name, _r, _args} -> name == "message" end)
 
-    effective_max =
-      if iteration + 1 >= max_iterations and iteration + 1 < @max_iterations_hard_limit do
-        new_max = min(max_iterations * 2, @max_iterations_hard_limit)
-        Logger.info("[Runner] Auto-expanding max_iterations #{max_iterations} -> #{new_max}")
-        new_max
-      else
-        max_iterations
+      effective_max =
+        if iteration + 1 >= max_iterations and iteration + 1 < @max_iterations_hard_limit and
+             not Keyword.has_key?(opts, :tools_filter) do
+          new_max = min(max_iterations * 2, @max_iterations_hard_limit)
+          Logger.info("[Runner] Auto-expanding max_iterations #{max_iterations} -> #{new_max}")
+          new_max
+        else
+          max_iterations
+        end
+
+      case run_loop(session, new_messages, iteration + 1, effective_max, opts) do
+        {:ok, final_content, final_session} when message_sent and (final_content == "" or is_nil(final_content)) ->
+          {:ok, :message_sent, final_session}
+
+        other ->
+          other
       end
-
-    case run_loop(session, new_messages, iteration + 1, effective_max, opts) do
-      {:ok, final_content, final_session} when message_sent and (final_content == "" or is_nil(final_content)) ->
-        {:ok, :message_sent, final_session}
-
-      other ->
-        other
-    end
     end
   end
 
@@ -380,10 +381,12 @@ defmodule Nex.Agent.Runner do
   defp extract_error_status(_), do: nil
 
   defp tool_definition_error?(msg) do
-    String.contains?(msg, "function name") or
-      String.contains?(msg, "tool") or
-      String.contains?(msg, "function") or
-      String.contains?(msg, "parameter")
+    String.contains?(msg, "tool definition") or
+      String.contains?(msg, "tool name") or
+      String.contains?(msg, "function name") or
+      String.contains?(msg, "invalid_tool") or
+      String.contains?(msg, "tool_use_failed") or
+      String.contains?(msg, "schema")
   end
 
   defp context_length_error?(msg) do

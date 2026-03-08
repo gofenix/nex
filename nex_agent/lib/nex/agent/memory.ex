@@ -580,30 +580,40 @@ defmodule Nex.Agent.Memory do
     do: %{"type" => "function", "function" => %{"name" => name}}
 
   defp update_user_preference(field, value) do
-    user_path = Path.join([System.get_env("HOME", "."), ".nex", "agent", "workspace", "USER.md"])
-    File.mkdir_p!(Path.dirname(user_path))
+    # Sanitize: field must be short alphanumeric label, value capped at 200 chars
+    field = field |> String.replace(~r/[^a-zA-Z0-9_ \-\/]/, "") |> String.slice(0, 50)
+    value = value |> String.replace(~r/[\n\r]/, " ") |> String.slice(0, 200)
 
-    current = case File.read(user_path) do
-      {:ok, c} -> c
-      _ -> ""
-    end
+    if field == "" or value == "" do
+      require Logger
+      Logger.debug("[Memory] Skipping empty user preference after sanitization")
+      :ok
+    else
+      user_path = Path.join([System.get_env("HOME", "."), ".nex", "agent", "workspace", "USER.md"])
+      File.mkdir_p!(Path.dirname(user_path))
 
-    timestamp = Date.utc_today() |> Date.to_string()
-    entry_line = "- **#{field}**: #{value} _(learned #{timestamp})_"
-
-    field_regex = ~r/^- \*\*#{Regex.escape(field)}\*\*:.*$/m
-
-    updated =
-      if Regex.match?(field_regex, current) do
-        String.replace(current, field_regex, entry_line)
-      else
-        if String.contains?(current, "## Auto-learned") do
-          String.replace(current, "## Auto-learned", "## Auto-learned\n#{entry_line}", global: false)
-        else
-          current <> "\n\n## Auto-learned\n#{entry_line}\n"
-        end
+      current = case File.read(user_path) do
+        {:ok, c} -> c
+        _ -> ""
       end
 
-    File.write(user_path, updated)
+      timestamp = Date.utc_today() |> Date.to_string()
+      entry_line = "- **#{field}**: #{value} _(learned #{timestamp})_"
+
+      field_regex = ~r/^- \*\*#{Regex.escape(field)}\*\*:.*$/m
+
+      updated =
+        if Regex.match?(field_regex, current) do
+          String.replace(current, field_regex, entry_line)
+        else
+          if String.contains?(current, "## Auto-learned") do
+            String.replace(current, "## Auto-learned", "## Auto-learned\n#{entry_line}", global: false)
+          else
+            current <> "\n\n## Auto-learned\n#{entry_line}\n"
+          end
+        end
+
+      File.write(user_path, updated)
+    end
   end
 end
