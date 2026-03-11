@@ -10,7 +10,7 @@ defmodule NexWebsite.Components.HomeHero do
       <div class="relative max-w-5xl mx-auto px-6 md:px-10 py-24 text-center w-full">
         <a href="https://hex.pm/packages/nex_core" target="_blank" class="inline-flex items-center gap-2 text-xs font-medium px-3.5 py-1.5 rounded-full mb-8 transition-all hover:opacity-80" style="background: #F0EBF8; color: #7B5FA8; border: 1px solid #D4C5E8;">
           <span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>
-          v0.3 · Open Source · MIT License
+          v0.4.0 · Open Source · MIT License
         </a>
 
         <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight mb-6 leading-[1.08]" style="color: #111; letter-spacing: -0.04em;">
