@@ -21,7 +21,7 @@ defmodule NexWebsite.MixProject do
 
   defp deps do
     [
-      {:nex_core, path: "../framework"},
+      {:nex_core, "~> 0.4.0"},
       {:earmark, ">= 1.4.0"}
     ]
   end
