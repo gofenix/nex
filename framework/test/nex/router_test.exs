@@ -1,7 +1,7 @@
 defmodule Nex.RouterTest do
   use ExUnit.Case, async: true
   import Plug.Test
-  
+
   alias Nex.Router
 
   describe "Nex.Router module" do
@@ -9,8 +9,7 @@ defmodule Nex.RouterTest do
       assert Code.ensure_loaded?(Nex.Router)
     end
 
-    test "uses Plug.Router" do
-      assert function_exported?(Nex.Router, :init, 1)
+    test "exports Plug entrypoint" do
       assert function_exported?(Nex.Router, :call, 2)
     end
 

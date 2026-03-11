@@ -56,11 +56,13 @@ defmodule Nex.Upload do
     * `{:ok, "/uploads/filename.jpg"}` - Relative URL path
     * `{:error, "reason"}` - Error message
   """
-  @spec save(upload(), String.t()) :: result()
   def save(%Plug.Upload{path: source_path, filename: filename}, dir) do
+    # Sanitize filename to prevent path traversal
+    safe_filename = Path.basename(filename)
+
     with :ok <- ensure_dir_exists(dir),
-         :ok <- copy_file(source_path, dir, filename) do
-      {:ok, "/#{dir}/#{filename}"}
+         :ok <- copy_file(source_path, dir, safe_filename) do
+      {:ok, "/#{dir}/#{safe_filename}"}
     else
       {:error, reason} -> {:error, reason}
     end

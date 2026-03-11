@@ -37,7 +37,7 @@ defmodule Mix.Tasks.Nex.Dev do
     # Get project info from mix.exs
     app_name = Mix.Project.config()[:app]
 
-    # Configure app module
+    # Configure app module (single source of truth)
     app_module = get_app_module()
     Application.put_env(:nex_core, :app_module, app_module)
 
@@ -57,10 +57,6 @@ defmodule Mix.Tasks.Nex.Dev do
     port = opts[:port] || Nex.Env.get_integer(:PORT, 4000)
     host = opts[:host] || Nex.Env.get(:HOST, "localhost")
 
-    # Configure app module
-    app_module = get_app_module()
-    Application.put_env(:nex, :app_module, app_module)
-
     IO.puts("""
 
     🚀 Nex dev server starting...
@@ -73,7 +69,12 @@ defmodule Mix.Tasks.Nex.Dev do
     """)
 
     # Start the server
-    {:ok, _} = Bandit.start_link(plug: Nex.Router, port: port, thousand_island_options: [read_timeout: 300_000])
+    {:ok, _} =
+      Bandit.start_link(
+        plug: Nex.Router,
+        port: port,
+        thousand_island_options: [read_timeout: 300_000]
+      )
 
     # Keep the process alive
     Process.sleep(:infinity)

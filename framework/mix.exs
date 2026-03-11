@@ -4,7 +4,7 @@ defmodule Nex.MixProject do
   def project do
     [
       app: :nex_core,
-      version: "0.3.9",
+      version: "0.4.0",
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -20,12 +20,12 @@ defmodule Nex.MixProject do
 
   defp deps do
     [
-      {:nex_env, path: "../nex_env"},
       {:bandit, "~> 1.9"},
       {:plug, "~> 1.19"},
       {:phoenix_html, "~> 4.3"},
       {:phoenix_live_view, "~> 1.0"},
       {:jason, "~> 1.4"},
+      {:dotenvy, "~> 0.9"},
       {:file_system, "~> 1.0"},
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
     ]

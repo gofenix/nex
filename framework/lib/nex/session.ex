@@ -177,11 +177,6 @@ defmodule Nex.Session do
     end
   end
 
-  # Cache TTL to avoid repeated Application.get_env calls
-  defp session_ttl_ms do
-    @default_ttl_seconds * 1000
-  end
-
   defp table_get(nil, _key, default), do: default
 
   defp table_get(session_id, key, default) do
@@ -257,18 +252,18 @@ defmodule Nex.Session do
   defp secret do
     case System.get_env("SECRET_KEY_BASE") do
       nil ->
-        if Mix.env() == :dev do
+        if dev_env?() do
           # In development, generate a deterministic but unique secret
           # This allows sessions to persist across restarts during development
           "nex_dev_secret_key_base_do_not_use_in_production_#{node()}"
         else
           raise """
           SECRET_KEY_BASE environment variable is not set.
-          
+
           Please set it in your .env file or production environment:
-          
+
               SECRET_KEY_BASE=<random 64 character string>
-          
+
           You can generate one with: mix phx.gen.secret
           """
         end
@@ -280,9 +275,18 @@ defmodule Nex.Session do
         raise """
         SECRET_KEY_BASE must be at least 32 characters.
         Current length: #{byte_size(s)}
-        
+
         You can generate one with: mix phx.gen.secret
         """
+    end
+  end
+
+  # Runtime-safe environment check
+  defp dev_env? do
+    # Use Application.get_env instead of Mix.env for runtime safety
+    case Application.get_env(:nex_core, :env, :prod) do
+      :dev -> true
+      _ -> false
     end
   end
 end

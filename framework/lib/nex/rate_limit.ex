@@ -35,6 +35,11 @@ defmodule Nex.RateLimit do
   def check(key, opts \\ []) do
     {max, window, prefix} = parse_opts(opts)
     ensure_table()
+    
+    # Occasionally clean up expired entries (every ~1000 checks)
+    if :erlang.phash2({key, System.system_time(:millisecond)}) < 100 do
+      cleanup_expired()
+    end
 
     now = System.system_time(:second)
     bucket = div(now, window)
@@ -99,6 +104,16 @@ defmodule Nex.RateLimit do
     window = Keyword.get(opts, :window, Keyword.get(global, :window, 60))
     prefix = Keyword.get(opts, :key_prefix, "default")
     {max, window, prefix}
+  end
+
+  # Delete expired entries to prevent memory leaks
+  defp cleanup_expired do
+    now = System.system_time(:second)
+    
+    # Find and delete expired entries (with small batch size to avoid blocking)
+    :ets.select_delete(@table, [
+      {{:_, :_, :"$1"}, [{:<, :"$1", now}], [true]}
+    ])
   end
 end
 

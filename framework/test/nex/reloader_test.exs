@@ -2,14 +2,17 @@ defmodule Nex.ReloaderTest do
   use ExUnit.Case, async: false
 
   setup do
-    # Ensure reloader is started (or at least the module is loaded)
-    case Nex.Reloader.start_link() do
-      {:ok, _} -> :ok
-      {:error, {:already_started, _}} -> :ok
-      _ -> :ok
-    end
+    pid =
+      case Process.whereis(Nex.Reloader) do
+        nil ->
+          {:ok, pid} = start_supervised(Nex.Reloader)
+          pid
 
-    :ok
+        pid ->
+          pid
+      end
+
+    %{reloader_pid: pid}
   end
 
   describe "enabled?/0" do
@@ -41,12 +44,7 @@ defmodule Nex.ReloaderTest do
   end
 
   describe "file watching logic" do
-    test "should_reload? returns true for modified .ex files" do
-      # Test the private function through pattern matching
-      # The function checks for .ex extension and modified/created/renamed events
-      path = "/path/to/file.ex"
-      events = [:modified]
-      # Should return true for .ex files with relevant events
+    test "last_reload_time remains queryable" do
       assert Nex.Reloader.last_reload_time() |> is_integer
     end
   end
@@ -69,19 +67,16 @@ defmodule Nex.ReloaderTest do
   end
 
   describe "handle_info" do
-    test "handles file events" do
-      # Send a file event and verify it doesn't crash
-      send(Nex.Reloader, {:file_event, self(), {"/test.ex", [:modified]}})
-      # Give it a moment
+    test "handles file events", %{reloader_pid: pid} do
+      send(pid, {:file_event, self(), {"/test.ex", [:modified]}})
       Process.sleep(50)
-      # Should still be alive
-      assert Process.alive?(Process.whereis(Nex.Reloader))
+      assert Process.alive?(pid)
     end
 
-    test "handles arbitrary messages" do
-      send(Nex.Reloader, :some_message)
+    test "handles arbitrary messages", %{reloader_pid: pid} do
+      send(pid, :some_message)
       Process.sleep(50)
-      assert Process.alive?(Process.whereis(Nex.Reloader))
+      assert Process.alive?(pid)
     end
   end
 end

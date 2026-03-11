@@ -203,7 +203,7 @@ defmodule Nex.Handler do
 
     # Development: return detailed error in response
     # Production: return generic error
-    if Mix.env() == :dev do
+    if dev_env?() do
       send_json(conn, 500, %{
         error: "Internal Server Error: Invalid Response Type",
         details: %{
@@ -888,7 +888,6 @@ defmodule Nex.Handler do
       else
         ""
       end
-
     base_script <> live_reload_script <> "</script>"
   end
 end

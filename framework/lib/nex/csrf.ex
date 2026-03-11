@@ -88,9 +88,7 @@ defmodule Nex.CSRF do
     if is_nil(submitted_token) or submitted_token == "" do
       {:error, :missing_token}
     else
-      case Phoenix.Token.verify(endpoint_or_secret(), @salt, submitted_token,
-             max_age: @max_age
-           ) do
+      case Phoenix.Token.verify(endpoint_or_secret(), @salt, submitted_token, max_age: @max_age) do
         {:ok, _nonce} ->
           :ok
 
@@ -129,7 +127,11 @@ defmodule Nex.CSRF do
         token
 
       _ ->
-        conn.params[@token_key]
+        case conn.params do
+          %Plug.Conn.Unfetched{} -> nil
+          %{} = params -> Map.get(params, @token_key)
+          _ -> nil
+        end
     end
   end
 
@@ -139,15 +141,26 @@ defmodule Nex.CSRF do
   defp endpoint_or_secret do
     case System.get_env("SECRET_KEY_BASE") do
       nil ->
-        Logger.warning(
-          "[Nex.CSRF] SECRET_KEY_BASE not set — using insecure dev default. " <>
-            "Set SECRET_KEY_BASE in production!"
-        )
+        if dev_env?() do
+          # In development, generate deterministic dev secret (OK for local dev)
+          Logger.warning(
+            "[Nex.CSRF] SECRET_KEY_BASE not set — using insecure dev default. " <>
+              "Set SECRET_KEY_BASE in production!"
+          )
+        end
 
         "nex_dev_secret_key_base_do_not_use_in_production_replace_with_64_char_random_string"
 
       secret ->
         secret
+    end
+  end
+
+  # Runtime-safe environment check
+  defp dev_env? do
+    case Application.get_env(:nex_core, :env, :prod) do
+      :dev -> true
+      _ -> false
     end
   end
 end

@@ -5,12 +5,23 @@ All notable changes to the Nex framework will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Nex 0.4.0] - Unreleased
+## [Nex 0.4.0] - 2026-03-11
 
 ### Added
 - **`Nex.Validator`**: Params validation for Nex applications. Supports common validators: `:required`, `:string`, `:number`, `:boolean`, `:email`, `:url`, `:min`, `:max`, `:format`, `:in`. Also supports custom validators as functions. Returns `{:ok, params}` or `{:error, errors}`.
 - **`Nex.Upload`**: File upload handling. Files from multipart forms are available in `req.body` as `%Plug.Upload{}` structs. Provides `save/2,3` for saving to disk and `validate/2` for file validation (size, type, extension).
 - **Custom error pages**: Configure custom error page module via `Application.put_env(:nex_core, :error_page_module, MyApp.ErrorPages)`. Custom module must implement `render_error/4` function.
+
+### Fixed
+- **`Nex.CSRF`**: Fixed syntax error where Logger.warning was missing around the warning string.
+- **`Nex.Session`**: Fixed compilation error - `dev_env?/0` function was defined outside the module.
+- **`Nex.Handler`**: Fixed compilation error - removed duplicate `dev_env?/0` function definition.
+- **`Nex.Upload`**: Fixed path traversal vulnerability - filename is now sanitized using `Path.basename/1` before saving.
+- **`Nex.RateLimit`**: Fixed memory leak - added periodic cleanup of expired ETS entries to prevent unbounded growth.
+- **Installer (`mix nex.new`)**: 
+  - Fixed command injection vulnerability by using `System.cmd/3` with proper arguments instead of shell interpolation
+  - Fixed argument parsing - now properly handles missing project name after options like `--path`
+  - Fixed version hardcoding - now reads version dynamically from VERSION file
 
 ### Changed
 - **`Nex.Handler`**: Now checks for custom error page module before falling back to default error page.

@@ -22,12 +22,19 @@ defmodule Mix.Tasks.Nex.New do
 
   @shortdoc "Create a new Nex project"
 
+  @nex_core_version File.read!(Path.join(__DIR__, "../../../VERSION")) |> String.trim()
+
   def run([]) do
     Mix.raise("Expected project name. Usage: mix nex.new my_app")
   end
 
   def run(args) do
-    {opts, [name | _], _} = OptionParser.parse(args, switches: [path: :string])
+    {opts, parsed_args, _} = OptionParser.parse(args, switches: [path: :string])
+
+    name = case parsed_args do
+      [n | _] -> n
+      [] -> Mix.raise("Expected project name. Usage: mix nex.new my_app [--path PATH]")
+    end
 
     unless valid_name?(name) do
       Mix.raise("Project name must start with a letter and contain only lowercase letters, numbers, and underscores. Reserved names (elixir, mix, nex, etc.) are not allowed.")
@@ -50,14 +57,17 @@ defmodule Mix.Tasks.Nex.New do
     # Initialize Git
     if System.find_executable("git") do
       Mix.shell().info("\n🌿 Initializing Git repository...\n")
-      System.cmd("git", ["init"], cd: project_path)
+      case System.cmd("git", ["init"], cd: project_path, stderr_to_stdout: true) do
+        {_, 0} -> :ok
+        {error, _} -> Mix.shell().error("Git init failed: #{error}")
+      end
     end
 
     # Install dependencies automatically
     Mix.shell().info("\n📦 Installing dependencies...\n")
-    Mix.shell().cmd("cd #{project_path} && mix deps.get")
-
-    Mix.shell().info("""
+    case System.cmd("mix", ["deps.get"], cd: project_path, stderr_to_stdout: true) do
+      {_, 0} ->
+        Mix.shell().info("""
 
     ✅ Project created successfully!
 
@@ -68,6 +78,18 @@ defmodule Mix.Tasks.Nex.New do
 
     Then open http://localhost:4000 in your browser.
     """)
+
+      {error, _} ->
+        Mix.raise("""
+        Dependencies installation failed!
+
+        Error: #{error}
+
+        You can try installing manually:
+            cd #{name}
+            mix deps.get
+        """)
+    end
   end
 
   defp valid_name?(name) do
@@ -134,7 +156,7 @@ defmodule Mix.Tasks.Nex.New do
 
       defp deps do
         [
-          {:nex_core, "~> 0.3.9"}
+          {:nex_core, "~> #{@nex_core_version}"}
         ]
       end
     end
