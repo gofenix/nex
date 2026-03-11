@@ -181,7 +181,9 @@ defmodule NexWebsite.Pages.Docs.Path do
           %{title: "Action Routing", slug: "core_action_guide"},
           %{title: "State Management", slug: "core_state_guide"},
           %{title: "Environment Config", slug: "core_env_guide"},
-          %{title: "Declarative Interaction", slug: "core_htmx_guide"}
+          %{title: "Declarative Interaction", slug: "core_htmx_guide"},
+          %{title: "Validation", slug: "core_validation_guide"},
+          %{title: "File Uploads", slug: "core_upload_guide"}
         ]
       },
       %{
@@ -189,7 +191,8 @@ defmodule NexWebsite.Pages.Docs.Path do
         items: [
           %{title: "Alpine.js Integration", slug: "ext_alpine_guide"},
           %{title: "Datastar Integration", slug: "ext_datastar_guide"},
-          %{title: "SSE Real-Time Push", slug: "ext_sse_guide"}
+          %{title: "SSE Real-Time Push", slug: "ext_sse_guide"},
+          %{title: "WebSockets & Rate Limiting", slug: "ext_websocket_rate_limit_guide"}
         ]
       },
       %{
@@ -209,7 +212,8 @@ defmodule NexWebsite.Pages.Docs.Path do
       %{
         title: "Reference",
         items: [
-          %{title: "FAQ", slug: "reference_faq"}
+          %{title: "FAQ", slug: "reference_faq"},
+          %{title: "Release Notes", slug: "release_notes"}
         ]
       }
     ]
