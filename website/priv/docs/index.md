@@ -22,11 +22,14 @@ Below is the documentation index for the Nex framework. You can refer to the rel
 *   [State Management Depth](core_state_guide.md) - Design philosophy of ephemeral state.
 *   [Environment Config (Env)](core_env_guide.md) - Smart root detection and variable loading.
 *   [Declarative Interaction Protocol](core_htmx_guide.md) - CSRF protection and Page ID transfer details.
+*   [Validation (Validator)](core_validation_guide.md) - Parameter validation and type casting.
+*   [File Uploads (Upload)](core_upload_guide.md) - Securely handling and saving uploaded files.
 
 ## 4️⃣ ENHANCED INTERACTIVITY
 *   [Alpine.js Integration](ext_alpine_guide.md) - Handling client-side local UI logic.
 *   [Datastar Integration](ext_datastar_guide.md) - Declarative state synchronization solution.
 *   [SSE Real-Time Push](ext_sse_guide.md) - Zero-conversion Server-Sent Events.
+*   [WebSockets & Rate Limiting](ext_websocket_rate_limit_guide.md) - Real-time communication and endpoint protection.
 
 ## 5️⃣ ADVANCED GUIDES
 *   [Building JSON APIs](adv_api_guide.md) - Consistent response formats and request handling.
@@ -37,3 +40,4 @@ Below is the documentation index for the Nex framework. You can refer to the rel
 
 ## 7️⃣ REFERENCE
 *   [Frequently Asked Questions (FAQ)](reference_faq.md) - Troubleshoot common development issues.
+*   [Release Notes](release_notes.md) - Framework version history and feature updates.
