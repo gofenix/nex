@@ -13,7 +13,7 @@ defmodule AgentDemo.MixProject do
   defp deps do
     [
       {:nex_agent, github: "gofenix/nex-agent"},
-      {:nex_core, "~> 0.3.9"}
+      {:nex_core, "~> 0.4.0"}
     ]
   end
 end
