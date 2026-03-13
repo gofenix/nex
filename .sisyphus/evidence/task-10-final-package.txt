@@ -1,0 +1,5 @@
+Verified `.sisyphus/content/nex-community-series/strategy.md` links all artifacts and defines the operating model and readiness gate.
+
+Checks:
+- Cross-links to: channel-playbook.md, proof-inventory.md, asset-gaps.md, calendar.md, metrics.md, posts/01-08.md
+- No placeholder strings `[TODO]`, `[subreddit]`, `[metric]` found in the package

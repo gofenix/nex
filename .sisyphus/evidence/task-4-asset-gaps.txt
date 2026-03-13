@@ -1,0 +1,5 @@
+Verified `.sisyphus/content/nex-community-series/asset-gaps.md` contains readiness statuses and assigns all 8 posts.
+
+Checks:
+- Includes both `publish-now` and `needs-asset`
+- Rows for posts 01..08

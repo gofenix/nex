@@ -1,0 +1,6 @@
+Verified `.sisyphus/content/nex-community-series/channel-playbook.md` contains four channel sections and required fields.
+
+Checks:
+- Headings: Elixir Forum, r/elixir, r/htmx, r/webdev
+- Fields: Allowed Angle, Tone, CTA, Do Not Post, Moderation Risk
+- Chinese-first gate and English adaptation rule present

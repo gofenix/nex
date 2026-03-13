@@ -23,7 +23,6 @@ defmodule TodosApi.MixProject do
     [
       {:nex_core, path: "../../framework"},
       {:req, "~> 0.5"}
-      {:req, "~> 0.5"}
     ]
   end
 end

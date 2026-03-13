@@ -1,0 +1,5 @@
+Verified `.sisyphus/content/nex-community-series/proof-inventory.md` includes required sections and >= 12 proof entries.
+
+Checks:
+- Sections: Claims, Proof Units, Audience Fit, Missing Proof
+- Count: 24 occurrences of `source:`

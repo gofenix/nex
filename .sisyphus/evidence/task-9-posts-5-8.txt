@@ -1,0 +1,10 @@
+Verified post briefs exist for posts 05..08 and include all required fields.
+
+Files:
+- `.sisyphus/content/nex-community-series/posts/05.md`
+- `.sisyphus/content/nex-community-series/posts/06.md`
+- `.sisyphus/content/nex-community-series/posts/07.md`
+- `.sisyphus/content/nex-community-series/posts/08.md`
+
+Checks:
+- `posts/07.md` and `posts/08.md` are marked `needs-asset` with explicit blockers

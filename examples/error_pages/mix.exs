@@ -1,11 +1,11 @@
-defmodule AlpineShowcase.MixProject do
+defmodule ErrorPagesExample.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :alpine_showcase,
+      app: :error_pages_example,
       version: "0.1.0",
-      elixir: "~> 1.14",
+      elixir: "~> 1.18",
       elixirc_paths: ["src"],
       start_permanent: Mix.env() == :prod,
       deps: deps()
@@ -15,14 +15,13 @@ defmodule AlpineShowcase.MixProject do
   def application do
     [
       extra_applications: [:logger],
-      mod: {AlpineShowcase.Application, []}
+      mod: {ErrorPagesExample.Application, []}
     ]
   end
 
   defp deps do
     [
-      {:nex_core, path: "../../framework"},
-      {:jason, "~> 1.2"}
+      {:nex_core, path: "../../framework"}
     ]
   end
 end
