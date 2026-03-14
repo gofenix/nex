@@ -5,6 +5,14 @@ All notable changes to the Nex framework will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Nex 0.4.1] - 2026-03-14
+
+### Fixed
+- **Installer (`mix nex.new`)**: Fixed archive compilation in Hex install paths by removing compile-time filesystem dependency on `VERSION` and resolving generator dependency version from application metadata.
+
+### Changed
+- **Release synchronization**: Updated all published Nex packages (`nex_core`, `nex_new`, `nex_env`, `nex_base`) to version `0.4.1` to keep monorepo package versions aligned.
+
 ## [Nex 0.4.0] - 2026-03-11
 
 ### Added

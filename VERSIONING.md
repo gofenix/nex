@@ -12,10 +12,10 @@ Even if only one package is modified, all packages will upgrade their version nu
 
 | Package | Directory | Hex Name | Current Version |
 |--------|-----------|----------|-----------------|
-| nex_core | framework/ | nex_core | 0.3.9 |
-| nex_env | nex_env/ | nex_env | 0.3.9 |
-| nex_base | nex_base/ | nex_base | 0.3.9 |
-| nex_new | installer/ | nex_new | 0.3.9 |
+| nex_core | framework/ | nex_core | 0.4.1 |
+| nex_env | nex_env/ | nex_env | 0.4.1 |
+| nex_base | nex_base/ | nex_base | 0.4.1 |
+| nex_new | installer/ | nex_new | 0.4.1 |
 
 ## Version Number Locations
 

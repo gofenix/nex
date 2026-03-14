@@ -43,10 +43,10 @@ echo ""
 check_step "Root VERSION file exists" "[ -f VERSION ]"
 
 # Check 2: CHANGELOG.md has been updated for this version
-check_step "CHANGELOG.md contains version $VERSION" "grep -q \"## \\[$VERSION\\]\" CHANGELOG.md"
+check_step "CHANGELOG.md contains version $VERSION" "grep -Eq \"## \\[Nex $VERSION\\]|## \\[$VERSION\\]\" CHANGELOG.md"
 
 # Check 3: CHANGELOG.md has release date
-check_step "CHANGELOG.md has release date for $VERSION" "grep -A1 \"## \\[$VERSION\\]\" CHANGELOG.md | grep -q \"[0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}\""
+check_step "CHANGELOG.md has release date for $VERSION" "grep -A1 -E \"## \\[Nex $VERSION\\]|## \\[$VERSION\\]\" CHANGELOG.md | grep -q \"[0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}\""
 
 # Check 4: Framework changelog updated
 check_step "Framework CHANGELOG.md updated" "[ -f framework/CHANGELOG.md ] && grep -q \"$VERSION\" framework/CHANGELOG.md"
@@ -54,11 +54,13 @@ check_step "Framework CHANGELOG.md updated" "[ -f framework/CHANGELOG.md ] && gr
 # Check 5: Installer changelog updated
 check_step "Installer CHANGELOG.md updated" "[ -f installer/CHANGELOG.md ] && grep -q \"$VERSION\" installer/CHANGELOG.md"
 
-# Check 6: On main branch
+check_step "nex_env version synced" "grep -q \"version: \\\"$VERSION\\\"\" nex_env/mix.exs"
+
+check_step "nex_base version synced" "grep -q \"version: \\\"$VERSION\\\"\" nex_base/mix.exs"
+
 CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 check_step "On main branch" "[ \"$CURRENT_BRANCH\" = \"main\" ]"
 
-# Check 7: No uncommitted changes
 if [ -n "$(git status --porcelain)" ]; then
     echo -e "${RED}✗${NC} No uncommitted changes"
     ((FAILED++))
@@ -83,24 +85,7 @@ if [ $FAILED -gt 0 ]; then
     exit 1
 fi
 
-# Extract version components for template check
-MAJOR=$(echo $VERSION | cut -d. -f1)
-MINOR=$(echo $VERSION | cut -d. -f2)
-
-# Check installer template version
-TEMPLATE_VERSION=$(grep "nex_core.*~>" installer/lib/mix/tasks/nex.new.ex | head -1 | sed 's/.*~> //' | tr -d '"' | tr -d '}')
-if [ "$TEMPLATE_VERSION" = "$MAJOR.$MINOR" ] || [ "$TEMPLATE_VERSION" = "$VERSION" ]; then
-    echo -e "${GREEN}✓${NC} Installer template nex_core dependency is correct"
-else
-    echo -e "${YELLOW}⚠${NC} Installer template nex_core dependency is ~> $TEMPLATE_VERSION (expected ~> $MAJOR.$MINOR or $VERSION)"
-    echo ""
-    read -p "Continue anyway? (y/N) " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        echo "Aborted."
-        exit 1
-    fi
-fi
+check_step "Installer template derives version from app metadata" "grep -q 'Application.spec(:nex_new, :vsn)' installer/lib/mix/tasks/nex.new.ex"
 
 echo ""
 echo -e "${BLUE}===========================================${NC}"
@@ -112,8 +97,12 @@ echo ""
 echo "🔄 Syncing version numbers..."
 echo "$VERSION" > framework/VERSION
 echo "$VERSION" > installer/VERSION
+echo "$VERSION" > nex_env/VERSION
+echo "$VERSION" > nex_base/VERSION
 sed -i '' "s/version: \"[0-9.]*\"/version: \"$VERSION\"/" framework/mix.exs
 sed -i '' "s/version: \"[0-9.]*\"/version: \"$VERSION\"/" installer/mix.exs
+sed -i '' "s/version: \"[0-9.]*\"/version: \"$VERSION\"/" nex_env/mix.exs
+sed -i '' "s/version: \"[0-9.]*\"/version: \"$VERSION\"/" nex_base/mix.exs
 echo "✅ Version numbers synced"
 echo ""
 
@@ -133,8 +122,24 @@ cd ..
 echo "✅ nex_new published"
 echo ""
 
+echo "📤 Publishing nex_env v$VERSION..."
+cd nex_env
+HEX_HOME=~/.hex mix hex.publish --yes --replace
+cd ..
+echo "✅ nex_env published"
+echo ""
+
+echo "📤 Publishing nex_base v$VERSION..."
+cd nex_base
+HEX_HOME=~/.hex mix hex.publish --yes --replace
+cd ..
+echo "✅ nex_base published"
+echo ""
+
 echo -e "${GREEN}🎉 All packages published successfully!${NC}"
 echo ""
 echo "Published packages:"
 echo "  - nex_core v$VERSION: https://hex.pm/packages/nex_core/$VERSION"
 echo "  - nex_new v$VERSION: https://hex.pm/packages/nex_new/$VERSION"
+echo "  - nex_env v$VERSION: https://hex.pm/packages/nex_env/$VERSION"
+echo "  - nex_base v$VERSION: https://hex.pm/packages/nex_base/$VERSION"

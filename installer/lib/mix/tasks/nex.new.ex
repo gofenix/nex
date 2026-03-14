@@ -22,8 +22,6 @@ defmodule Mix.Tasks.Nex.New do
 
   @shortdoc "Create a new Nex project"
 
-  @nex_core_version File.read!(Path.join(__DIR__, "../../../VERSION")) |> String.trim()
-
   def run([]) do
     Mix.raise("Expected project name. Usage: mix nex.new my_app")
   end
@@ -31,13 +29,16 @@ defmodule Mix.Tasks.Nex.New do
   def run(args) do
     {opts, parsed_args, _} = OptionParser.parse(args, switches: [path: :string])
 
-    name = case parsed_args do
-      [n | _] -> n
-      [] -> Mix.raise("Expected project name. Usage: mix nex.new my_app [--path PATH]")
-    end
+    name =
+      case parsed_args do
+        [n | _] -> n
+        [] -> Mix.raise("Expected project name. Usage: mix nex.new my_app [--path PATH]")
+      end
 
     unless valid_name?(name) do
-      Mix.raise("Project name must start with a letter and contain only lowercase letters, numbers, and underscores. Reserved names (elixir, mix, nex, etc.) are not allowed.")
+      Mix.raise(
+        "Project name must start with a letter and contain only lowercase letters, numbers, and underscores. Reserved names (elixir, mix, nex, etc.) are not allowed."
+      )
     end
 
     base_path = opts[:path] || "."
@@ -57,6 +58,7 @@ defmodule Mix.Tasks.Nex.New do
     # Initialize Git
     if System.find_executable("git") do
       Mix.shell().info("\n🌿 Initializing Git repository...\n")
+
       case System.cmd("git", ["init"], cd: project_path, stderr_to_stdout: true) do
         {_, 0} -> :ok
         {error, _} -> Mix.shell().error("Git init failed: #{error}")
@@ -65,19 +67,20 @@ defmodule Mix.Tasks.Nex.New do
 
     # Install dependencies automatically
     Mix.shell().info("\n📦 Installing dependencies...\n")
+
     case System.cmd("mix", ["deps.get"], cd: project_path, stderr_to_stdout: true) do
       {_, 0} ->
         Mix.shell().info("""
 
-    ✅ Project created successfully!
+        ✅ Project created successfully!
 
-    Next steps:
+        Next steps:
 
-        cd #{name}
-        mix nex.dev
+            cd #{name}
+            mix nex.dev
 
-    Then open http://localhost:4000 in your browser.
-    """)
+        Then open http://localhost:4000 in your browser.
+        """)
 
       {error, _} ->
         Mix.raise("""
@@ -100,6 +103,7 @@ defmodule Mix.Tasks.Nex.New do
   defp create_project(path, assigns) do
     # Create directories
     dirs = [path, "#{path}/src", "#{path}/src/pages", "#{path}/src/api", "#{path}/src/components"]
+
     Enum.each(dirs, fn dir ->
       File.mkdir_p!(dir)
       Mix.shell().info("  Created: #{dir}/")
@@ -132,6 +136,8 @@ defmodule Mix.Tasks.Nex.New do
   # Templates
 
   defp mix_exs(a) do
+    nex_core_version = nex_core_version()
+
     """
     defmodule #{a.module_name}.MixProject do
       use Mix.Project
@@ -156,11 +162,18 @@ defmodule Mix.Tasks.Nex.New do
 
       defp deps do
         [
-          {:nex_core, "~> #{@nex_core_version}"}
+          {:nex_core, "~> #{nex_core_version}"}
         ]
       end
     end
     """
+  end
+
+  defp nex_core_version do
+    case Application.spec(:nex_new, :vsn) do
+      nil -> "0.4.1"
+      vsn -> List.to_string(vsn)
+    end
   end
 
   defp application(a) do
