@@ -86,7 +86,9 @@ defmodule DynamicRoutes.Pages.Users.Id do
     """
   end
 
-  def follow(%{"id" => id}) do
+  def follow(req) do
+    id = req.query["id"]
+
     # Simulate follow operation
     :timer.sleep(500)  # Simulate delay
 

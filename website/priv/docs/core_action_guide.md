@@ -29,8 +29,8 @@ Path: `POST /users/123/delete`
 
 ### Resolution Rules
 1.  **Path Prefix Resolution**: Nex resolves `/users/123` to the `MyApp.Pages.Users.Id` module (assuming the corresponding file is `src/pages/users/[id].ex`).
-2.  **Extract Parameters**: Automatically extracts `id: "123"`.
-3.  **Execute Action**: Resolves the last segment of the path, `delete`, and calls the `delete(%{"id" => "123"})` function in that module.
+2.  **Extract Parameters**: Automatically extracts `id: "123"` into `req.query`.
+3.  **Execute Action**: Resolves the last segment of the path, `delete`, and calls the `delete(req)` function in that module, where `req.query["id"] == "123"`.
 
 ## 4. Atomic Safety (Atom Safety)
 

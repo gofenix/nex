@@ -43,8 +43,10 @@ defmodule MyApp.Pages.Guestbook do
     """
   end
 
-  # Action receives form parameters as a Map
-  def save_message(%{"name" => name, "content" => content}) do
+  # Action receives a Nex.Req struct
+  def save_message(req) do
+    name = req.body["name"]
+    content = req.body["content"]
     new_msg = %{name: name, content: content}
     
     # Save to state
@@ -69,9 +71,9 @@ end
 
 ## 2. Getting Parameters
 
-Action functions receive a Map where keys correspond to the `name` attribute of form controls.
-*   If a form contains multiple inputs with the same name, Nex wraps them in a list.
-*   For empty inputs, the key usually still exists, but the value may be an empty string.
+Action functions receive a `Nex.Req` struct. Submitted form fields appear in `req.body`, where keys correspond to the `name` attribute of form controls.
+*   If a form contains multiple inputs with the same name, Nex stores them in `req.body` as a list.
+*   For empty inputs, the key usually still exists in `req.body`, but the value may be an empty string.
 
 ## 3. File Upload (Multipart)
 
@@ -80,11 +82,13 @@ Nex natively supports `multipart/form-data`. When you include `<input type="file
 ### Example: Avatar Upload
 
 ```elixir
-def upload_avatar(%{"avatar" => %Plug.Upload{path: path, filename: name}}) do
-  # Nex automatically wraps the uploaded file in a Plug.Upload struct
-  # path: Temporary file path
-  # filename: Original filename
-  
+def upload_avatar(req) do
+  upload = req.body["avatar"]
+  path = upload.path
+  name = upload.filename
+
+  # Nex automatically wraps the uploaded file in req.body as a Plug.Upload struct
+
   # You can move the file to persistent storage
   File.cp!(path, "priv/static/uploads/#{name}")
   

@@ -64,11 +64,11 @@ defmodule AlpineShowcase.Pages.Index do
   end
 
   # Handle Add User: Maps to POST /create_user
-  def create_user(params) do
+  def create_user(req) do
     new_user = %{
       id: System.unique_integer([:positive]),
-      name: params["name"],
-      email: params["email"]
+      name: req.body["name"],
+      email: req.body["email"]
     }
 
     # 1. Update Database/Store
@@ -84,7 +84,7 @@ defmodule AlpineShowcase.Pages.Index do
   end
 
   # Handle Update Settings: Maps to PUT /update_settings
-  def update_settings(_params) do
+  def update_settings(_req) do
     # Simulate save delay
     Process.sleep(500)
 

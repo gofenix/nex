@@ -14,6 +14,8 @@ In traditional Web development, handling button clicks or form submissions usual
 
 This is the most common Action pattern. You simply specify `hx-post="/function_name"` in the HTML, and Nex automatically finds the corresponding page module based on the request source (Referer) and executes that function.
 
+Page Actions receive a `Nex.Req` struct. Use `req.body` for submitted form data, `req.query` for dynamic path or query string parameters, and `_req` when the request object is unused.
+
 ### Example: Counter
 
 Create `src/pages/counter.ex`:
@@ -43,7 +45,7 @@ defmodule MyApp.Pages.Counter do
   end
 
   # Define function with same name as hx-post path
-  def increment(_params) do
+  def increment(_req) do
     # Update server-side state
     new_count = Nex.Store.update(:count, 0, &(&1 + 1))
     
@@ -63,11 +65,13 @@ Path: `POST /messages/123/delete`
 
 Nex resolves this as follows:
 1.  Find `src/pages/messages/[id].ex` (or `src/pages/messages/index.ex`).
-2.  Extract parameter `id: "123"`.
+2.  Extract parameter `id: "123"` into `req.query`.
 3.  Call the `delete/1` function in that module.
 
 ```elixir
-def delete(%{"id" => id}) do
+def delete(req) do
+  id = req.query["id"]
+
   # Execute deletion logic
   # ...
   :empty  # Return :empty to indicate success without updating any DOM

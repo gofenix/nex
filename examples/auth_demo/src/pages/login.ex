@@ -46,7 +46,10 @@ defmodule AuthDemo.Pages.Login do
     """
   end
 
-  def login(%{"email" => email, "password" => password}) do
+  def login(req) do
+    email = req.body["email"]
+    password = req.body["password"]
+
     if email == "admin@example.com" and password == "password" do
       Session.put(:user, %{"name" => "Admin User", "email" => email})
       Flash.put(:success, "Welcome back, Admin User!")

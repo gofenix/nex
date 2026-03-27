@@ -60,7 +60,10 @@ defmodule Guestbook.Pages.Index do
     """
   end
 
-  def create_message(%{"name" => name, "content" => content}) do
+  def create_message(req) do
+    name = req.body["name"]
+    content = req.body["content"]
+
     message = %{
       id: System.unique_integer([:positive]),
       name: name,
@@ -74,8 +77,8 @@ defmodule Guestbook.Pages.Index do
     ~H"<.guestbook_message message={@message} />"
   end
 
-  def delete_message(%{"id" => id}) do
-    id = String.to_integer(id)
+  def delete_message(req) do
+    id = req.body["id"] |> to_string() |> String.to_integer()
 
     Nex.Store.update(:messages, [], fn messages ->
       Enum.reject(messages, &(&1.id == id))
@@ -87,8 +90,8 @@ defmodule Guestbook.Pages.Index do
   # Multi-path Action example: DELETE /messages/[id]/delete
   # This demonstrates path-based routing where the URL path contains the resource ID
   # and the action name. This is useful for RESTful APIs and resource operations.
-  def delete(%{"id" => id}) do
-    id = String.to_integer(id)
+  def delete(req) do
+    id = req.query["id"] |> to_string() |> String.to_integer()
 
     Nex.Store.update(:messages, [], fn messages ->
       Enum.reject(messages, &(&1.id == id))

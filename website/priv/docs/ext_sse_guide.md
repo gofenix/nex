@@ -16,7 +16,9 @@ Call `Nex.stream/1` within a Page Action or an API handler to start a stream.
 ### Example: AI Chat Stream (Mock)
 
 ```elixir
-def chat(%{"message" => msg}) do
+def chat(req) do
+  msg = req.body["message"]
+
   Nex.stream(fn send ->
     # Push a "thinking" indicator
     send.("AI is thinking...")

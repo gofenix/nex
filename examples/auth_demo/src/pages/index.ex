@@ -86,13 +86,15 @@ defmodule AuthDemo.Pages.Index do
     """
   end
 
-  def set_theme(%{"theme" => theme}) do
+  def set_theme(req) do
+    theme = req.body["theme"]
+
     Cookie.put(:theme, theme, max_age: 86_400 * 30, http_only: false)
     Flash.put(:info, "Theme set to #{theme}!")
     Nex.redirect("/")
   end
 
-  def logout(_params) do
+  def logout(_req) do
     Session.clear()
     Flash.put(:success, "Logged out successfully.")
     Nex.redirect("/")

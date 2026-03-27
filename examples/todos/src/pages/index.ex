@@ -37,7 +37,9 @@ defmodule Todos.Pages.Index do
     """
   end
 
-  def create_todo(%{"text" => text}) do
+  def create_todo(req) do
+    text = req.body["text"]
+
     todo = %{
       id: System.unique_integer([:positive]),
       text: text,
@@ -50,8 +52,8 @@ defmodule Todos.Pages.Index do
     ~H"<.todo_item todo={@todo} />"
   end
 
-  def toggle_todo(%{"id" => id}) do
-    id = String.to_integer(id)
+  def toggle_todo(req) do
+    id = req.body["id"] |> to_string() |> String.to_integer()
 
     Nex.Store.update(:todos, [], fn todos ->
       Enum.map(todos, fn todo ->
@@ -69,8 +71,8 @@ defmodule Todos.Pages.Index do
     ~H"<.todo_item todo={@todo} />"
   end
 
-  def delete_todo(%{"id" => id}) do
-    id = String.to_integer(id)
+  def delete_todo(req) do
+    id = req.body["id"] |> to_string() |> String.to_integer()
 
     Nex.Store.update(:todos, [], fn todos ->
       Enum.reject(todos, &(&1.id == id))
