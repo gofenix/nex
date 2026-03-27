@@ -2,11 +2,14 @@ defmodule Nex.StoreTest do
   use ExUnit.Case, async: false
 
   setup do
-    # Ensure the Store GenServer is started (handle if already started)
-    case Nex.Store.start_link() do
-      {:ok, _} -> :ok
-      {:error, {:already_started, _}} -> :ok
+    # Start each test with a fresh Store owner so the named ETS table is stable.
+    if pid = Process.whereis(Nex.Store) do
+      ref = Process.monitor(pid)
+      Process.exit(pid, :kill)
+      assert_receive {:DOWN, ^ref, :process, ^pid, _}, 1_000
     end
+
+    {:ok, _pid} = Nex.Store.start_link()
 
     # Set up a test page ID
     page_id = "test_page_#{:rand.uniform(10000)}"

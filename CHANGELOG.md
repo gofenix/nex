@@ -5,6 +5,17 @@ All notable changes to the Nex framework will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Nex 0.4.2] - 2026-03-27
+
+### Added
+- **Installer (`mix nex.new`)**: Added a `--starter saas` mode that generates a database-backed SaaS starter with NexBase, Nex.Env, session auth, protected dashboard routes, and starter project CRUD.
+
+### Fixed
+- **Generated SaaS starter**: Added the SQLite adapter dependency required for the default `DATABASE_URL`, aligned generated page actions with the `%Nex.Req{}` contract, and removed generated HEEx/template issues that caused warnings or runtime startup failures.
+
+### Changed
+- **Starter guidance**: Clarified across the CLI, README, installer docs, and website docs that `basic` remains the default starter and `saas` is the explicit product-oriented path.
+
 ## [Nex 0.4.1] - 2026-03-14
 
 ### Fixed

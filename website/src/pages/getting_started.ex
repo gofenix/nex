@@ -82,7 +82,7 @@ defmodule NexWebsite.Pages.GettingStarted do
           <div class="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white" style="background: linear-gradient(135deg, #9B7EBD, #7B5FA8);">2</div>
           <div class="flex-1 pt-1">
             <h2 class="text-xl font-bold mb-2" style="color: #111;">Create a new project</h2>
-            <p class="text-sm mb-4" style="color: #666;">Run <code class="text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded">mix nex.new</code> to scaffold a new project with everything you need.</p>
+            <p class="text-sm mb-4" style="color: #666;">Start with the default <code class="text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded">basic</code> scaffold when learning Nex. Use <code class="text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded">--starter saas</code> when you want auth, database wiring, and a protected dashboard immediately.</p>
             <div class="rounded-xl overflow-hidden" style="border: 1px solid #2A2A2A; box-shadow: 0 4px 16px rgba(0,0,0,0.1);">
               <div class="px-4 py-2.5 flex items-center gap-2" style="background: #1C1C1E; border-bottom: 1px solid #2A2A2A;">
                 <span class="w-3 h-3 rounded-full" style="background: #FF5F57;"></span>
@@ -90,8 +90,22 @@ defmodule NexWebsite.Pages.GettingStarted do
                 <span class="w-3 h-3 rounded-full" style="background: #28C840;"></span>
                 <span class="text-xs ml-2" style="color: #666;">terminal</span>
               </div>
-              <pre style="background: #1C1C1E; margin: 0; padding: 1rem 1.5rem;"><code style="color: #E8E8E8; font-family: monospace; font-size: 0.875rem;">mix nex.new my_app
-    cd my_app</code></pre>
+              <pre style="background: #1C1C1E; margin: 0; padding: 1rem 1.5rem;"><code style="color: #E8E8E8; font-family: monospace; font-size: 0.875rem;"># Default: basic starter
+    mix nex.new my_app
+    cd my_app
+
+    # Product starter
+    mix nex.new my_app --starter saas</code></pre>
+            </div>
+            <div class="mt-4 grid gap-3 md:grid-cols-2">
+              <div class="rounded-xl p-4" style="background: #FAFAF8; border: 1px solid #EBEBEB;">
+                <p class="text-xs font-semibold uppercase tracking-widest mb-2" style="color: #7B5FA8;">Basic</p>
+                <p class="text-sm" style="color: #666;">The lightest Nex entry point. Best for learning file routing, pages, APIs, components, and HTMX actions.</p>
+              </div>
+              <div class="rounded-xl p-4" style="background: #FAFAF8; border: 1px solid #EBEBEB;">
+                <p class="text-xs font-semibold uppercase tracking-widest mb-2" style="color: #7B5FA8;">SaaS</p>
+                <p class="text-sm" style="color: #666;">A product starter with auth, SQLite via NexBase, protected dashboard routes, and starter CRUD already wired.</p>
+              </div>
             </div>
           </div>
         </div>

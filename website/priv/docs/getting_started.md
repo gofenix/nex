@@ -26,13 +26,25 @@ If you want to experience the latest features, you can install from source:
 
 ## 📦 Create a New Project
 
-Run the `nex.new` task to create a new project directory:
+Run the `nex.new` task to create a new project directory.
+The default starter is `basic`, which is the best way to learn Nex:
 
 ```bash
 mix nex.new my_app
 cd my_app
-mix deps.get
+mix nex.dev
 ```
+
+If you want the product-shaped starter instead, use `--starter saas`:
+
+```bash
+mix nex.new my_app --starter saas
+cd my_app
+mix nex.dev
+```
+
+Choose `basic` when you want the smallest possible scaffold around pages, APIs, and components.
+Choose `saas` when you want auth, SQLite via NexBase, a protected dashboard, and starter CRUD on day one.
 
 ## 🚀 5-Minute Hello World
 

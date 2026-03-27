@@ -30,16 +30,23 @@
  - a batteries-included enterprise platform
  - the best fit for complex SPAs
  
- ## Quick Start
- 
- ```bash
- mix archive.install hex nex_new
- mix nex.new my_app
- cd my_app
- mix nex.dev
- ```
- 
- Then open `http://localhost:4000`.
+## Quick Start
+
+```bash
+mix archive.install hex nex_new
+mix nex.new my_app
+cd my_app
+mix nex.dev
+```
+
+Then open `http://localhost:4000`.
+This default scaffold is the `basic` starter: the lightest way to learn Nex.
+
+If you want the product starter with auth, database wiring, and a protected dashboard:
+
+```bash
+mix nex.new my_app --starter saas
+```
  
  ## Example Project Structure
  
@@ -101,12 +108,12 @@
  
  ## Start Here
  
- If you want the fastest path into Nex, use this sequence:
- 
- 1. Read this README
- 2. Create a fresh app with `mix nex.new`
- 3. Open one focused example
- 4. Open one showcase app once the basics click
+If you want the fastest path into Nex, use this sequence:
+
+1. Read this README
+2. Start with `mix nex.new` for the default `basic` scaffold, or use `mix nex.new --starter saas` when you want the auth + database starter
+3. Open one focused example
+4. Open one showcase app once the basics click
  
  ## Recommended Examples
  

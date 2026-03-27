@@ -12,10 +12,10 @@ Even if only one package is modified, all packages will upgrade their version nu
 
 | Package | Directory | Hex Name | Current Version |
 |--------|-----------|----------|-----------------|
-| nex_core | framework/ | nex_core | 0.4.1 |
-| nex_env | nex_env/ | nex_env | 0.4.1 |
-| nex_base | nex_base/ | nex_base | 0.4.1 |
-| nex_new | installer/ | nex_new | 0.4.1 |
+| nex_core | framework/ | nex_core | 0.4.2 |
+| nex_env | nex_env/ | nex_env | 0.4.2 |
+| nex_base | nex_base/ | nex_base | 0.4.2 |
+| nex_new | installer/ | nex_new | 0.4.2 |
 
 ## Version Number Locations
 
@@ -31,7 +31,7 @@ Even if only one package is modified, all packages will upgrade their version nu
 
 ## Release Process
 
-1. Update `/VERSION` file to new version (e.g., 0.4.0)
+1. Update `/VERSION` file to new version (e.g., 0.4.2)
 2. Update CHANGELOG.md with changes
 3. Run `./scripts/publish_hex.sh` - Automatically synchronize and publish all packages
 
@@ -49,7 +49,7 @@ These use Hex dependencies pointing to released packages.
 
 **Advantages**:
 - Simple and clear, version numbers are always consistent
-- Easy for users to understand (nex v0.4.0 = all packages v0.4.0)
+- Easy for users to understand (nex v0.4.2 = all packages v0.4.2)
 - Reduces cognitive burden of version management
 - Users don't need to track which package has what version
 

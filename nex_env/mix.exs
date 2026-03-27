@@ -4,7 +4,7 @@ defmodule NexEnv.MixProject do
   def project do
     [
       app: :nex_env,
-      version: "0.4.1",
+      version: "0.4.2",
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       deps: deps(),

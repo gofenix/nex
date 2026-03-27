@@ -10,6 +10,7 @@ defmodule Nex.RouterTest do
     end
 
     test "exports Plug entrypoint" do
+      Code.ensure_loaded!(Nex.Router)
       assert function_exported?(Nex.Router, :call, 2)
     end
 

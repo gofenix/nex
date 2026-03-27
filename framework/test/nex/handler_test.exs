@@ -17,6 +17,7 @@ defmodule Nex.HandlerTest do
     end
 
     test "exports handle/1 function" do
+      Code.ensure_loaded!(Nex.Handler)
       assert function_exported?(Nex.Handler, :handle, 1)
     end
   end
