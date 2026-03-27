@@ -1,4 +1,4 @@
-defmodule RateLimitExample.MixProject do
+defmodule RatelimitExample.MixProject do
   use Mix.Project
 
   def project do
@@ -15,7 +15,7 @@ defmodule RateLimitExample.MixProject do
   def application do
     [
       extra_applications: [:logger],
-      mod: {RateLimitExample.Application, []}
+      mod: {RatelimitExample.Application, []}
     ]
   end
 

@@ -3,9 +3,9 @@ defmodule TodosApi.Pages.Index do
 
   def render(assigns) do
     ~H"""
-    <div class="max-w-4xl mx-auto p-8">
+    <div data-testid="todos-api-page" class="max-w-4xl mx-auto p-8">
       <div class="mb-8">
-        <h1 class="text-4xl font-bold mb-2">Todos API</h1>
+        <h1 data-testid="todos-api-title" class="text-4xl font-bold mb-2">Todos API</h1>
         <p class="text-gray-600">RESTful JSON API - 100% aligned with Next.js API Routes</p>
       </div>
 

@@ -5,6 +5,18 @@ All notable changes to the Nex framework will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Examples E2E harness**: Added a root-level Playwright test system for batch-running Nex web examples locally and in CI with a manifest-driven runner, per-example specs, fixtures, and failure artifacts.
+- **Manual CI coverage**: Added a workflow-dispatch GitHub Actions job that runs deep end-to-end coverage for each example in a matrix.
+
+### Changed
+- **Examples contracts**: Added stable `data-testid` hooks and corrected example behavior so browser automation can assert interactions reliably across HTMX, API, SSE, and WebSocket demos.
+
+### Removed
+- **`examples/agent_demo`**: Removed the non-web example from the examples suite to keep the retained set aligned with browser-testable demos.
+
 ## [Nex 0.4.2] - 2026-03-27
 
 ### Added

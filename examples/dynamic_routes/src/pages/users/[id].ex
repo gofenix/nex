@@ -12,7 +12,7 @@ defmodule DynamicRoutes.Pages.Users.Id do
 
   def render(assigns) do
     ~H"""
-    <div class="space-y-6">
+    <div data-testid="dynamic-user-page" class="space-y-6">
       <nav class="text-sm text-gray-500">
         <a href="/" class="hover:text-gray-700">Home</a>
         <span class="mx-2">/</span>
@@ -27,7 +27,7 @@ defmodule DynamicRoutes.Pages.Users.Id do
             {String.upcase(String.first(@user.name))}
           </div>
           <div>
-            <h1 class="text-2xl font-bold">{@user.name}</h1>
+            <h1 data-testid="dynamic-user-name" class="text-2xl font-bold">{@user.name}</h1>
             <p class="text-gray-600">{@user.email}</p>
           </div>
         </div>
@@ -59,8 +59,10 @@ defmodule DynamicRoutes.Pages.Users.Id do
                 View Profile
               </a>
               <button
+                id="follow-button"
                 hx-post={"/users/#{@id}/follow"}
-                hx-target="#follow-btn"
+                hx-target="#follow-button"
+                data-testid="dynamic-follow-button"
                 class="w-full bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
                 Follow
               </button>
@@ -86,13 +88,15 @@ defmodule DynamicRoutes.Pages.Users.Id do
     """
   end
 
-  def follow(%{"id" => id}) do
+  def follow(req) do
+    id = req.query["id"] || req.body["id"]
+
     # Simulate follow operation
     :timer.sleep(500)  # Simulate delay
 
     assigns = %{id: id}
     ~H"""
-    <button class="w-full bg-gray-500 text-white px-4 py-2 rounded cursor-not-allowed" disabled>
+    <button id="follow-button" data-testid="dynamic-follow-button" class="w-full bg-gray-500 text-white px-4 py-2 rounded cursor-not-allowed" disabled>
       Already Followed
     </button>
     """

@@ -28,9 +28,10 @@ defmodule TodosApi.Api.Todos.Index do
     completed_filter = req.query["completed"]
     limit = req.query["limit"]
 
-    todos = Nex.Store.get(:todos, [])
-    |> filter_by_completed(completed_filter)
-    |> limit_results(limit)
+    todos =
+      TodosApi.TodosStore.list()
+      |> filter_by_completed(completed_filter)
+      |> limit_results(limit)
 
     Nex.json(%{
       data: todos,
@@ -64,14 +65,11 @@ defmodule TodosApi.Api.Todos.Index do
         Nex.json(%{error: "Text is required"}, status: 400)
 
       true ->
-        todo = %{
-          id: System.unique_integer([:positive, :monotonic]),
-          text: text,
-          completed: completed,
-          created_at: DateTime.utc_now() |> DateTime.to_iso8601()
-        }
-
-        Nex.Store.update(:todos, [], &[todo | &1])
+        todo =
+          TodosApi.TodosStore.create(%{
+            text: text,
+            completed: completed
+          })
 
         # 201 Created - standard for successful resource creation
         Nex.json(%{data: todo}, status: 201)

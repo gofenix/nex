@@ -23,9 +23,12 @@ defmodule TodosApi.Api.Todos.Id do
     # Path parameter from [id] - Next.js style
     id = req.query["id"]
 
-    case find_todo(id) do
+    case TodosApi.TodosStore.find(id) do
       nil ->
         Nex.json(%{error: "Todo not found"}, status: 404)
+
+      :error ->
+        Nex.json(%{error: "Invalid ID"}, status: 400)
 
       todo ->
         Nex.json(%{data: todo})
@@ -52,35 +55,21 @@ defmodule TodosApi.Api.Todos.Id do
     text = req.body["text"]
     completed = req.body["completed"]
 
-    case find_todo(id) do
+    case TodosApi.TodosStore.find(id) do
       nil ->
         Nex.json(%{error: "Todo not found"}, status: 404)
 
+      :error ->
+        Nex.json(%{error: "Invalid ID"}, status: 400)
+
       _todo ->
-        # Parse ID to integer for comparison
-        todo_id = case Integer.parse(id) do
-          {int_id, _} -> int_id
-          :error -> nil
-        end
+        updated_todo =
+          TodosApi.TodosStore.update(id, %{
+            text: text,
+            completed: completed
+          })
 
-        if todo_id do
-          updated_todo = Nex.Store.update(:todos, [], fn todos ->
-            Enum.map(todos, fn t ->
-              if t.id == todo_id do
-                t
-                |> maybe_update_field(:text, text)
-                |> maybe_update_field(:completed, completed)
-              else
-                t
-              end
-            end)
-          end)
-          |> Enum.find(fn t -> t.id == todo_id end)
-
-          Nex.json(%{data: updated_todo})
-        else
-          Nex.json(%{error: "Invalid ID"}, status: 400)
-        end
+        Nex.json(%{data: updated_todo})
     end
   end
 
@@ -99,37 +88,12 @@ defmodule TodosApi.Api.Todos.Id do
   def delete(req) do
     id = req.query["id"]
 
-    # Parse ID to integer
-    todo_id = case Integer.parse(id) do
-      {int_id, _} -> int_id
-      :error -> nil
-    end
-
-    if todo_id do
-      Nex.Store.update(:todos, [], fn todos ->
-        Enum.filter(todos, fn t -> t.id != todo_id end)
-      end)
-
-      # 204 No Content - standard for successful DELETE
-      Nex.status(204)
-    else
-      Nex.json(%{error: "Invalid ID"}, status: 400)
-    end
-  end
-
-  # Private helpers
-
-  defp find_todo(id) do
-    case Integer.parse(id) do
-      {int_id, _} ->
-        Nex.Store.get(:todos, [])
-        |> Enum.find(fn t -> t.id == int_id end)
+    case TodosApi.TodosStore.delete(id) do
+      :ok ->
+        Nex.status(204)
 
       :error ->
-        nil
+        Nex.json(%{error: "Invalid ID"}, status: 400)
     end
   end
-
-  defp maybe_update_field(todo, _field, nil), do: todo
-  defp maybe_update_field(todo, field, value), do: Map.put(todo, field, value)
 end

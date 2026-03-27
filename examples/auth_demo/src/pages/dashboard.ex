@@ -10,39 +10,39 @@ defmodule AuthDemo.Pages.Dashboard do
 
   def render(assigns) do
     ~H"""
-    <div class="max-w-2xl mx-auto mt-16 p-8">
+    <div data-testid="auth-dashboard-page" class="max-w-2xl mx-auto mt-16 p-8">
       <div class="flex items-center justify-between mb-8">
         <h1 class="text-3xl font-bold">Dashboard</h1>
         <a href="/" class="text-blue-600 hover:underline text-sm">← Home</a>
       </div>
 
       <%= if @flash[:success] do %>
-        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+        <div data-testid="auth-dashboard-flash-success" class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
           {@flash[:success]}
         </div>
       <% end %>
 
-      <div class="bg-white rounded-lg shadow p-6 mb-6">
+      <div data-testid="auth-dashboard-protected" class="bg-white rounded-lg shadow p-6 mb-6">
         <h2 class="text-lg font-semibold mb-3">Protected Page</h2>
         <p class="text-gray-700">
-          Welcome, <strong>{@user["name"]}</strong>! This page is protected by middleware.
+          Welcome, <strong data-testid="auth-dashboard-user-name">{@user["name"]}</strong>! This page is protected by middleware.
         </p>
         <p class="text-gray-500 text-sm mt-2">
           You can only see this if you are logged in.
         </p>
       </div>
 
-      <div class="bg-white rounded-lg shadow p-6 mb-6">
+      <div data-testid="auth-dashboard-counter" class="bg-white rounded-lg shadow p-6 mb-6">
         <h2 class="text-lg font-semibold mb-3">Session Counter</h2>
         <p class="text-gray-700">
-          You have visited this page <strong>{@visit_count}</strong> time(s) this session.
+          You have visited this page <strong data-testid="auth-dashboard-visit-count">{@visit_count}</strong> time(s) this session.
         </p>
         <p class="text-gray-500 text-sm mt-1">
           Refresh the page to increment. Counter resets on logout.
         </p>
       </div>
 
-      <div class="bg-white rounded-lg shadow p-6">
+      <div data-testid="auth-dashboard-session-data" class="bg-white rounded-lg shadow p-6">
         <h2 class="text-lg font-semibold mb-3">Session Data</h2>
         <pre class="bg-gray-100 rounded p-3 text-sm overflow-auto">{inspect(@user, pretty: true)}</pre>
       </div>

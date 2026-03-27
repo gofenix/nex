@@ -7,42 +7,53 @@ defmodule Upload.Pages.Index do
 
   def render(assigns) do
     ~H"""
-    <h1 class="text-3xl font-bold mb-8 text-gray-800">File Upload Demo</h1>
+    <div data-testid="upload-page">
+      <h1 class="text-3xl font-bold mb-8 text-gray-800">File Upload Demo</h1>
 
-    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-      <h2 class="text-xl font-semibold mb-4">Upload a File</h2>
-      
-      <form hx-post="/upload" hx-target="#result" hx-encoding="multipart/form-data" class="space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">
-            Choose an image
-          </label>
-          <input 
-            type="file" 
-            name="file" 
-            accept="image/*"
-            class="block w-full text-sm text-gray-500
-              file:mr-4 file:py-2 file:px-4
-              file:rounded-full file:border-0
-              file:text-sm file:font-semibold
-              file:bg-blue-50 file:text-blue-700
-              hover:file:bg-blue-100"
-          />
-        </div>
-        <button 
-          type="submit"
-          class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-        >
-          Upload
-        </button>
-      </form>
+      <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h2 class="text-xl font-semibold mb-4">Upload a File</h2>
 
-      <div id="result" class="mt-4"></div>
-    </div>
+        <form action="/upload"
+              method="post"
+              enctype="multipart/form-data"
+              hx-post="/upload"
+              hx-target="#result"
+              hx-encoding="multipart/form-data"
+              data-testid="upload-form"
+              class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Choose an image
+            </label>
+            <input
+              type="file"
+              name="file"
+              accept="image/*"
+              data-testid="upload-file"
+              class="block w-full text-sm text-gray-500
+                file:mr-4 file:py-2 file:px-4
+                file:rounded-full file:border-0
+                file:text-sm file:font-semibold
+                file:bg-blue-50 file:text-blue-700
+                hover:file:bg-blue-100"
+            />
+          </div>
+          <button
+            type="submit"
+            data-testid="upload-submit"
+            class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+          >
+            Upload
+          </button>
+        </form>
 
-    <div class="bg-white rounded-lg shadow-md p-6">
-      <h2 class="text-xl font-semibold mb-4">How it works</h2>
-      <p class="text-gray-600">See source code in <code class="bg-gray-100 px-2 py-1 rounded">src/pages/index.ex</code></p>
+        <div id="result" data-testid="upload-result" class="mt-4"></div>
+      </div>
+
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-semibold mb-4">How it works</h2>
+        <p class="text-gray-600">See source code in <code class="bg-gray-100 px-2 py-1 rounded">src/pages/index.ex</code></p>
+      </div>
     </div>
     """
   end

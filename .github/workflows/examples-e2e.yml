@@ -1,0 +1,82 @@
+name: Examples E2E
+
+on:
+  workflow_dispatch:
+
+jobs:
+  examples-e2e:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: alpine_showcase
+            cwd: examples/alpine_showcase
+          - name: auth_demo
+            cwd: examples/auth_demo
+          - name: counter
+            cwd: examples/counter
+          - name: dynamic_routes
+            cwd: examples/dynamic_routes
+          - name: energy_dashboard
+            cwd: examples/energy_dashboard
+          - name: error_pages
+            cwd: examples/error_pages
+          - name: guestbook
+            cwd: examples/guestbook
+          - name: ratelimit
+            cwd: examples/ratelimit
+          - name: todos
+            cwd: examples/todos
+          - name: todos_api
+            cwd: examples/todos_api
+          - name: upload
+            cwd: examples/upload
+          - name: validator
+            cwd: examples/validator
+          - name: websocket
+            cwd: examples/websocket
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Elixir and Erlang
+        uses: erlef/setup-beam@v1
+        with:
+          elixir-version: "1.19.4"
+          otp-version: "28.1.2"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install Hex and Rebar
+        run: |
+          mix local.hex --force
+          mix local.rebar --force
+
+      - name: Install root npm dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Install example dependencies
+        working-directory: ${{ matrix.cwd }}
+        run: mix deps.get
+
+      - name: Run example E2E
+        run: npm run e2e:example -- --name ${{ matrix.name }}
+
+      - name: Upload Playwright artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-${{ matrix.name }}
+          path: |
+            e2e/artifacts/playwright/${{ matrix.name }}
+            e2e/artifacts/logs/${{ matrix.name }}.log
+          if-no-files-found: ignore

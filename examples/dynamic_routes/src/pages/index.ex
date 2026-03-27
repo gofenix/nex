@@ -9,7 +9,7 @@ defmodule DynamicRoutes.Pages.Index do
 
   def render(assigns) do
     ~H"""
-    <div class="space-y-8">
+    <div data-testid="dynamic-routes-page" class="space-y-8">
       <div>
         <h1 class="text-3xl font-bold text-gray-800 mb-4">Dynamic Routes Example</h1>
         <p class="text-gray-600">Showcasing Nex framework's dynamic routing capabilities</p>
@@ -23,12 +23,7 @@ defmodule DynamicRoutes.Pages.Index do
             <div>
               <code class="text-sm bg-gray-100 px-2 py-1 rounded">src/pages/users/[id].ex</code>
               <p class="text-sm text-gray-600 mt-1">Matches: /users/123, /users/456</p>
-              <a href="/users/1" class="text-blue-600 hover:underline text-sm">→ View User 1</a>
-            </div>
-            <div>
-              <code class="text-sm bg-gray-100 px-2 py-1 rounded">src/pages/users/[id]/profile.ex</code>
-              <p class="text-sm text-gray-600 mt-1">Matches: /users/123/profile</p>
-              <a href="/users/1/profile" class="text-blue-600 hover:underline text-sm">→ View User 1 Profile</a>
+              <a href="/users/1" data-testid="dynamic-user-link" class="text-blue-600 hover:underline text-sm">→ View User 1</a>
             </div>
           </div>
         </div>
@@ -40,12 +35,7 @@ defmodule DynamicRoutes.Pages.Index do
             <div>
               <code class="text-sm bg-gray-100 px-2 py-1 rounded">src/pages/posts/[slug].ex</code>
               <p class="text-sm text-gray-600 mt-1">Matches: /posts/hello-world, /posts/my-first-post</p>
-              <a href="/posts/hello-world" class="text-blue-600 hover:underline text-sm">→ View "hello-world"</a>
-            </div>
-            <div>
-              <code class="text-sm bg-gray-100 px-2 py-1 rounded">src/pages/posts/[year]/[month].ex</code>
-              <p class="text-sm text-gray-600 mt-1">Matches: /posts/2024/12</p>
-              <a href="/posts/2024/12" class="text-blue-600 hover:underline text-sm">→ View December 2024</a>
+              <a href="/posts/hello-world" data-testid="dynamic-post-link" class="text-blue-600 hover:underline text-sm">→ View "hello-world"</a>
             </div>
           </div>
         </div>
@@ -57,12 +47,7 @@ defmodule DynamicRoutes.Pages.Index do
             <div>
               <code class="text-sm bg-gray-100 px-2 py-1 rounded">src/pages/docs/[...path].ex</code>
               <p class="text-sm text-gray-600 mt-1">Matches: /docs/* (any level)</p>
-              <a href="/docs/getting-started/install" class="text-blue-600 hover:underline text-sm">→ View Documentation</a>
-            </div>
-            <div>
-              <code class="text-sm bg-gray-100 px-2 py-1 rounded">src/pages/files/[category]/[...path].ex</code>
-              <p class="text-sm text-gray-600 mt-1">Matches: /files/images/2024/12/photo.jpg</p>
-              <a href="/files/images/2024/12/holiday.jpg" class="text-blue-600 hover:underline text-sm">→ View File Path</a>
+              <a href="/docs/getting-started/install" data-testid="dynamic-doc-link" class="text-blue-600 hover:underline text-sm">→ View Documentation</a>
             </div>
           </div>
         </div>
@@ -77,10 +62,11 @@ defmodule DynamicRoutes.Pages.Index do
               <button
                 hx-get="/api/users/1"
                 hx-target="#api-result"
+                data-testid="dynamic-api-button"
                 class="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600">
                 Test API
               </button>
-              <div id="api-result" class="mt-2"></div>
+              <div id="api-result" data-testid="dynamic-api-result" class="mt-2"></div>
             </div>
           </div>
         </div>

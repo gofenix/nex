@@ -10,10 +10,10 @@ defmodule Counter.Pages.Index do
 
   def render(assigns) do
     ~H"""
-    <div class="text-center py-12">
+    <div data-testid="counter-page" class="text-center py-12">
       <h1 class="text-4xl font-bold mb-4">Counter</h1>
 
-      <div id="counter-display" class="text-6xl font-bold mb-8">
+      <div id="counter-display" data-testid="counter-value" class="text-6xl font-bold mb-8">
         {@count}
       </div>
 
@@ -21,6 +21,7 @@ defmodule Counter.Pages.Index do
         <button hx-post="/decrement"
                 hx-target="#counter-display"
                 hx-swap="outerHTML"
+                data-testid="counter-decrement"
                 class="btn">
           -
         </button>
@@ -28,6 +29,7 @@ defmodule Counter.Pages.Index do
         <button hx-post="/reset"
                 hx-target="#counter-display"
                 hx-swap="outerHTML"
+                data-testid="counter-reset"
                 class="btn">
           Reset
         </button>
@@ -35,6 +37,7 @@ defmodule Counter.Pages.Index do
         <button hx-post="/increment"
                 hx-target="#counter-display"
                 hx-swap="outerHTML"
+                data-testid="counter-increment"
                 class="btn">
           +
         </button>
@@ -47,17 +50,17 @@ defmodule Counter.Pages.Index do
     count = Nex.Store.update(:count, 0, &(&1 + 1))
     assigns = %{count: count}
     ~H"""
-    <div id="counter-display" class="text-6xl font-bold mb-8">
+    <div id="counter-display" data-testid="counter-value" class="text-6xl font-bold mb-8">
       {@count}
     </div>
     """
   end
 
   def decrement(_params) do
-    count = Nex.Store.update(:count, 0, &(&1 - 1))
+    count = Nex.Store.update(:count, 0, &max(&1 - 1, 0))
     assigns = %{count: count}
     ~H"""
-    <div id="counter-display" class="text-6xl font-bold mb-8">
+    <div id="counter-display" data-testid="counter-value" class="text-6xl font-bold mb-8">
       {@count}
     </div>
     """
@@ -67,7 +70,7 @@ defmodule Counter.Pages.Index do
     Nex.Store.put(:count, 0)
     assigns = %{count: 0}
     ~H"""
-    <div id="counter-display" class="text-6xl font-bold mb-8">
+    <div id="counter-display" data-testid="counter-value" class="text-6xl font-bold mb-8">
       {@count}
     </div>
     """

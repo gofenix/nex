@@ -1,4 +1,4 @@
-defmodule RateLimitExample.Application do
+defmodule RatelimitExample.Application do
   use Application
 
   def start(_type, _args) do
@@ -6,9 +6,9 @@ defmodule RateLimitExample.Application do
     Application.put_env(:nex_core, :rate_limit, max: 5, window: 60)
 
     # Add rate limiting plug to the pipeline
-    Application.put_env(:nex_core, :plugs, [Nex.RateLimit.Plug])
+    Application.put_env(:nex_core, :plugs, [RatelimitExample.Plugs.ApiRateLimit])
 
     children = []
-    Supervisor.start_link(children, strategy: :one_for_one, name: RateLimitExample.Supervisor)
+    Supervisor.start_link(children, strategy: :one_for_one, name: RatelimitExample.Supervisor)
   end
 end

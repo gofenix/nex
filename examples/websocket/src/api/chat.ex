@@ -1,4 +1,4 @@
-defmodule NexWsExample.Chat do
+defmodule NexWebsocketExample.Api.Chat do
   @moduledoc """
   WebSocket chat handler demonstrating Nex.WebSocket features.
   """
@@ -38,10 +38,13 @@ defmodule NexWsExample.Chat do
   end
 
   defp broadcast(room, user, text) do
-    Nex.WebSocket.broadcast(room, %{
-      user: user,
-      text: text,
-      timestamp: :os.system_time(:millisecond)
-    })
+    Nex.WebSocket.broadcast(
+      room,
+      Jason.encode!(%{
+        user: user,
+        text: text,
+        timestamp: :os.system_time(:millisecond)
+      })
+    )
   end
 end

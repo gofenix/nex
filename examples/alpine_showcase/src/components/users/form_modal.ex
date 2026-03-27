@@ -4,7 +4,7 @@ defmodule AlpineShowcase.Components.Users.FormModal do
   def user_form_modal(assigns) do
     ~H"""
     <!-- Modal Backdrop -->
-    <div class="modal" x-bind:class="{ 'modal-open': userModalOpen }">
+    <div class="modal" data-testid="alpine-user-modal" x-bind:class="{ 'modal-open': userModalOpen }">
       <div class="modal-box">
         <h3 class="font-bold text-lg">Add New User</h3>
 
@@ -13,6 +13,7 @@ defmodule AlpineShowcase.Components.Users.FormModal do
         -->
         <form
           id="create-user-form"
+          data-testid="alpine-create-user-form"
           hx-post="/create_user"
           hx-target="#user-list"
           hx-swap="beforeend"
@@ -23,19 +24,19 @@ defmodule AlpineShowcase.Components.Users.FormModal do
             <!-- x-ref: Registers reference for programmatic access via $refs.nameInput -->
             <input
               x-ref="nameInput"
-              type="text" name="name" required class="input input-bordered w-full"
+              type="text" name="name" required data-testid="alpine-user-name-input" class="input input-bordered w-full"
             />
           </div>
 
           <div class="form-control w-full my-4">
             <label class="label"><span class="label-text">Email</span></label>
-            <input type="email" name="email" required class="input input-bordered w-full" />
+            <input type="email" name="email" required data-testid="alpine-user-email-input" class="input input-bordered w-full" />
           </div>
 
           <div class="modal-action">
-            <button type="submit" class="btn btn-primary">Save</button>
+            <button type="submit" data-testid="alpine-user-save" class="btn btn-primary">Save</button>
             <!-- Cancel Button: Pure Alpine Logic -->
-            <button type="button" class="btn" x-on:click="userModalOpen = false">Cancel</button>
+            <button type="button" data-testid="alpine-user-cancel" class="btn" x-on:click="userModalOpen = false">Cancel</button>
           </div>
         </form>
       </div>

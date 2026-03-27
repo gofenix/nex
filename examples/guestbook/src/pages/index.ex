@@ -11,7 +11,7 @@ defmodule Guestbook.Pages.Index do
 
   def render(assigns) do
     ~H"""
-    <div class="space-y-6">
+    <div data-testid="guestbook-page" class="space-y-6">
       <h1 class="text-4xl font-bold text-center text-purple-800">Guestbook</h1>
 
       <div class="bg-white rounded-xl p-6 shadow-lg">
@@ -20,6 +20,7 @@ defmodule Guestbook.Pages.Index do
               hx-target="#message-list"
               hx-swap="afterbegin"
               hx-on::after-request="this.reset()"
+              data-testid="guestbook-form"
               class="space-y-4">
           <div class="form-control">
             <label class="label">
@@ -29,6 +30,7 @@ defmodule Guestbook.Pages.Index do
                    name="name"
                    placeholder="Enter your name"
                    required
+                   data-testid="guestbook-name"
                    class="input input-bordered w-full focus:input-primary" />
           </div>
           <div class="form-control">
@@ -39,19 +41,20 @@ defmodule Guestbook.Pages.Index do
                       placeholder="Write what you want to say..."
                       required
                       rows="3"
+                      data-testid="guestbook-content"
                       class="textarea textarea-bordered w-full focus:textarea-primary"></textarea>
           </div>
-          <button type="submit" class="btn btn-primary w-full">
+          <button type="submit" data-testid="guestbook-submit" class="btn btn-primary w-full">
             Submit Message
           </button>
         </form>
       </div>
 
-      <div id="message-list" class="space-y-4">
+      <div id="message-list" data-testid="guestbook-list" class="space-y-4">
         <h2 class="text-xl font-semibold text-gray-700">
           All Messages <span class="text-sm font-normal text-gray-400">({length(@messages)})</span>
         </h2>
-        <div :if={length(@messages) == 0} class="text-center py-10 text-gray-400">
+        <div :if={length(@messages) == 0} data-testid="guestbook-empty" class="text-center py-10 text-gray-400">
           No messages yet. Be the first to leave a message!
         </div>
         <.guestbook_message :for={message <- @messages} message={message} />
@@ -60,7 +63,10 @@ defmodule Guestbook.Pages.Index do
     """
   end
 
-  def create_message(%{"name" => name, "content" => content}) do
+  def create_message(req) do
+    name = req.body["name"]
+    content = req.body["content"]
+
     message = %{
       id: System.unique_integer([:positive]),
       name: name,
@@ -74,7 +80,8 @@ defmodule Guestbook.Pages.Index do
     ~H"<.guestbook_message message={@message} />"
   end
 
-  def delete_message(%{"id" => id}) do
+  def delete_message(req) do
+    id = req.query["id"] || req.body["id"]
     id = String.to_integer(id)
 
     Nex.Store.update(:messages, [], fn messages ->
@@ -87,7 +94,8 @@ defmodule Guestbook.Pages.Index do
   # Multi-path Action example: DELETE /messages/[id]/delete
   # This demonstrates path-based routing where the URL path contains the resource ID
   # and the action name. This is useful for RESTful APIs and resource operations.
-  def delete(%{"id" => id}) do
+  def delete(req) do
+    id = req.query["id"] || req.body["id"]
     id = String.to_integer(id)
 
     Nex.Store.update(:messages, [], fn messages ->

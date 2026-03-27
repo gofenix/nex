@@ -6,6 +6,7 @@ defmodule NexValidatorExample.MixProject do
       app: :nex_validator_example,
       version: "0.1.0",
       elixir: "~> 1.14",
+      elixirc_paths: ["src"],
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       description: "Nex.Validator example app for Nex 0.4",

@@ -12,7 +12,7 @@ defmodule DynamicRoutes.Pages.Posts.Slug do
 
   def render(assigns) do
     ~H"""
-    <div class="space-y-6">
+    <div data-testid="dynamic-post-page" class="space-y-6">
       <nav class="text-sm text-gray-500">
         <a href="/" class="hover:text-gray-700">Home</a>
         <span class="mx-2">/</span>
@@ -23,7 +23,7 @@ defmodule DynamicRoutes.Pages.Posts.Slug do
 
       <article class="bg-white rounded-lg p-6 shadow">
         <header class="mb-6">
-          <h1 class="text-3xl font-bold mb-2">{@post.title}</h1>
+          <h1 data-testid="dynamic-post-title" class="text-3xl font-bold mb-2">{@post.title}</h1>
           <div class="flex items-center text-sm text-gray-500 space-x-4">
             <span>Author: {@post.author}</span>
             <span>Published: {@post.date}</span>

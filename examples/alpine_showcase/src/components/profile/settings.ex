@@ -4,7 +4,7 @@ defmodule AlpineShowcase.Components.Profile.Settings do
   def profile_settings(assigns) do
     ~H"""
     <!-- Initialize local state: bio and isDirty -->
-    <div class="card bg-base-100 shadow-xl">
+    <div data-testid="alpine-profile-settings" class="card bg-base-100 shadow-xl">
       <div class="card-body">
         <h2 class="card-title mb-4">Edit Profile</h2>
         <form
@@ -30,6 +30,7 @@ defmodule AlpineShowcase.Components.Profile.Settings do
             <!-- x-model binds input to state -->
             <textarea
               name="bio"
+              data-testid="alpine-profile-bio"
               class="textarea textarea-bordered h-24"
               x-model="bio"
               maxlength="100"
@@ -42,6 +43,7 @@ defmodule AlpineShowcase.Components.Profile.Settings do
              <div class="flex gap-2 mb-2">
                 <input
                   type="text"
+                  data-testid="alpine-profile-skill-input"
                   class="input input-bordered w-full max-w-xs"
                   placeholder="Add a skill..."
                   x-model="newTag"
@@ -64,6 +66,7 @@ defmodule AlpineShowcase.Components.Profile.Settings do
             <!-- Save button is disabled if content is unchanged -->
             <button
               type="submit"
+              data-testid="alpine-profile-save"
               class="btn btn-primary"
               x-bind:disabled="!isDirty"
             >

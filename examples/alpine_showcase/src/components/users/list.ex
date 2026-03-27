@@ -4,7 +4,7 @@ defmodule AlpineShowcase.Components.Users.List do
   # Render the entire list container
   def user_list(assigns) do
     ~H"""
-    <div class="overflow-x-auto bg-base-100 rounded-box shadow-md">
+    <div data-testid="alpine-user-table" class="overflow-x-auto bg-base-100 rounded-box shadow-md">
       <table class="table table-zebra">
         <thead>
           <tr>
@@ -17,7 +17,7 @@ defmodule AlpineShowcase.Components.Users.List do
            ID must match hx-target="#user-list" in form_modal
            hx-swap="beforeend" will insert the new row at the end of this tbody
         -->
-        <tbody id="user-list">
+        <tbody id="user-list" data-testid="alpine-user-list">
           <.user_row :for={user <- @users} user={user} />
         </tbody>
       </table>
@@ -37,10 +37,10 @@ defmodule AlpineShowcase.Components.Users.List do
   # Private component: Row structure
   def user_row(assigns) do
     ~H"""
-    <tr class="hover">
+    <tr data-testid={"alpine-user-row-#{@user.id}"} class="hover">
       <td>{@user.id}</td>
-      <td>{@user.name}</td>
-      <td>{@user.email}</td>
+      <td data-testid={"alpine-user-name-#{@user.id}"}>{@user.name}</td>
+      <td data-testid={"alpine-user-email-#{@user.id}"}>{@user.email}</td>
     </tr>
     """
   end

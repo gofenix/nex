@@ -1,4 +1,4 @@
-defmodule RateLimitExample.Pages.Index do
+defmodule RatelimitExample.Pages.Index do
   use Nex
 
   def mount(_params) do
@@ -7,7 +7,7 @@ defmodule RateLimitExample.Pages.Index do
 
   def render(assigns) do
     ~H"""
-    <div class="max-w-2xl mx-auto">
+    <div data-testid="ratelimit-page" class="max-w-2xl mx-auto">
       <h1 class="text-3xl font-bold mb-4">Rate Limiting Demo</h1>
       <p class="text-gray-600 mb-6">
         This example demonstrates Nex.RateLimit from Nex 0.4.
@@ -21,18 +21,20 @@ defmodule RateLimitExample.Pages.Index do
           <button 
             hx-get="/api/status" 
             hx-target="#result"
+            data-testid="ratelimit-request"
             class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
             Make Request
           </button>
           
           <button 
             onclick="makeMultipleRequests()"
+            data-testid="ratelimit-burst"
             class="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600">
             Make 6 Rapid Requests
           </button>
         </div>
 
-        <div id="result" class="bg-gray-50 p-4 rounded min-h-[100px]">
+        <div id="result" data-testid="ratelimit-result" class="bg-gray-50 p-4 rounded min-h-[100px]">
           <p class="text-gray-500">Click "Make Request" to see rate limiting in action...</p>
         </div>
       </div>

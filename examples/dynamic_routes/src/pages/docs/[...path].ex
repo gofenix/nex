@@ -16,7 +16,7 @@ defmodule DynamicRoutes.Pages.Docs.Path do
 
   def render(assigns) do
     ~H"""
-    <div class="space-y-6">
+    <div data-testid="dynamic-docs-page" class="space-y-6">
       <nav class="text-sm text-gray-500">
         <a href="/" class="hover:text-gray-700">Home</a>
         <span class="mx-2">/</span>
@@ -63,7 +63,7 @@ defmodule DynamicRoutes.Pages.Docs.Path do
           </div>
 
           <div class="space-y-4">
-            <p>
+            <p data-testid="dynamic-docs-path">
               Current path: <code class="bg-gray-100 px-2 py-1 rounded">/{@path_string}</code>
             </p>
 
@@ -75,7 +75,7 @@ defmodule DynamicRoutes.Pages.Docs.Path do
 
             <div class="mt-6">
               <h2 class="text-xl font-semibold mb-3">Documentation Content</h2>
-              <div class="bg-blue-50 p-4 rounded">
+              <div data-testid="dynamic-docs-content" class="bg-blue-50 p-4 rounded">
                 <p>{@content}</p>
               </div>
             </div>

@@ -17,7 +17,7 @@ defmodule EnergyDashboard.Pages.Index do
 
   def render(assigns) do
     ~H"""
-    <div class="max-w-6xl mx-auto">
+    <div data-testid="energy-dashboard-page" class="max-w-6xl mx-auto">
       <!-- Header -->
       <div class="text-center mb-12">
         <h1 class="text-5xl font-bold text-white mb-4">⚡ Energy Dashboard</h1>
@@ -31,6 +31,7 @@ defmodule EnergyDashboard.Pages.Index do
           <div class="text-sm text-purple-200 mb-2">Current Energy Price</div>
           <div
             id="price-display"
+            data-testid="energy-price"
             class="text-7xl font-bold text-white"
             sse-swap="price"
           >
@@ -43,6 +44,7 @@ defmodule EnergyDashboard.Pages.Index do
         <div class="text-center mb-8">
           <div
             id="time-display"
+            data-testid="energy-time"
             class="text-xl text-purple-200"
             sse-swap="time"
           >
@@ -54,7 +56,7 @@ defmodule EnergyDashboard.Pages.Index do
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
           <div class="glass rounded-xl p-6 text-center">
             <div class="text-3xl mb-2">📊</div>
-            <div class="text-2xl font-bold text-white" id="data-points" sse-swap="data_points">3,600</div>
+            <div class="text-2xl font-bold text-white" id="data-points" data-testid="energy-data-points" sse-swap="data_points">3,600</div>
             <div class="text-sm text-purple-200 mt-2">Data Points/Hour</div>
           </div>
 

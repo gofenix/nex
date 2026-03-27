@@ -18,6 +18,7 @@ defmodule Todos.Components.Todos.Item do
   def todo_item(assigns) do
     ~H"""
     <li id={"todo-#{@todo.id}"}
+        data-testid={"todo-item-#{@todo.id}"}
         class={"flex items-center gap-3 p-3 bg-white rounded-lg shadow #{if @todo.completed, do: "opacity-60"}"}>
       <input type="checkbox"
              checked={@todo.completed}
@@ -25,14 +26,17 @@ defmodule Todos.Components.Todos.Item do
              hx-vals={Jason.encode!(%{id: @todo.id})}
              hx-target={"#todo-#{@todo.id}"}
              hx-swap="outerHTML"
+             data-testid={"todo-toggle-#{@todo.id}"}
              class="w-5 h-5 text-blue-500" />
-      <span class={"flex-1 #{if @todo.completed, do: "line-through text-gray-400", else: "text-gray-700"}"}>
+      <span data-testid={"todo-text-#{@todo.id}"}
+            class={"flex-1 #{if @todo.completed, do: "line-through text-gray-400", else: "text-gray-700"}"}>
         {@todo.text}
       </span>
       <button hx-post="/delete_todo"
               hx-vals={Jason.encode!(%{id: @todo.id})}
               hx-target={"#todo-#{@todo.id}"}
               hx-swap="outerHTML"
+              data-testid={"todo-delete-#{@todo.id}"}
               class="text-red-500 hover:text-red-700">
         Delete
       </button>

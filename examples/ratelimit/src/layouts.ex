@@ -1,4 +1,4 @@
-defmodule RateLimitExample.Layouts do
+defmodule RatelimitExample.Layouts do
   use Nex
 
   def render(assigns) do
