@@ -8,11 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **Examples E2E harness**: Added a root-level Playwright test system for batch-running Nex web examples locally and in CI with a manifest-driven runner, per-example specs, fixtures, and failure artifacts.
+- **Examples E2E harness**: Added an Elixir-first E2E test system under `e2e/` for batch-running Nex web examples locally and in CI with a manifest-driven runner, per-example ExUnit coverage, protocol-level assertions, and failure logs.
 - **Manual CI coverage**: Added a workflow-dispatch GitHub Actions job that runs deep end-to-end coverage for each example in a matrix.
 
 ### Changed
-- **Examples contracts**: Added stable `data-testid` hooks and corrected example behavior so browser automation can assert interactions reliably across HTMX, API, SSE, and WebSocket demos.
+- **Examples contracts**: Added stable `data-testid` hooks and corrected example behavior so ExUnit-based HTMX, API, SSE, and WebSocket assertions can exercise the examples reliably.
+
+### Fixed
+- **WebSocket initial state**: WebSocket handlers now receive merged query string parameters in the initial request context, aligning `initial_state/1` with Nex request semantics for query access.
 
 ### Removed
 - **`examples/agent_demo`**: Removed the non-web example from the examples suite to keep the retained set aligned with browser-testable demos.

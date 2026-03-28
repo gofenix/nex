@@ -424,12 +424,22 @@ defmodule Nex.Handler do
   # Handle user WebSocket connections: /ws/* → src/api/ modules with `use Nex.WebSocket`
   # e.g. /ws/chat → MyApp.Api.Chat
   defp handle_websocket(conn, path) do
+    conn = Plug.Conn.fetch_query_params(conn)
     ws_path = tl(path)
 
     case Nex.RouteDiscovery.resolve(:api, ws_path) do
-      {:ok, module, params} ->
+      {:ok, module, path_params} ->
         if function_exported?(module, :handle_message, 2) do
-          initial_state = module.initial_state(%{params: params, cookies: Nex.Cookie.all()})
+          query = Map.merge(conn.query_params, path_params)
+
+          initial_state =
+            module.initial_state(%{
+              cookies: Nex.Cookie.all(),
+              params: path_params,
+              path: conn.request_path,
+              query: query
+            })
+
           WebSockAdapter.upgrade(conn, Nex.WebSocket.Adapter, {module, initial_state}, [])
         else
           send_error_page(conn, 404, "Not Found", nil)
@@ -793,7 +803,9 @@ defmodule Nex.Handler do
 
   defp dev_env?, do: Nex.Config.dev?()
 
-  defp html_escape(text) when is_binary(text), do: Phoenix.HTML.html_escape(text) |> Phoenix.HTML.safe_to_string()
+  defp html_escape(text) when is_binary(text),
+    do: Phoenix.HTML.html_escape(text) |> Phoenix.HTML.safe_to_string()
+
   defp html_escape(text), do: text |> to_string() |> html_escape()
 
   # Safe atom/module conversion - now delegated to Nex.Utils
@@ -888,6 +900,7 @@ defmodule Nex.Handler do
       else
         ""
       end
+
     base_script <> live_reload_script <> "</script>"
   end
 end

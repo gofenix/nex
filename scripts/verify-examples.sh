@@ -1,37 +1,112 @@
 #!/bin/bash
-# verify-examples.sh - 验证示例项目与框架版本的兼容性
-# 运行方式: ./scripts/verify-examples.sh [version]
 
-set -e
+set -euo pipefail
 
-VERSION=${1:-"0.4.0"}
-FRAMEWORK_PATH="$(pwd)/framework"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+VERSION="${1:-$(cat "$ROOT_DIR/VERSION")}"
+MODE="${2:-path}"
 
-echo "=== Verifying examples compatibility with nex_core $VERSION ==="
+usage() {
+  cat <<EOF
+Usage: ./scripts/verify-examples.sh [version] [path|hex|auto]
 
-for example in examples/*/; do
+Modes:
+  path  Verify examples against the local framework checkout. This is the default.
+  hex   Rewrite each example to use nex_core ~> <version> from Hex, then compile it.
+  auto  Use the requested Hex version when it exists on hex.pm; otherwise fall back to path mode.
+EOF
+}
+
+hex_version_available() {
+  curl -fsSL https://hex.pm/api/packages/nex_core | grep -q "\"version\":\"$VERSION\""
+}
+
+resolve_mode() {
+  case "$MODE" in
+    path|hex)
+      echo "$MODE"
+      ;;
+    auto)
+      if hex_version_available; then
+        echo "hex"
+      else
+        echo "path"
+      fi
+      ;;
+    -h|--help|help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Unknown mode: $MODE" >&2
+      usage >&2
+      exit 1
+      ;;
+  esac
+}
+
+restore_example() {
+  local example_dir="$1"
+
+  if [ -f "$example_dir/mix.exs.bak" ]; then
+    mv "$example_dir/mix.exs.bak" "$example_dir/mix.exs"
+  fi
+
+  if [ -f "$example_dir/mix.lock.bak" ]; then
+    mv "$example_dir/mix.lock.bak" "$example_dir/mix.lock"
+  fi
+}
+
+verify_example() {
+  local example_dir="$1"
+  local name
+
+  name="$(basename "$example_dir")"
+  printf "Testing %s... " "$name"
+
+  pushd "$example_dir" >/dev/null
+
+  if [ "$RESOLVED_MODE" = "hex" ]; then
+    cp mix.exs mix.exs.bak
+
+    if [ -f mix.lock ]; then
+      cp mix.lock mix.lock.bak
+    fi
+
+    sed -i.bak2 "s|{:nex_core, path: \"../../framework\"}|{:nex_core, \"~> $VERSION\"}|" mix.exs
+    rm -f mix.exs.bak2
+  fi
+
+  if mix deps.get >/dev/null 2>&1 && mix compile >/dev/null 2>&1; then
+    echo "OK"
+  else
+    echo "FAILED"
+    popd >/dev/null
+    return 1
+  fi
+
+  if [ "$RESOLVED_MODE" = "hex" ]; then
+    restore_example "$example_dir"
+    mix deps.get >/dev/null 2>&1 || true
+  fi
+
+  popd >/dev/null
+}
+
+RESOLVED_MODE="$(resolve_mode)"
+
+if [ "$MODE" = "auto" ] && [ "$RESOLVED_MODE" = "path" ]; then
+  echo "nex_core $VERSION is not available on Hex yet; falling back to local path verification."
+fi
+
+echo "=== Verifying examples compatibility with nex_core $VERSION ($RESOLVED_MODE mode) ==="
+
+for example in "$ROOT_DIR"/examples/*/; do
   if [ -f "$example/mix.exs" ]; then
-    name=$(basename "$example")
-    echo -n "Testing $name... "
-    
-    cd "$example"
-    
-    # 临时修改为版本号依赖
-    sed -i.bak "s|{:nex_core, path: \"../../framework\"}|{:nex_core, \"~> $VERSION\"}|" mix.exs
-    
-    # 测试编译
-    if mix deps.get > /dev/null 2>&1 && mix compile > /dev/null 2>&1; then
-      echo "✅ OK"
-    else
-      echo "❌ FAILED"
+    if ! verify_example "$example"; then
+      restore_example "$example"
       exit 1
     fi
-    
-    # 恢复本地路径
-    mv mix.exs.bak mix.exs
-    mix deps.get > /dev/null 2>&1
-    
-    cd - > /dev/null
   fi
 done
 

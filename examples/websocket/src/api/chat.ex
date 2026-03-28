@@ -6,10 +6,12 @@ defmodule NexWebsocketExample.Api.Chat do
   use Nex.WebSocket
 
   @impl true
-  def initial_state(params) do
+  def initial_state(req) do
+    query = req[:query] || %{}
+
     %{
-      username: params["username"] || "Anonymous",
-      room: params["room"] || "lobby"
+      username: query["username"] || "Anonymous",
+      room: query["room"] || "lobby"
     }
   end
 

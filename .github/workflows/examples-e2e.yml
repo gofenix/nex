@@ -47,36 +47,27 @@ jobs:
           elixir-version: "1.19.4"
           otp-version: "28.1.2"
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: npm
-
       - name: Install Hex and Rebar
         run: |
           mix local.hex --force
           mix local.rebar --force
 
-      - name: Install root npm dependencies
-        run: npm ci
-
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
+      - name: Install E2E dependencies
+        working-directory: e2e
+        run: mix deps.get
 
       - name: Install example dependencies
         working-directory: ${{ matrix.cwd }}
         run: mix deps.get
 
       - name: Run example E2E
-        run: npm run e2e:example -- --name ${{ matrix.name }}
+        working-directory: e2e
+        run: mix e2e.example --name ${{ matrix.name }}
 
-      - name: Upload Playwright artifacts
+      - name: Upload E2E artifacts
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: e2e-${{ matrix.name }}
-          path: |
-            e2e/artifacts/playwright/${{ matrix.name }}
-            e2e/artifacts/logs/${{ matrix.name }}.log
+          path: e2e/artifacts
           if-no-files-found: ignore
