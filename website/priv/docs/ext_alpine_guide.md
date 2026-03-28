@@ -98,9 +98,9 @@ When a Nex Action returns an HTML fragment and updates the DOM, if the parent el
 
 ## 6. Complete Example Project
 
-To dive deeper into integrating Alpine.js with Nex, please refer to our official showcase project:
+To dive deeper into integrating Alpine.js with Nex, refer to the official gallery example:
 
-**[GitHub: Alpine Showcase](https://github.com/gofenix/nex/tree/main/examples/alpine_showcase)**
+**[GitHub: Alpine Demo](https://github.com/gofenix/nex/tree/main/examples/alpine_demo)**
 
 ### Features included in this example:
 *   **Theme Switching**: Managed via Alpine in `layouts.ex` with `localStorage` persistence.

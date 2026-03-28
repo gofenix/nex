@@ -233,4 +233,4 @@ This example is perfect for:
 
 - **`todos`** - HTMX-based todo app (HTML responses)
 - **`dynamic_routes`** - Dynamic routing patterns
-- **`chatbot_sse`** - Server-Sent Events API
+- **`energy_dashboard`** - Server-Sent Events updates

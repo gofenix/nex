@@ -92,7 +92,7 @@ mix nex.new my_app --starter saas
  - Unified `use Nex` entry point
  - Low-boilerplate layouts and page modules
  - Built-in static file serving
- - Examples and showcases in the same repository
+ - Example gallery and product-shaped apps in the same repository
  
  ## Monorepo Map
  
@@ -102,8 +102,7 @@ mix nex.new my_app --starter saas
  - `installer/` — `mix nex.new` project generator
  - `nex_env/` — environment variable helper package
  - `nex_base/` — schema-less database layer and query builder
- - `examples/` — focused examples for learning specific capabilities
- - `showcase/` — larger apps that demonstrate real-world usage
+ - `examples/` — the Nex gallery, including focused patterns and larger app examples
  - `website/` — the official site built with Nex itself
  
  ## Start Here
@@ -113,24 +112,11 @@ If you want the fastest path into Nex, use this sequence:
 1. Read this README
 2. Start with `mix nex.new` for the default `basic` scaffold, or use `mix nex.new --starter saas` when you want the auth + database starter
 3. Open one focused example
-4. Open one showcase app once the basics click
+4. Open more of the gallery once the basics click
  
- ## Recommended Examples
- 
- These are the best starting points for understanding the main Nex product line:
- 
- - [`examples/counter`](examples/counter) — minimal state + HTMX loop
- - [`examples/todos`](examples/todos) — CRUD-style page actions
- - [`examples/dynamic_routes`](examples/dynamic_routes) — routing conventions and path patterns
- - [`examples/upload`](examples/upload) — file upload handling
- - [`examples/todos_api`](examples/todos_api) — JSON API structure
- 
- ## Recommended Showcases
- 
- For more realistic product-shaped examples:
- 
- - [`showcase/bestof_ex`](showcase/bestof_ex) — a larger Nex application structure
- - [`showcase/agent_console`](showcase/agent_console) — a UI-heavy showcase built on Nex
+ ## Example Gallery
+
+ Browse the gallery in [`examples/`](examples/). The canonical example metadata now lives in [`examples/catalog.exs`](examples/catalog.exs), which drives the website, CI matrix, and batch verification scripts.
  
  ## A Tiny Example
  

@@ -1,5 +1,0 @@
-Verified `.sisyphus/content/nex-community-series/calendar.md` defines Week 1 through Week 8 with required fields.
-
-Checks:
-- Week 1..8 headings
-- Each week includes: Chinese draft owner artifact, primary audience, primary channel, proof asset

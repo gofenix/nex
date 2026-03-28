@@ -1,41 +1,27 @@
-name: Examples E2E
+name: Examples Tests
 
 on:
   workflow_dispatch:
 
 jobs:
+  examples-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.catalog.outputs.matrix }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build examples matrix
+        id: catalog
+        run: echo "$(elixir scripts/examples_catalog.exs matrix)" >> "$GITHUB_OUTPUT"
+
   examples-e2e:
+    needs: examples-matrix
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - name: alpine_showcase
-            cwd: examples/alpine_showcase
-          - name: auth_demo
-            cwd: examples/auth_demo
-          - name: counter
-            cwd: examples/counter
-          - name: dynamic_routes
-            cwd: examples/dynamic_routes
-          - name: energy_dashboard
-            cwd: examples/energy_dashboard
-          - name: error_pages
-            cwd: examples/error_pages
-          - name: guestbook
-            cwd: examples/guestbook
-          - name: ratelimit
-            cwd: examples/ratelimit
-          - name: todos
-            cwd: examples/todos
-          - name: todos_api
-            cwd: examples/todos_api
-          - name: upload
-            cwd: examples/upload
-          - name: validator
-            cwd: examples/validator
-          - name: websocket
-            cwd: examples/websocket
+      matrix: ${{ fromJson(needs.examples-matrix.outputs.matrix) }}
 
     steps:
       - name: Check out repository
@@ -52,22 +38,18 @@ jobs:
           mix local.hex --force
           mix local.rebar --force
 
-      - name: Install E2E dependencies
-        working-directory: e2e
-        run: mix deps.get
-
       - name: Install example dependencies
         working-directory: ${{ matrix.cwd }}
         run: mix deps.get
 
-      - name: Run example E2E
-        working-directory: e2e
-        run: mix e2e.example --name ${{ matrix.name }}
+      - name: Run example-owned tests
+        working-directory: ${{ matrix.cwd }}
+        run: mix test
 
-      - name: Upload E2E artifacts
+      - name: Upload example test artifacts
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-${{ matrix.name }}
-          path: e2e/artifacts
+          name: example-tests-${{ matrix.name }}
+          path: ${{ matrix.cwd }}/tmp/test_artifacts
           if-no-files-found: ignore

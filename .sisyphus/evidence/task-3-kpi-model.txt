@@ -1,5 +1,0 @@
-Verified `.sisyphus/content/nex-community-series/strategy.md` includes audience segmentation, KPI/CTA hierarchy, message boundaries, and a concrete Chinese voice guide.
-
-Checks:
-- Sections: Audience Segments, KPI Hierarchy, CTA Hierarchy, Message Boundaries, Chinese Voice Guide
-- KPI order: stars > GitHub visits > docs visits > discussion depth

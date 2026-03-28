@@ -153,7 +153,7 @@ quaternary_wave = :math.sin(angle * 11) * 0.1
 
 ## Related Examples
 
-- **chatbot_sse**: AI streaming with SSE
+- **agent_console**: Real-time chat UI with WebSocket transport
 - **counter**: Basic HTMX interactions
 - **todos**: State management patterns
 

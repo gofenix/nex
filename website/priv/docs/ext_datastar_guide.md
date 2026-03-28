@@ -108,9 +108,7 @@ When integrating Datastar with Nex, follow these core principles:
 
 ## 6. Complete Example Project: Datastar Tutorial
 
-We provide a complete, step-by-step tutorial project covering all core scenarios from basic binding to AI streaming chat:
-
-**[GitHub: Datastar Demo](https://github.com/gofenix/nex/tree/main/examples/datastar_demo)**
+Nex does not currently ship a dedicated Datastar example in the main gallery. Use the patterns in this guide as the reference implementation, and pair them with gallery examples like `todos`, `dynamic_routes`, and `upload` when adapting the ideas to a full app.
 
 ### Tutorial Content and Feature Distribution:
 
@@ -129,7 +127,7 @@ We provide a complete, step-by-step tutorial project covering all core scenarios
     *   `data-on-intersect`: Triggered when scrolling into viewport (implements **infinite scroll/lazy loading**).
     *   `data-indicator`: Fully automatic request loading state display.
     *   `data-ref`: Direct DOM element reference for complex interactions (e.g., auto-focusing).
-*   **AI Chatbot (`chat.ex`)**: Combined with Nex's `Nex.stream(fn}` return value to implement **AI word-by-word streaming responses**.
+*   **AI Chatbot (`chat.ex`)**: Combined with Nex's `Nex.stream(fn -> ... end)` return value to implement **AI word-by-word streaming responses**.
 *   **Real-time Form Validation (`form.ex`)**: Complex validation logic driven by pure frontend signals, no backend round-trips required.
 *   **Todo MVC (`todos.ex`)**: A comprehensive showcase of CRUD operations, client-side list filtering, and dynamic style switching.
 

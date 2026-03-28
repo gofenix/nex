@@ -8,17 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **Examples E2E harness**: Added an Elixir-first E2E test system under `e2e/` for batch-running Nex web examples locally and in CI with a manifest-driven runner, per-example ExUnit coverage, protocol-level assertions, and failure logs.
-- **Manual CI coverage**: Added a workflow-dispatch GitHub Actions job that runs deep end-to-end coverage for each example in a matrix.
+- **Handler submodules**: Added internal `Nex.Handler.*` modules to isolate lifecycle, dispatch, page, API, streaming, WebSocket, and error responsibilities behind the existing `Nex.Handler.handle/1` entry point.
 
 ### Changed
-- **Examples contracts**: Added stable `data-testid` hooks and corrected example behavior so ExUnit-based HTMX, API, SSE, and WebSocket assertions can exercise the examples reliably.
+- **Handler organization**: Refactored the request pipeline into smaller delegated modules without changing public routing or response behavior.
 
 ### Fixed
 - **WebSocket initial state**: WebSocket handlers now receive merged query string parameters in the initial request context, aligning `initial_state/1` with Nex request semantics for query access.
 
 ### Removed
-- **`examples/agent_demo`**: Removed the non-web example from the examples suite to keep the retained set aligned with browser-testable demos.
+- **God-module pressure**: Removed the single-file concentration of handler responsibilities by moving private implementation details out of `Nex.Handler`.
 
 ## [Nex 0.4.2] - 2026-03-27
 

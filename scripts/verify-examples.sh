@@ -5,6 +5,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VERSION="${1:-$(cat "$ROOT_DIR/VERSION")}"
 MODE="${2:-path}"
+CATALOG_SCRIPT="$ROOT_DIR/scripts/examples_catalog.exs"
 
 usage() {
   cat <<EOF
@@ -99,14 +100,20 @@ if [ "$MODE" = "auto" ] && [ "$RESOLVED_MODE" = "path" ]; then
   echo "nex_core $VERSION is not available on Hex yet; falling back to local path verification."
 fi
 
+EXAMPLES=()
+
+while IFS= read -r slug; do
+  EXAMPLES+=("$slug")
+done < <(elixir "$CATALOG_SCRIPT" verify)
+
 echo "=== Verifying examples compatibility with nex_core $VERSION ($RESOLVED_MODE mode) ==="
 
-for example in "$ROOT_DIR"/examples/*/; do
-  if [ -f "$example/mix.exs" ]; then
-    if ! verify_example "$example"; then
-      restore_example "$example"
-      exit 1
-    fi
+for slug in "${EXAMPLES[@]}"; do
+  example="$ROOT_DIR/examples/$slug"
+
+  if ! verify_example "$example"; then
+    restore_example "$example"
+    exit 1
   fi
 done
 

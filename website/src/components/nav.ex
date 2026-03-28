@@ -1,5 +1,6 @@
 defmodule NexWebsite.Components.Nav do
   use Nex
+  alias NexWebsite.Version
 
   def render(assigns) do
     ~H"""
@@ -24,7 +25,7 @@ defmodule NexWebsite.Components.Nav do
       <div class="flex items-center gap-3">
         <a href="https://hex.pm/packages/nex_core" target="_blank" class="hidden md:flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 transition-colors">
           <span class="w-1.5 h-1.5 rounded-full bg-green-400 inline-block"></span>
-          v0.4.0
+          v{Version.current()}
         </a>
         <a href="/getting_started" class="flex items-center gap-1.5 text-sm font-semibold text-white px-4 py-1.5 rounded-full transition-all hover:opacity-90" style="background: linear-gradient(135deg, #9B7EBD, #7B5FA8); box-shadow: 0 2px 8px rgba(123,95,168,0.3);">
           Get Started

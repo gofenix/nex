@@ -1,5 +1,0 @@
-Verified `.sisyphus/content/nex-community-series/metrics.md` contains weekly scorecard, channel notes, objection log, and adjustment rules with stars-first emphasis.
-
-Checks:
-- Sections: Weekly Scorecard, Channel Notes, Objection Log, Adjustment Rules
-- Stars referenced explicitly

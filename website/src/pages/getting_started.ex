@@ -217,7 +217,7 @@ defmodule NexWebsite.Pages.GettingStarted do
               </div>
               <h3 class="font-bold" style="color: #111;">Example Projects</h3>
             </div>
-            <p class="text-sm" style="color: #666;">Clone and run real apps: AI chatbot, todo list, guestbook, and more.</p>
+            <p class="text-sm" style="color: #666;">Clone and run real apps from the examples gallery, including agent UIs, todo flows, uploads, and streaming demos.</p>
           </a>
           <a href="https://github.com/gofenix/nex/discussions" target="_blank" class="group p-6 rounded-2xl transition-all hover:-translate-y-0.5" style="background: #FAFAF8; border: 1px solid #EBEBEB; text-decoration: none;">
             <div class="flex items-center gap-3 mb-2">

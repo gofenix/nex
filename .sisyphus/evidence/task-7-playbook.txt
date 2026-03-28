@@ -1,5 +1,0 @@
-Verified `channel-playbook.md` includes per-channel title patterns, opening patterns, comment strategy, and CTA ladder.
-
-Checks:
-- Title Patterns included for each channel
-- Voice boundary and Chinese-first/English adaptation constraints present

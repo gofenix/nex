@@ -5,6 +5,14 @@ All notable changes to the Nex framework will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Generator submodules**: Added `Nex.New.*` helper modules for options, generation, messages, and starter templates behind the existing `mix nex.new` task interface.
+
+### Changed
+- **Task organization**: Refactored `Mix.Tasks.Nex.New` into delegated modules so starter templates and generation logic are no longer concentrated in a single file.
+
 ## [0.4.2] - 2026-03-27
 
 ### Added
