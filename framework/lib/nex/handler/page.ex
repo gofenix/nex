@@ -81,7 +81,8 @@ defmodule Nex.Handler.Page do
     if function_exported?(module, :render, 1) do
       content = module.render(assigns)
       content_html = Phoenix.HTML.Safe.to_iodata(content) |> IO.iodata_to_binary()
-      nex_script = build_nex_script(page_id, csrf_token)
+      page_path = "/" <> Enum.join(conn.path_info, "/")
+      nex_script = build_nex_script(page_id, csrf_token, page_path)
 
       # Phase 1: _app.ex wraps page content (receives all assigns)
       app_html = wrap_with_app(module, assigns, content_html)
@@ -306,15 +307,24 @@ defmodule Nex.Handler.Page do
     end
   end
 
-  defp build_nex_script(page_id, csrf_token) do
+  defp build_nex_script(page_id, csrf_token, page_path) do
     base_script = """
     <script>
-      // Store page_id and CSRF token, configure HTMX to send them via headers
       document.body.dataset.pageId = "#{page_id}";
       document.body.dataset.csrfToken = "#{csrf_token}";
+      document.body.dataset.pagePath = "#{page_path}";
       document.body.addEventListener('htmx:configRequest', function(evt) {
         evt.detail.headers['X-Nex-Page-Id'] = document.body.dataset.pageId;
         evt.detail.headers['X-CSRF-Token'] = document.body.dataset.csrfToken;
+
+        var pagePath = document.body.dataset.pagePath;
+        if (pagePath && pagePath !== '/') {
+          var path = evt.detail.path;
+          var segments = path.split('/').filter(Boolean);
+          if (segments.length === 1 && !path.startsWith('/api/') && !path.startsWith('/static/') && !path.startsWith('/ws/')) {
+            evt.detail.path = pagePath + path;
+          }
+        }
       });
     """
 

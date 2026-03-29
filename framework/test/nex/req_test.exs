@@ -11,11 +11,7 @@ defmodule Nex.ReqTest do
 
       req = Req.from_plug_conn(conn)
 
-      assert req.body == %{}
-      assert is_map(req.body)
-
-      # Should be safe to use Map functions
-      assert Map.has_key?(req.body, "test") == false
+      assert req.body == nil
     end
 
     test "preserves valid body_params" do

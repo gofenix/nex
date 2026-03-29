@@ -59,7 +59,7 @@ defmodule Nex.Req do
 
   @type t :: %__MODULE__{
           query: params(),
-          body: params() | %Plug.Upload{},
+          body: params() | %Plug.Upload{} | nil,
           headers: headers(),
           cookies: cookies(),
           method: String.t(),
@@ -89,12 +89,20 @@ defmodule Nex.Req do
       |> Plug.Conn.fetch_query_params()
       |> Plug.Conn.fetch_cookies()
 
-    # Normalize body_params: ensure it's always a Map (never Unfetched)
+    # Normalize body_params: nil for requests without body, map for requests with body
     body_params =
       case conn.body_params do
-        %Plug.Conn.Unfetched{} -> %{}
-        params when is_map(params) -> params
-        _ -> %{}
+        %Plug.Conn.Unfetched{} ->
+          nil
+
+        params when is_map(params) and map_size(params) == 0 ->
+          if conn.method in ["GET", "HEAD", "OPTIONS", "DELETE"], do: nil, else: params
+
+        params when is_map(params) ->
+          params
+
+        _ ->
+          nil
       end
 
     # Convert headers list to Map

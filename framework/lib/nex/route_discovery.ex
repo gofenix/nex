@@ -311,20 +311,18 @@ defmodule Nex.RouteDiscovery do
         end
 
       [action] ->
-        # POST /action_name → resolve based on referer context
-        # e.g., from /requests page: POST /fetch_message → Requests.fetch_message
+        # POST /action_name → resolve to Index page (single-segment actions come from root)
+        # For non-root pages, the nex_script auto-prefixes the page path
+        # (e.g., hx-post="/increment" on /todos becomes POST /todos/increment)
         case safe_to_existing_atom(action) do
           {:ok, action_atom} ->
-            # Get the current page module from referer path
-            current_module = get_current_page_module(app_module, referer_path)
-
-            # Only search in the current page module
-            case current_module do
+            case safe_to_existing_module("#{app_module}.Pages.Index") do
               {:ok, module} ->
                 if function_exported?(module, action_atom, 1) do
                   {:ok, module, action, %{}}
                 else
-                  :error
+                  # Fallback: try referer-based resolution for backward compat
+                  resolve_action_via_referer(app_module, action, action_atom, referer_path)
                 end
 
               :error ->
@@ -356,6 +354,20 @@ defmodule Nex.RouteDiscovery do
 
   defp reserved_file?(filename) do
     String.starts_with?(filename, "_") or filename in ["404.ex", "500.ex"]
+  end
+
+  defp resolve_action_via_referer(app_module, action, action_atom, referer_path) do
+    case get_current_page_module(app_module, referer_path) do
+      {:ok, module} ->
+        if function_exported?(module, action_atom, 1) do
+          {:ok, module, action, %{}}
+        else
+          :error
+        end
+
+      :error ->
+        :error
+    end
   end
 
   # Config helpers
