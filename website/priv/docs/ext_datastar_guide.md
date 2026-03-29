@@ -2,6 +2,16 @@
 
 Datastar is an ultra-lightweight declarative frontend enhancement library. It provides a minimalist way to manage frontend state through `data-signals` attributes and works seamlessly with Nex's Action mechanism.
 
+## Quick Start
+
+Generate a new Nex project with Datastar as the frontend:
+
+```bash
+mix nex.new my_app --frontend datastar
+```
+
+Or explore the `datastar_demo` example in the gallery for a full showcase of signals, morphing, and SSE streaming.
+
 ## 1. Core Philosophy
 
 The heart of Datastar lies in **Signals**. It doesn't use a Virtual DOM; instead, it establishes reactive bindings by scanning HTML attributes.
@@ -106,38 +116,82 @@ When integrating Datastar with Nex, follow these core principles:
 | `data-computed` | Defines derived signals (computed properties). |
 | `data-merge` | Defines the merge strategy for backend responses (morph, append, prepend). |
 
-## 6. Complete Example Project: Datastar Tutorial
+## 6. Server-Side SSE Helpers
 
-Nex does not currently ship a dedicated Datastar example in the main gallery. Use the patterns in this guide as the reference implementation, and pair them with gallery examples like `todos`, `dynamic_routes`, and `upload` when adapting the ideas to a full app.
+Nex provides `Nex.Datastar` helpers for sending SSE events in the Datastar wire protocol format. These work with `Nex.stream/1` out of the box.
 
-### Tutorial Content and Feature Distribution:
+### `Nex.Datastar.patch_elements/2`
 
-#### 📍 Basic (Lessons 1-3)
-*   **Quick Start (`index.ex`)**: Learn `data-on` event listening and simple `@post` backend Morphing updates.
-*   **Reactive Signals (`signals.ex`)**: Master `data-signals` (state definition), `data-bind` (two-way binding), `data-show` (visibility), and `data-computed` (computed properties).
-*   **JS Expressions (`expressions.ex`)**: Demonstrates how to use JS directly in attributes to handle strings, arrays, and logical operations.
+Builds a `datastar-patch-elements` SSE event for morphing HTML fragments into the DOM.
 
-#### 📍 Intermediate (Lessons 4-5)
-*   **Requests and Merging (`requests.ex`)**: Deep dive into passing parameters via `@get`/`@post`, and list merging strategies like `data-merge="append"`.
-*   **The Tao of Datastar (`tao.ex`)**: Summarizes the 6 design principles, including Hypermedia First and Backend as Source of Truth.
+```elixir
+# In an API endpoint
+def get(_req) do
+  Nex.stream(fn send ->
+    send.(Nex.Datastar.patch_elements(
+      ~s(<div id="feed">Updated content</div>),
+      selector: "#feed"
+    ))
+  end)
+end
+```
 
-#### 📍 Real-world (Advanced & Apps)
-*   **Advanced Features (`advanced.ex`)**:
-    *   `data-init`: Automatically execute on page load (e.g., initializing long-lived connections).
-    *   `data-on-intersect`: Triggered when scrolling into viewport (implements **infinite scroll/lazy loading**).
-    *   `data-indicator`: Fully automatic request loading state display.
-    *   `data-ref`: Direct DOM element reference for complex interactions (e.g., auto-focusing).
-*   **AI Chatbot (`chat.ex`)**: Combined with Nex's `Nex.stream(fn -> ... end)` return value to implement **AI word-by-word streaming responses**.
-*   **Real-time Form Validation (`form.ex`)**: Complex validation logic driven by pure frontend signals, no backend round-trips required.
-*   **Todo MVC (`todos.ex`)**: A comprehensive showcase of CRUD operations, client-side list filtering, and dynamic style switching.
+**Options:**
+- `:selector` — CSS selector for the target element. If omitted, Datastar uses the fragment's `id` attribute.
+- `:mode` — Merge mode: `"morph"`, `"inner"`, `"outer"`, `"prepend"`, `"append"`, `"before"`, `"after"`, `"upsertAttributes"`.
+- `:use_view_transition` — Whether to use view transitions (boolean, default `false`).
 
-## 7. Best Practices (Nex + Datastar)
+### `Nex.Datastar.patch_signals/2`
+
+Builds a `datastar-patch-signals` SSE event for updating reactive signals on the client.
+
+```elixir
+send.(Nex.Datastar.patch_signals(%{count: 42, status: "active"}))
+```
+
+**Options:**
+- `:only_if_missing` — Only set signals that don't already exist on the client (boolean, default `false`).
+
+### Complete Streaming Example
+
+```elixir
+defmodule MyApp.Api.Stream do
+  use Nex
+
+  def get(_req) do
+    Nex.stream(fn send ->
+      Enum.each(1..10, fn i ->
+        # Update DOM
+        send.(Nex.Datastar.patch_elements(
+          ~s(<div id="counter">#{i}</div>),
+          selector: "#counter"
+        ))
+
+        # Update client signals
+        send.(Nex.Datastar.patch_signals(%{count: i}))
+
+        Process.sleep(1_000)
+      end)
+    end)
+  end
+end
+```
+
+## 7. Complete Example Project
+
+See the `datastar_demo` example in the gallery for a working demonstration of:
+
+- **Reactive Signals** — Client-side reactivity with `data-signals`, `data-bind`, and `data-text`
+- **Backend Morphing** — Sending data to the server and morphing HTML fragments back
+- **SSE Streaming** — Real-time updates using `Nex.Datastar.patch_elements/2` and `patch_signals/2`
+
+## 8. Best Practices (Nex + Datastar)
 
 1.  **Fine-Grained Updates**: Leverage Datastar's Morphing to return only the smallest necessary HTML fragments.
 2.  **Avoid Redundant State**: For pure UI interactions (toggles, input previews), prioritize Datastar signals; for business data (saving to DB), use `@post` to call Nex Actions.
 3.  **Computed Properties**: Use simple JavaScript expressions directly in `data-text` for logic composition.
 
-## 6. Datastar vs Alpine.js
+## 9. Datastar vs Alpine.js
 
 *   **Alpine.js**: Better suited for traditional UI interactions (modals, collapse menus, simple logic).
 *   **Datastar**: Advantageous in handling large-scale state sharing across components and complex frontend business logic.
