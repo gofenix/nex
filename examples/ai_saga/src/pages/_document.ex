@@ -1,4 +1,4 @@
-defmodule AiSaga.Layouts do
+defmodule AiSaga.Pages.Document do
   use Nex
 
   def render(assigns) do

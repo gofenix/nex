@@ -1,4 +1,4 @@
-defmodule Upload.Layouts do
+defmodule Upload.Pages.Document do
   use Nex
 
   def render(assigns) do

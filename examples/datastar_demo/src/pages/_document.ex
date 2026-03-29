@@ -1,4 +1,4 @@
-defmodule DatastarDemo.Layouts do
+defmodule DatastarDemo.Pages.Document do
   use Nex
 
   def render(assigns) do

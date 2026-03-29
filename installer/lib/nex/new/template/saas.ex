@@ -20,7 +20,8 @@ defmodule Nex.New.Template.Saas do
     [
       {"mix.exs", Legacy.saas_mix_exs(assigns)},
       {"src/application.ex", Legacy.saas_application(assigns)},
-      {"src/layouts.ex", Legacy.saas_layouts(assigns)},
+      {"src/pages/_app.ex", Legacy.saas_app_template(assigns)},
+      {"src/pages/_document.ex", Legacy.saas_document_template(assigns)},
       {"src/data.ex", Legacy.saas_data(assigns)},
       {"src/accounts.ex", Legacy.saas_accounts(assigns)},
       {"src/workspace.ex", Legacy.saas_workspace(assigns)},

@@ -1,4 +1,4 @@
-defmodule NexWebsite.Layouts do
+defmodule NexWebsite.Pages.Document do
   use Nex
 
   def render(assigns) do

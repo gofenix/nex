@@ -1,4 +1,4 @@
-defmodule ErrorPagesExample.Layouts do
+defmodule RatelimitExample.Pages.Document do
   use Nex
 
   def render(assigns) do
@@ -10,7 +10,7 @@ defmodule ErrorPagesExample.Layouts do
       <title>{@title}</title>
       <script src="https://cdn.tailwindcss.com"></script>
     </head>
-    <body class="bg-gray-100">
+    <body class="bg-gray-100 p-8">
       {raw(@inner_content)}
     </body>
     </html>

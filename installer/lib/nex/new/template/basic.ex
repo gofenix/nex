@@ -12,7 +12,8 @@ defmodule Nex.New.Template.Basic do
     [
       {"mix.exs", Legacy.mix_exs(assigns)},
       {"src/application.ex", Legacy.application(assigns)},
-      {"src/layouts.ex", Legacy.datastar_layouts(assigns)},
+      {"src/pages/_app.ex", Legacy.datastar_app_template(assigns)},
+      {"src/pages/_document.ex", Legacy.datastar_document_template(assigns)},
       {"src/pages/index.ex", Legacy.datastar_index(assigns)},
       {"src/api/counter.ex", Legacy.datastar_api_counter(assigns)},
       {"src/api/hello.ex", Legacy.api_hello(assigns)},
@@ -31,7 +32,8 @@ defmodule Nex.New.Template.Basic do
     [
       {"mix.exs", Legacy.mix_exs(assigns)},
       {"src/application.ex", Legacy.application(assigns)},
-      {"src/layouts.ex", Legacy.layouts(assigns)},
+      {"src/pages/_app.ex", Legacy.app_template(assigns)},
+      {"src/pages/_document.ex", Legacy.document_template(assigns)},
       {"src/pages/index.ex", Legacy.index(assigns)},
       {"src/api/hello.ex", Legacy.api_hello(assigns)},
       {"src/components/card.ex", Legacy.component_card(assigns)},

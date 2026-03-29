@@ -1,4 +1,4 @@
-defmodule EnergyDashboard.Layouts do
+defmodule EnergyDashboard.Pages.Document do
   use Nex
 
   def render(assigns) do

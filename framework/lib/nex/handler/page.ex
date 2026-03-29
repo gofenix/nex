@@ -82,40 +82,15 @@ defmodule Nex.Handler.Page do
       content = module.render(assigns)
       content_html = Phoenix.HTML.Safe.to_iodata(content) |> IO.iodata_to_binary()
       nex_script = build_nex_script(page_id, csrf_token)
-      layout_module = get_layout_for(module)
 
-      html =
-        if layout_module && function_exported?(layout_module, :render, 1) do
-          layout_assigns =
-            assigns
-            |> Map.put(:inner_content, content_html <> nex_script)
-            |> Map.put_new(:title, "Nex App")
+      # Phase 1: _app.ex wraps page content (receives all assigns)
+      app_html = wrap_with_app(module, assigns, content_html)
 
-          layout_module.render(layout_assigns)
-        else
-          content
-        end
+      # Phase 2: _document.ex provides HTML shell
+      doc_html = wrap_with_document(assigns, app_html <> nex_script)
 
-      html_binary =
-        case html do
-          binary when is_binary(binary) -> binary
-          _ -> Phoenix.HTML.Safe.to_iodata(html) |> IO.iodata_to_binary()
-        end
-
-      csrf_meta = ~s(<meta name="csrf-token" content="#{csrf_token}" />)
-      csrf_input = "<input type=\"hidden\" name=\"_csrf_token\" value=\"#{csrf_token}\">"
-
-      final_html =
-        html_binary
-        |> String.replace("</head>", "#{csrf_meta}\n</head>", global: false)
-        |> String.replace(
-          ~r/(<form\b[^>]*\bmethod=["'](?:post|put|patch|delete)["'][^>]*>)/i,
-          "\\1#{csrf_input}"
-        )
-        |> String.replace(
-          ~r/(<form\b[^>]*\bhx-(?:post|put|patch|delete)=["'][^\"']*[\"'][^>]*>)/i,
-          "\\1#{csrf_input}"
-        )
+      # Phase 3: CSRF injection
+      final_html = inject_csrf(doc_html, csrf_token)
 
       conn
       |> put_resp_content_type("text/html")
@@ -206,24 +181,100 @@ defmodule Nex.Handler.Page do
     |> send_resp(200, html)
   end
 
-  defp get_layout_module do
-    app_module = Nex.Config.app_module()
+  # --- Two-phase layout rendering ---
 
-    case Nex.Utils.safe_to_existing_module("#{app_module}.Layouts") do
-      {:ok, module} -> module
-      :error -> nil
+  defp wrap_with_app(page_module, assigns, content_html) do
+    app_module = resolve_app_module(page_module)
+
+    if app_module && function_exported?(app_module, :render, 1) do
+      app_assigns =
+        assigns
+        |> Map.put(:inner_content, content_html)
+        |> Map.put_new(:title, "Nex App")
+
+      app_module.render(app_assigns) |> to_html_binary()
+    else
+      content_html
     end
   end
 
-  defp get_layout_for(page_module) do
+  defp wrap_with_document(assigns, inner_html) do
+    doc_module = resolve_document_module()
+
+    if doc_module && function_exported?(doc_module, :render, 1) do
+      doc_assigns = %{inner_content: inner_html, title: Map.get(assigns, :title, "Nex App")}
+      doc_module.render(doc_assigns) |> to_html_binary()
+    else
+      default_document(inner_html, Map.get(assigns, :title, "Nex App"))
+    end
+  end
+
+  defp default_document(inner_html, title) do
+    """
+    <!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>#{title}</title>
+      </head>
+      <body>
+        #{inner_html}
+      </body>
+    </html>
+    """
+  end
+
+  defp inject_csrf(html_binary, csrf_token) do
+    csrf_meta = ~s(<meta name="csrf-token" content="#{csrf_token}" />)
+    csrf_input = "<input type=\"hidden\" name=\"_csrf_token\" value=\"#{csrf_token}\">"
+
+    html_binary
+    |> String.replace("</head>", "#{csrf_meta}\n</head>", global: false)
+    |> String.replace(
+      ~r/(<form\b[^>]*\bmethod=["'](?:post|put|patch|delete)["'][^>]*>)/i,
+      "\\1#{csrf_input}"
+    )
+    |> String.replace(
+      ~r/(<form\b[^>]*\bhx-(?:post|put|patch|delete)=["'][^\"']*[\"'][^>]*>)/i,
+      "\\1#{csrf_input}"
+    )
+  end
+
+  defp to_html_binary(html) when is_binary(html), do: html
+  defp to_html_binary(html), do: Phoenix.HTML.Safe.to_iodata(html) |> IO.iodata_to_binary()
+
+  # --- Module resolution ---
+
+  defp resolve_app_module(page_module) do
     if function_exported?(page_module, :layout, 0) do
       case page_module.layout() do
         :none -> nil
         mod when is_atom(mod) -> mod
-        _ -> get_layout_module()
+        _ -> resolve_default_app_module()
       end
     else
-      get_layout_module()
+      resolve_default_app_module()
+    end
+  end
+
+  defp resolve_default_app_module do
+    app = Nex.Config.app_module()
+
+    with :error <- Nex.Utils.safe_to_existing_module("#{app}.Pages.App"),
+         :error <- Nex.Utils.safe_to_existing_module("#{app}.Layouts") do
+      nil
+    else
+      {:ok, mod} -> mod
+    end
+  end
+
+  defp resolve_document_module do
+    app = Nex.Config.app_module()
+
+    case Nex.Utils.safe_to_existing_module("#{app}.Pages.Document") do
+      {:ok, mod} -> mod
+      :error -> nil
     end
   end
 

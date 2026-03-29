@@ -1,4 +1,4 @@
-defmodule NexWsExample.Layouts do
+defmodule NexWsExample.Pages.Document do
   use Nex
 
   def render(assigns) do

@@ -1,4 +1,4 @@
-defmodule Counter.Layouts do
+defmodule Counter.Pages.Document do
   use Nex
 
   def render(assigns) do

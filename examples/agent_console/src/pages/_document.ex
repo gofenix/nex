@@ -1,4 +1,4 @@
-defmodule AgentConsole.Layouts do
+defmodule AgentConsole.Pages.Document do
   use Nex
 
   def render(assigns) do

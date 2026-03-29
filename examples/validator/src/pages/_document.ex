@@ -1,4 +1,4 @@
-defmodule NexValidatorExample.Layouts do
+defmodule NexValidatorExample.Pages.Document do
   use Nex
 
   def render(assigns) do

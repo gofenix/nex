@@ -1,4 +1,4 @@
-defmodule AuthDemo.Layouts do
+defmodule AuthDemo.Pages.Document do
   use Nex
 
   def render(assigns) do

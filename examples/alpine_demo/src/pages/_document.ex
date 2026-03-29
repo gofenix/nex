@@ -1,4 +1,4 @@
-defmodule AlpineDemo.Layouts do
+defmodule AlpineDemo.Pages.Document do
   use Nex
 
   def render(assigns) do

@@ -35,8 +35,12 @@ defmodule Nex.RouteDiscovery do
               discover_routes_recursive(full_path, base_path, acc)
 
             String.ends_with?(entry, ".ex") ->
-              route = build_route(full_path, base_path)
-              [route | acc]
+              if reserved_file?(entry) do
+                acc
+              else
+                route = build_route(full_path, base_path)
+                [route | acc]
+              end
 
             true ->
               acc
@@ -348,6 +352,10 @@ defmodule Nex.RouteDiscovery do
             :error
         end
     end
+  end
+
+  defp reserved_file?(filename) do
+    String.starts_with?(filename, "_") or filename in ["404.ex", "500.ex"]
   end
 
   # Config helpers

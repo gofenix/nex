@@ -68,9 +68,13 @@ defmodule Mix.Tasks.Nex.NewTest do
     assert flash_component =~ "Map.put(assigns, :flash, flash)"
     refute flash_component =~ "assign(assigns, :flash"
 
-    layouts = File.read!(Path.join(project_path, "src/layouts.ex"))
+    layouts = File.read!(Path.join(project_path, "src/pages/_app.ex"))
     assert layouts =~ ":if={@current_user}"
     refute layouts =~ "<%= if"
+
+    document = File.read!(Path.join(project_path, "src/pages/_document.ex"))
+    assert document =~ "<!DOCTYPE html>"
+    assert document =~ "Pages.Document"
 
     agents = File.read!(Path.join(project_path, "AGENTS.md"))
     assert agents =~ "def save(req) do"

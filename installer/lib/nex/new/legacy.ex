@@ -361,7 +361,16 @@ defmodule Nex.New.Legacy do
 
   def layouts(a) do
     frontend_script = ~s(<script src="https://unpkg.com/htmx.org@2.0.4"></script>)
-    build_layouts(a, frontend_script, ~s( hx-boost="true"))
+    build_document(a, frontend_script, ~s( hx-boost="true"))
+  end
+
+  def app_template(a) do
+    build_app(a)
+  end
+
+  def document_template(a) do
+    frontend_script = ~s(<script src="https://unpkg.com/htmx.org@2.0.4"></script>)
+    build_document(a, frontend_script, ~s( hx-boost="true"))
   end
 
   def index(a) do
@@ -546,7 +555,18 @@ defmodule Nex.New.Legacy do
     frontend_script =
       ~s(<script type="module" src="https://cdn.jsdelivr.net/npm/@starfederation/datastar@1.0.0-beta.11/dist/datastar.min.js"></script>)
 
-    build_layouts(a, frontend_script, "")
+    build_document(a, frontend_script, "")
+  end
+
+  def datastar_app_template(a) do
+    build_app(a)
+  end
+
+  def datastar_document_template(a) do
+    frontend_script =
+      ~s(<script type="module" src="https://cdn.jsdelivr.net/npm/@starfederation/datastar@1.0.0-beta.11/dist/datastar.min.js"></script>)
+
+    build_document(a, frontend_script, "")
   end
 
   def datastar_index(a) do
@@ -648,9 +668,30 @@ defmodule Nex.New.Legacy do
     """
   end
 
-  defp build_layouts(a, frontend_script, body_attrs) do
+  defp build_app(a) do
     """
-    defmodule #{a.module_name}.Layouts do
+    defmodule #{a.module_name}.Pages.App do
+      use Nex
+
+      def render(assigns) do
+        ~H\"\"\"
+        <nav class="navbar bg-base-100 shadow-sm">
+          <div class="max-w-4xl mx-auto w-full px-4">
+            <a href="/" class="btn btn-ghost text-xl">#{a.module_name}</a>
+          </div>
+        </nav>
+        <main class="max-w-4xl mx-auto px-4 py-8">
+          {raw(@inner_content)}
+        </main>
+        \"\"\"
+      end
+    end
+    """
+  end
+
+  defp build_document(a, frontend_script, body_attrs) do
+    """
+    defmodule #{a.module_name}.Pages.Document do
       use Nex
 
       def render(assigns) do
@@ -666,14 +707,7 @@ defmodule Nex.New.Legacy do
             #{frontend_script}
           </head>
           <body class="min-h-screen bg-base-200"#{body_attrs}>
-            <nav class="navbar bg-base-100 shadow-sm">
-              <div class="max-w-4xl mx-auto w-full px-4">
-                <a href="/" class="btn btn-ghost text-xl">#{a.module_name}</a>
-              </div>
-            </nav>
-            <main class="max-w-4xl mx-auto px-4 py-8">
-              {raw(@inner_content)}
-            </main>
+            {raw(@inner_content)}
           </body>
         </html>
         \"\"\"
@@ -1234,8 +1268,48 @@ defmodule Nex.New.Legacy do
   end
 
   def saas_layouts(a) do
+    saas_document_template(a)
+  end
+
+  def saas_app_template(a) do
     """
-    defmodule #{a.module_name}.Layouts do
+    defmodule #{a.module_name}.Pages.App do
+      use Nex
+
+      def render(assigns) do
+        ~H\"\"\"
+        <div class="min-h-screen">
+          <header class="border-b border-black/10 bg-white/80 backdrop-blur">
+            <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+              <a href="/" class="text-lg font-black tracking-tight text-slate-950">#{a.module_name}</a>
+
+              <nav class="flex items-center gap-3 text-sm">
+                <a :if={@current_user} href="/dashboard" class="btn btn-sm btn-ghost">Dashboard</a>
+                <span :if={@current_user} class="hidden text-slate-500 sm:inline">
+                  Signed in as {@current_user["name"]}
+                </span>
+                <form :if={@current_user} hx-post="/dashboard/logout" hx-target="body">
+                  <button type="submit" class="btn btn-sm btn-primary">Logout</button>
+                </form>
+                <a :if={!@current_user} href="/login" class="btn btn-sm btn-ghost">Log in</a>
+                <a :if={!@current_user} href="/signup" class="btn btn-sm btn-primary">Create account</a>
+              </nav>
+            </div>
+          </header>
+
+          <main class="mx-auto max-w-6xl px-6 py-10">
+            {raw(@inner_content)}
+          </main>
+        </div>
+        \"\"\"
+      end
+    end
+    """
+  end
+
+  def saas_document_template(a) do
+    """
+    defmodule #{a.module_name}.Pages.Document do
       use Nex
 
       def render(assigns) do
@@ -1251,29 +1325,7 @@ defmodule Nex.New.Legacy do
             <script src="https://unpkg.com/htmx.org@2.0.4"></script>
           </head>
           <body class="min-h-screen bg-[#f5f1e8] text-slate-900" hx-boost="true">
-            <div class="min-h-screen">
-              <header class="border-b border-black/10 bg-white/80 backdrop-blur">
-                <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-                  <a href="/" class="text-lg font-black tracking-tight text-slate-950">#{a.module_name}</a>
-
-                  <nav class="flex items-center gap-3 text-sm">
-                    <a :if={@current_user} href="/dashboard" class="btn btn-sm btn-ghost">Dashboard</a>
-                    <span :if={@current_user} class="hidden text-slate-500 sm:inline">
-                      Signed in as {@current_user["name"]}
-                    </span>
-                    <form :if={@current_user} hx-post="/dashboard/logout" hx-target="body">
-                      <button type="submit" class="btn btn-sm btn-primary">Logout</button>
-                    </form>
-                    <a :if={!@current_user} href="/login" class="btn btn-sm btn-ghost">Log in</a>
-                    <a :if={!@current_user} href="/signup" class="btn btn-sm btn-primary">Create account</a>
-                  </nav>
-                </div>
-              </header>
-
-              <main class="mx-auto max-w-6xl px-6 py-10">
-                {raw(@inner_content)}
-              </main>
-            </div>
+            {raw(@inner_content)}
           </body>
         </html>
         \"\"\"

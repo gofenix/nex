@@ -1,4 +1,4 @@
-defmodule BestofEx.Layouts do
+defmodule BestofEx.Pages.Document do
   use Nex
 
   def render(assigns) do
