@@ -482,7 +482,7 @@ defmodule Nex.New.Legacy do
 
       ## Next.js API Routes Alignment
       - `req.query` - Path params + query string (path params take precedence)
-      - `req.body` - Request body (always a Map, never nil)
+      - `req.body` - Request body (Map for POST/PUT/PATCH, nil for GET/DELETE)
       - `Nex.json/2` - JSON response helper
       \"\"\"
       use Nex
@@ -1940,7 +1940,6 @@ defmodule Nex.New.Legacy do
     │   ├── accounts.ex        # Account registration + authentication
     │   ├── application.ex     # App startup + middleware + NexBase boot
     │   ├── data.ex            # Database directory + schema bootstrap
-    │   ├── layouts.ex         # Shared layout + nav
     │   ├── workspace.ex       # Project CRUD helpers
     │   ├── api/
     │   │   └── health.ex      # Health endpoint
@@ -2083,8 +2082,9 @@ defmodule Nex.New.Legacy do
     #{a.app_name}/
       src/
         application.ex      # App startup
-        layouts.ex          # HTML layout (no meta_tag/hx-headers needed)
         pages/              # File = route (index.ex → /)
+          _app.ex           # Shared page wrapper (nav, footer)
+          _document.ex      # HTML shell (head, body, scripts)
         api/                # API endpoints (get/post/put/delete functions)
         components/         # Shared components (promote only if 3+ pages use it)
       .env                  # Environment variables (never commit)
@@ -2127,15 +2127,15 @@ defmodule Nex.New.Legacy do
 
     ---
 
-    ## 3. Layout (Minimal)
+    ## 3. Layout (_document.ex + _app.ex)
 
     The framework automatically injects:
     - `<meta name="csrf-token">` into `</head>`
     - CSRF header into every HTMX request (via JS `htmx:configRequest`)
 
-    You only need:
+    `_document.ex` — HTML shell:
     ```elixir
-    defmodule #{a.module_name}.Layouts do
+    defmodule #{a.module_name}.Pages.Document do
       use Nex
 
       def render(assigns) do
@@ -2224,7 +2224,7 @@ defmodule Nex.New.Legacy do
       end
 
       def post(req) do
-        name = req.body["name"]       # request body (always a Map)
+        name = req.body["name"]       # request body (nil for GET)
         Nex.json(%{created: true}, status: 201)
       end
 
@@ -2413,8 +2413,9 @@ defmodule Nex.New.Legacy do
     #{a.app_name}/
     ├── src/
     │   ├── application.ex      # Application supervision tree
-    │   ├── layouts.ex          # HTML layout template
     │   ├── pages/              # Page components (routes)
+    │   │   ├── _app.ex         # Shared page wrapper (nav, footer)
+    │   │   ├── _document.ex    # HTML shell (head, body, scripts)
     │   │   └── index.ex        # Homepage (/)
     │   ├── api/                # API endpoints (Next.js style)
     │   │   └── hello.ex        # Example: GET/POST /api/hello
@@ -2453,7 +2454,7 @@ defmodule Nex.New.Legacy do
       end
 
       def post(req) do
-        # req.body - request body (always a Map)
+        # req.body - request body (nil for GET/DELETE)
         name = req.body["name"]
         Nex.json(%{created: true}, status: 201)
       end
