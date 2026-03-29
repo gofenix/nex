@@ -88,6 +88,17 @@ defmodule Nex.New.Legacy do
   def starter_label(:basic), do: ""
   def starter_label(:saas), do: " (starter: saas)"
 
+  def normalize_frontend(nil), do: :htmx
+  def normalize_frontend("htmx"), do: :htmx
+  def normalize_frontend("datastar"), do: :datastar
+
+  def normalize_frontend(other) do
+    Mix.raise("Unknown frontend #{inspect(other)}. Available frontends: htmx, datastar")
+  end
+
+  def frontend_label(:htmx), do: ""
+  def frontend_label(:datastar), do: " (frontend: datastar)"
+
   def skip_deps_install? do
     System.get_env("NEX_NEW_SKIP_DEPS") == "1"
   end
@@ -553,6 +564,141 @@ defmodule Nex.New.Legacy do
           </div>
         </div>
         \"\"\"
+      end
+    end
+    """
+  end
+
+  # --- Datastar Frontend Templates ---
+
+  def datastar_layouts(a) do
+    """
+    defmodule #{a.module_name}.Layouts do
+      use Nex
+
+      def render(assigns) do
+        ~H\"\"\"
+        <!DOCTYPE html>
+        <html lang="en" data-theme="light">
+          <head>
+            <meta charset="UTF-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            <title>{@title}</title>
+            <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio"></script>
+            <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.23/dist/full.min.css" rel="stylesheet" type="text/css" />
+            <script type="module" src="https://cdn.jsdelivr.net/npm/@starfederation/datastar@1.0.0-beta.11/dist/datastar.min.js"></script>
+          </head>
+          <body class="min-h-screen bg-base-200">
+            <nav class="navbar bg-base-100 shadow-sm">
+              <div class="max-w-4xl mx-auto w-full px-4">
+                <a href="/" class="btn btn-ghost text-xl">#{a.module_name}</a>
+              </div>
+            </nav>
+            <main class="max-w-4xl mx-auto px-4 py-8">
+              {raw(@inner_content)}
+            </main>
+          </body>
+        </html>
+        \"\"\"
+      end
+    end
+    """
+  end
+
+  def datastar_index(a) do
+    """
+    defmodule #{a.module_name}.Pages.Index do
+      use Nex
+
+      def mount(_params) do
+        %{
+          title: "Welcome to #{a.module_name}",
+          count: Nex.Store.get(:count, 0)
+        }
+      end
+
+      def render(assigns) do
+        ~H\"\"\"
+        <div class="space-y-8 max-w-2xl mx-auto">
+          <div class="text-center py-12 bg-base-100 rounded-3xl shadow-sm border border-base-300"
+               data-signals={Jason.encode!(%{count: @count})}>
+            <h1 class="text-5xl font-black mb-4 tracking-tight text-primary">Nex + Datastar</h1>
+            <p class="text-lg text-base-content/60 mb-8">
+              The simplest way to build reactive web apps with Elixir.
+            </p>
+
+            <div class="flex flex-col items-center gap-4">
+              <div id="counter-display" class="stat place-items-center bg-base-200 rounded-xl w-48 py-4 border border-base-300">
+                <div class="stat-title text-base-content/50 uppercase tracking-widest text-xs font-bold">Current Count</div>
+                <div class="stat-value text-4xl font-mono tracking-tighter" data-text="$count">{@count}</div>
+              </div>
+
+              <div class="flex gap-2">
+                <button
+                  class="btn btn-primary btn-lg shadow-lg"
+                  data-on:click="@post('/api/counter', {action: 'increment'})"
+                >
+                  Increment
+                </button>
+
+                <button
+                  class="btn btn-ghost btn-lg"
+                  data-on:click="@post('/api/counter', {action: 'reset'})"
+                >
+                  Reset
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid md:grid-cols-2 gap-6">
+            <#{a.module_name}.Components.Card.card title="Reactive Signals" icon="⚡️">
+              Datastar signals provide two-way binding and reactive UI updates without JavaScript.
+            </#{a.module_name}.Components.Card.card>
+
+            <#{a.module_name}.Components.Card.card title="SSE Native" icon="📡">
+              Built-in Server-Sent Events support for real-time streaming updates.
+            </#{a.module_name}.Components.Card.card>
+          </div>
+
+          <div class="alert alert-info shadow-sm border-none bg-blue-50 text-blue-800">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <span>Check <code>AGENTS.md</code> to see how to pair Nex with AI agents.</span>
+          </div>
+        </div>
+        \"\"\"
+      end
+    end
+    """
+  end
+
+  def datastar_api_counter(a) do
+    """
+    defmodule #{a.module_name}.Api.Counter do
+      @moduledoc \"\"\"
+      Counter API endpoint for Datastar integration.
+
+      Handles increment and reset actions, returning HTML fragments
+      that Datastar morphs into the DOM via signal updates.
+
+      ## Endpoints
+      - POST /api/counter  {action: "increment"} or {action: "reset"}
+      \"\"\"
+      use Nex
+
+      def post(req) do
+        case req.body["action"] do
+          "increment" ->
+            new_count = Nex.Store.update(:count, 0, &(&1 + 1))
+            Nex.json(%{count: new_count})
+
+          "reset" ->
+            Nex.Store.put(:count, 0)
+            Nex.json(%{count: 0})
+
+          _ ->
+            Nex.json(%{error: "Unknown action"}, status: 400)
+        end
       end
     end
     """

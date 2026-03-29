@@ -5,7 +5,7 @@ defmodule Nex.New.Options do
 
   def parse!(args) do
     {opts, parsed_args, _} =
-      OptionParser.parse(args, switches: [path: :string, starter: :string])
+      OptionParser.parse(args, switches: [path: :string, starter: :string, frontend: :string])
 
     name =
       case parsed_args do
@@ -14,7 +14,7 @@ defmodule Nex.New.Options do
 
         [] ->
           Mix.raise(
-            "Expected project name. Usage: mix nex.new my_app [--path PATH] [--starter STARTER]"
+            "Expected project name. Usage: mix nex.new my_app [--path PATH] [--starter STARTER] [--frontend FRONTEND]"
           )
       end
 
@@ -25,6 +25,7 @@ defmodule Nex.New.Options do
     end
 
     starter = Legacy.normalize_starter(opts[:starter])
+    frontend = Legacy.normalize_frontend(opts[:frontend])
     base_path = opts[:path] || "."
     project_path = Path.expand(Path.join(base_path, name))
 
@@ -35,11 +36,13 @@ defmodule Nex.New.Options do
     %{
       name: name,
       starter: starter,
+      frontend: frontend,
       project_path: project_path,
-      assigns: %{app_name: name, module_name: Macro.camelize(name)}
+      assigns: %{app_name: name, module_name: Macro.camelize(name), frontend: frontend}
     }
   end
 
   def starter_label(starter), do: Legacy.starter_label(starter)
+  def frontend_label(frontend), do: Legacy.frontend_label(frontend)
   def skip_deps_install?, do: Legacy.skip_deps_install?()
 end

@@ -74,11 +74,11 @@ mix nex.new my_app --starter saas
  - Convention-over-configuration module structure
  
  ### HTMX and SSR
- 
- - HTML-first rendering with HEEx templates
- - HTMX integration out of the box
- - Automatic CSRF handling for state-changing requests
- - Partial updates without SPA plumbing
+
+- HTML-first rendering with HEEx templates
+- HTMX integration out of the box (`Nex.HTMX` helpers for triggering events, redirects, etc.)
+- Automatic CSRF handling for state-changing requests
+- Partial updates without SPA plumbing
  
  ### APIs and Realtime
  

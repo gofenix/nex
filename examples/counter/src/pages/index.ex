@@ -54,6 +54,7 @@ defmodule Counter.Pages.Index do
       {@count}
     </div>
     """
+    |> trigger("counter-updated", %{new_count: count})
   end
 
   def decrement(_params) do

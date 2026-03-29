@@ -168,6 +168,10 @@ defmodule Nex.Handler.Page do
       is_redirect ->
         send_resp(conn, status, "")
 
+      is_struct(body, Phoenix.LiveView.Rendered) ->
+        html = Phoenix.HTML.Safe.to_iodata(body) |> IO.iodata_to_binary()
+        send_resp(conn, status, html)
+
       is_function(body, 1) ->
         conn = send_chunked(conn, 200)
         body.(fn chunk -> Plug.Conn.chunk(conn, chunk) end)

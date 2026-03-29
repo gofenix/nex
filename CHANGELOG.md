@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`Nex.HTMX` helpers**: Added pipeline-friendly functions (`push_url/2`, `trigger/2`, `retarget/2`, etc.) to easily attach HTMX headers to HEEx templates and `%Nex.Response{}` structs. This allows seamless Out-of-Band updates and client-side event triggering.
 - **Handler submodules**: Added internal `Nex.Handler.*` modules to isolate lifecycle, dispatch, page, API, streaming, WebSocket, and error responsibilities behind the existing `Nex.Handler.handle/1` entry point.
 
 ### Changed
