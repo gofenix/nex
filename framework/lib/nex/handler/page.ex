@@ -53,13 +53,26 @@ defmodule Nex.Handler.Page do
     Nex.Store.set_page_id(page_id)
     csrf_token = Nex.CSRF.generate_token()
 
-    assigns =
-      if function_exported?(module, :mount, 1) do
-        module.mount(params)
-      else
-        %{}
-      end
+    case call_mount(module, params) do
+      {:redirect, path} ->
+        conn |> put_resp_header("location", path) |> send_resp(302, "")
 
+      {:redirect, path, status} ->
+        conn |> put_resp_header("location", path) |> send_resp(status, "")
+
+      :not_found ->
+        Errors.send_error_page(conn, 404, "Page Not Found", nil)
+
+      %{} = assigns ->
+        render_page(conn, module, assigns, page_id, csrf_token)
+    end
+  end
+
+  defp call_mount(module, params) do
+    if function_exported?(module, :mount, 1), do: module.mount(params), else: %{}
+  end
+
+  defp render_page(conn, module, assigns, page_id, csrf_token) do
     assigns =
       assigns
       |> Map.put(:_page_id, page_id)
@@ -69,14 +82,16 @@ defmodule Nex.Handler.Page do
       content = module.render(assigns)
       content_html = Phoenix.HTML.Safe.to_iodata(content) |> IO.iodata_to_binary()
       nex_script = build_nex_script(page_id, csrf_token)
-      layout_module = get_layout_module()
+      layout_module = get_layout_for(module)
 
       html =
         if layout_module && function_exported?(layout_module, :render, 1) do
-          layout_module.render(%{
-            inner_content: content_html <> nex_script,
-            title: Map.get(assigns, :title, "Nex App")
-          })
+          layout_assigns =
+            assigns
+            |> Map.put(:inner_content, content_html <> nex_script)
+            |> Map.put_new(:title, "Nex App")
+
+          layout_module.render(layout_assigns)
         else
           content
         end
@@ -197,6 +212,18 @@ defmodule Nex.Handler.Page do
     case Nex.Utils.safe_to_existing_module("#{app_module}.Layouts") do
       {:ok, module} -> module
       :error -> nil
+    end
+  end
+
+  defp get_layout_for(page_module) do
+    if function_exported?(page_module, :layout, 0) do
+      case page_module.layout() do
+        :none -> nil
+        mod when is_atom(mod) -> mod
+        _ -> get_layout_module()
+      end
+    else
+      get_layout_module()
     end
   end
 

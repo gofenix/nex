@@ -41,6 +41,40 @@ defmodule Nex.Handler.Errors do
   end
 
   defp build_error_page(conn, status, message, error) do
+    case resolve_convention_error_module(status) do
+      {:ok, module} ->
+        try do
+          render_convention_error(module, status, message)
+        rescue
+          _ -> fallback_error_page(conn, status, message, error)
+        end
+
+      :none ->
+        fallback_error_page(conn, status, message, error)
+    end
+  end
+
+  defp resolve_convention_error_module(status) do
+    app_module = Nex.Config.app_module()
+    module_name = "#{app_module}.Pages.Error#{status}"
+
+    case Nex.Utils.safe_to_existing_module(module_name) do
+      {:ok, module} -> {:ok, module}
+      :error -> :none
+    end
+  end
+
+  defp render_convention_error(module, status, message) do
+    assigns = %{status: status, message: message}
+
+    if function_exported?(module, :render, 1) do
+      module.render(assigns) |> Phoenix.HTML.Safe.to_iodata() |> IO.iodata_to_binary()
+    else
+      raise "Convention error module missing render/1"
+    end
+  end
+
+  defp fallback_error_page(conn, status, message, error) do
     case Application.get_env(:nex_core, :error_page_module) do
       nil ->
         build_default_error_page(conn, status, message, error)

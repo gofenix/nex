@@ -137,6 +137,50 @@ defmodule Nex.RouteDiscoveryTest do
       result = RouteDiscovery.match_route(routes, ["users", "extra"], "MyApp", "Pages")
       assert result == :error
     end
+
+    test "matches optional catch-all with segments" do
+      routes = [
+        %{
+          pattern: [{:static, "docs"}, {:optional_catchall, "slug"}],
+          module_parts: ["Docs", "Slug"],
+          segment_count: 2,
+          has_catchall: true
+        }
+      ]
+
+      result = RouteDiscovery.match_route(routes, ["docs", "a", "b"], "MyApp", "Pages")
+      assert result == {:ok, "MyApp.Pages.Docs.Slug", %{"slug" => ["a", "b"]}}
+    end
+
+    test "matches optional catch-all with no segments" do
+      routes = [
+        %{
+          pattern: [{:static, "docs"}, {:optional_catchall, "slug"}],
+          module_parts: ["Docs", "Slug"],
+          segment_count: 2,
+          has_catchall: true
+        }
+      ]
+
+      result = RouteDiscovery.match_route(routes, ["docs"], "MyApp", "Pages")
+      assert result == {:ok, "MyApp.Pages.Docs.Slug", %{"slug" => []}}
+    end
+
+    test "discovers optional catch-all from filesystem" do
+      tmp_dir = "/tmp/nex_test_opt_catchall_#{:rand.uniform(10000)}"
+      File.mkdir_p("#{tmp_dir}/pages/docs")
+      File.write!("#{tmp_dir}/pages/docs/[[...slug]].ex", "")
+
+      routes = RouteDiscovery.discover_routes(tmp_dir, :pages)
+      assert length(routes) == 1
+
+      [route] = routes
+      assert route.pattern == [{:static, "docs"}, {:optional_catchall, "slug"}]
+      assert route.param_names == ["slug"]
+      assert route.has_catchall == true
+
+      File.rm_rf!(tmp_dir)
+    end
   end
 
   describe "get_routes/2" do

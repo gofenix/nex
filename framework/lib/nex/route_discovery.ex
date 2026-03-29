@@ -76,31 +76,43 @@ defmodule Nex.RouteDiscovery do
       pattern: pattern,
       param_names: param_names,
       module_parts: module_parts,
-      has_catchall: Enum.any?(pattern, &match?({:catchall, _}, &1)),
+      has_catchall: Enum.any?(pattern, fn
+        {:catchall, _} -> true
+        {:optional_catchall, _} -> true
+        _ -> false
+      end),
       segment_count: length(pattern)
     }
   end
 
   defp parse_segments(segments) do
-    {pattern, param_names} =
+    {pattern_rev, param_names_rev} =
       Enum.reduce(segments, {[], []}, fn segment, {pattern, params} ->
         case parse_segment(segment) do
           {:dynamic, name} ->
-            {pattern ++ [{:dynamic, name}], params ++ [name]}
+            {[{:dynamic, name} | pattern], [name | params]}
 
           {:catchall, name} ->
-            {pattern ++ [{:catchall, name}], params ++ [name]}
+            {[{:catchall, name} | pattern], [name | params]}
+
+          {:optional_catchall, name} ->
+            {[{:optional_catchall, name} | pattern], [name | params]}
 
           {:static, value} ->
-            {pattern ++ [{:static, value}], params}
+            {[{:static, value} | pattern], params}
         end
       end)
 
-    {pattern, param_names}
+    {Enum.reverse(pattern_rev), Enum.reverse(param_names_rev)}
   end
 
   defp parse_segment(segment) do
     cond do
+      # Optional catch-all: [[...param]]
+      String.starts_with?(segment, "[[...") and String.ends_with?(segment, "]]") ->
+        name = segment |> String.slice(5..-3//1)
+        {:optional_catchall, name}
+
       # Catch-all: [...param]
       String.starts_with?(segment, "[...") and String.ends_with?(segment, "]") ->
         name = segment |> String.slice(4..-2//1)
@@ -120,6 +132,10 @@ defmodule Nex.RouteDiscovery do
   defp segments_to_module_parts(segments) do
     Enum.map(segments, fn segment ->
       cond do
+        String.starts_with?(segment, "[[...") and String.ends_with?(segment, "]]") ->
+          name = segment |> String.slice(5..-3//1)
+          Macro.camelize(name)
+
         String.starts_with?(segment, "[...") and String.ends_with?(segment, "]") ->
           # [...path] -> Path
           name = segment |> String.slice(4..-2//1)
@@ -159,6 +175,11 @@ defmodule Nex.RouteDiscovery do
 
   defp match_pattern([{:catchall, name} | _], remaining, params) do
     # Catch-all consumes all remaining segments
+    {:ok, Map.put(params, name, remaining)}
+  end
+
+  defp match_pattern([{:optional_catchall, name} | _], remaining, params) do
+    # Optional catch-all consumes remaining segments (may be empty)
     {:ok, Map.put(params, name, remaining)}
   end
 
