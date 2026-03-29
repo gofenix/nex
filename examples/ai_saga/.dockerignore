@@ -1,9 +1,0 @@
-_build
-deps
-db
-data
-.elixir_ls
-.vscode
-.git
-.env
-*.md
