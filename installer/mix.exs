@@ -19,7 +19,8 @@ defmodule NexNew.MixProject do
 
   defp deps do
     [
-      {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
+      {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
+      {:req, "~> 0.5", only: :test, runtime: false}
     ]
   end
 

@@ -23,13 +23,36 @@ defmodule Mix.Tasks.Nex.NewTest do
     project_path = generate_project(tmp_dir, "basic_app")
 
     assert File.exists?(Path.join(project_path, "src/pages/index.ex"))
+    assert File.exists?(Path.join(project_path, "src/pages/_app.ex"))
+    assert File.exists?(Path.join(project_path, "src/pages/_document.ex"))
     assert File.exists?(Path.join(project_path, "src/api/hello.ex"))
+    refute File.exists?(Path.join(project_path, "src/layouts.ex"))
     refute File.exists?(Path.join(project_path, "src/pages/dashboard.ex"))
     refute File.exists?(Path.join(project_path, "db"))
 
     mix_exs = File.read!(Path.join(project_path, "mix.exs"))
     assert mix_exs =~ "{:nex_core,"
     refute mix_exs =~ "{:nex_base,"
+
+    doc = File.read!(Path.join(project_path, "src/pages/_document.ex"))
+    assert doc =~ "BasicApp.Pages.Document"
+    assert doc =~ "htmx.org"
+  end
+
+  test "generates the basic starter with datastar frontend", %{tmp_dir: tmp_dir} do
+    project_path = generate_project(tmp_dir, "ds_app", ["--frontend", "datastar"])
+
+    assert File.exists?(Path.join(project_path, "src/pages/_app.ex"))
+    assert File.exists?(Path.join(project_path, "src/pages/_document.ex"))
+    assert File.exists?(Path.join(project_path, "src/api/counter.ex"))
+    refute File.exists?(Path.join(project_path, "src/layouts.ex"))
+
+    doc = File.read!(Path.join(project_path, "src/pages/_document.ex"))
+    assert doc =~ "datastar"
+    refute doc =~ "htmx"
+
+    index = File.read!(Path.join(project_path, "src/pages/index.ex"))
+    assert index =~ "data-signals"
   end
 
   test "generates the saas starter with auth, data, and req-based actions", %{tmp_dir: tmp_dir} do
