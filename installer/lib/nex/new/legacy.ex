@@ -2159,6 +2159,25 @@ defmodule Nex.New.Legacy do
     end
     ```
 
+    ### Per-page layout override
+    ```elixir
+    def layout, do: :none              # skip _app.ex for this page
+    def layout, do: MyApp.AdminLayout  # use a different wrapper
+    ```
+
+    ### Convention error pages
+    Create `src/pages/404.ex` or `src/pages/500.ex`:
+    ```elixir
+    defmodule #{a.module_name}.Pages.Error404 do
+      use Nex
+      def render(assigns) do
+        ~H\"\"\"
+        <h1>{@status} — {@message}</h1>
+        \"\"\"
+      end
+    end
+    ```
+
     ---
 
     ## 4. Page Module Pattern
@@ -2203,6 +2222,14 @@ defmodule Nex.New.Legacy do
     | `src/pages/about.ex` | `GET /about` |
     | `src/pages/users/index.ex` | `GET /users` |
     | `src/pages/users/[id].ex` | `GET /users/42` |
+    | `src/pages/docs/[...path].ex` | `GET /docs/a/b/c` |
+    | `src/pages/docs/[[...path]].ex` | `GET /docs` or `GET /docs/a/b` |
+
+    ### mount/1 return values
+    - `%{key: val}` — assigns for render
+    - `{:redirect, "/path"}` — 302 redirect
+    - `{:redirect, "/path", 301}` — redirect with custom status
+    - `:not_found` — 404
 
     ### Page Action responses
     - `~H"..."` — return HTML partial (HTMX swap)
@@ -2248,6 +2275,20 @@ defmodule Nex.New.Legacy do
     - `Nex.status(404)` — status only
     - `Nex.redirect("/path")` — redirect
     - `Nex.stream(fn send -> ... end)` — SSE streaming
+
+    ### Pipeline alternative (Nex.Res)
+    ```elixir
+    Nex.Res.new() |> Nex.Res.status(201) |> Nex.Res.json(%{ok: true})
+    Nex.Res.new() |> Nex.Res.redirect("/login")
+    Nex.Res.new() |> Nex.Res.set_header("x-req-id", id) |> Nex.Res.json(data)
+    ```
+
+    ### HTMX response headers (Nex.HTMX)
+    Available in page modules. Pipe HTML or Response through these:
+    ```elixir
+    ~H"<div>saved</div>" |> push_url("/new") |> trigger("toast", %{msg: "Done"})
+    ```
+    Helpers: `push_url/2`, `replace_url/2`, `trigger/2,3`, `retarget/2`, `reswap/2`
 
     ---
 
