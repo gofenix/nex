@@ -36,11 +36,13 @@ defmodule Nex.Datastar do
   """
   def patch_elements(fragments, opts \\ []) do
     lines =
-      []
-      |> maybe_add("selector", opts[:selector])
-      |> maybe_add("mode", opts[:mode])
-      |> maybe_add_bool("useViewTransition", opts[:use_view_transition])
-      |> add("fragments", fragments)
+      [
+        if(opts[:selector], do: "selector #{opts[:selector]}"),
+        if(opts[:mode], do: "mode #{opts[:mode]}"),
+        if(opts[:use_view_transition], do: "useViewTransition true"),
+        "fragments #{fragments}"
+      ]
+      |> Enum.reject(&is_nil/1)
 
     %{event: "datastar-patch-elements", data: Enum.join(lines, "\n")}
   end
@@ -64,19 +66,12 @@ defmodule Nex.Datastar do
     json = if is_binary(signals), do: signals, else: Jason.encode!(signals)
 
     lines =
-      []
-      |> maybe_add_bool("onlyIfMissing", opts[:only_if_missing])
-      |> add("signals", json)
+      [
+        if(opts[:only_if_missing], do: "onlyIfMissing true"),
+        "signals #{json}"
+      ]
+      |> Enum.reject(&is_nil/1)
 
     %{event: "datastar-patch-signals", data: Enum.join(lines, "\n")}
   end
-
-  defp add(lines, key, value), do: lines ++ ["#{key} #{value}"]
-
-  defp maybe_add(lines, _key, nil), do: lines
-  defp maybe_add(lines, key, value), do: lines ++ ["#{key} #{value}"]
-
-  defp maybe_add_bool(lines, _key, nil), do: lines
-  defp maybe_add_bool(lines, _key, false), do: lines
-  defp maybe_add_bool(lines, key, true), do: lines ++ ["#{key} true"]
 end

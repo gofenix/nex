@@ -360,37 +360,8 @@ defmodule Nex.New.Legacy do
   end
 
   def layouts(a) do
-    """
-    defmodule #{a.module_name}.Layouts do
-      use Nex
-
-      def render(assigns) do
-        ~H\"\"\"
-        <!DOCTYPE html>
-        <html lang="en" data-theme="light">
-          <head>
-            <meta charset="UTF-8" />
-            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-            <title>{@title}</title>
-            <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio"></script>
-            <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.23/dist/full.min.css" rel="stylesheet" type="text/css" />
-            <script src="https://unpkg.com/htmx.org@2.0.4"></script>
-          </head>
-          <body class="min-h-screen bg-base-200" hx-boost="true">
-            <nav class="navbar bg-base-100 shadow-sm">
-              <div class="max-w-4xl mx-auto w-full px-4">
-                <a href="/" class="btn btn-ghost text-xl">#{a.module_name}</a>
-              </div>
-            </nav>
-            <main class="max-w-4xl mx-auto px-4 py-8">
-              {raw(@inner_content)}
-            </main>
-          </body>
-        </html>
-        \"\"\"
-      end
-    end
-    """
+    frontend_script = ~s(<script src="https://unpkg.com/htmx.org@2.0.4"></script>)
+    build_layouts(a, frontend_script, ~s( hx-boost="true"))
   end
 
   def index(a) do
@@ -572,37 +543,10 @@ defmodule Nex.New.Legacy do
   # --- Datastar Frontend Templates ---
 
   def datastar_layouts(a) do
-    """
-    defmodule #{a.module_name}.Layouts do
-      use Nex
+    frontend_script =
+      ~s(<script type="module" src="https://cdn.jsdelivr.net/npm/@starfederation/datastar@1.0.0-beta.11/dist/datastar.min.js"></script>)
 
-      def render(assigns) do
-        ~H\"\"\"
-        <!DOCTYPE html>
-        <html lang="en" data-theme="light">
-          <head>
-            <meta charset="UTF-8" />
-            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-            <title>{@title}</title>
-            <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio"></script>
-            <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.23/dist/full.min.css" rel="stylesheet" type="text/css" />
-            <script type="module" src="https://cdn.jsdelivr.net/npm/@starfederation/datastar@1.0.0-beta.11/dist/datastar.min.js"></script>
-          </head>
-          <body class="min-h-screen bg-base-200">
-            <nav class="navbar bg-base-100 shadow-sm">
-              <div class="max-w-4xl mx-auto w-full px-4">
-                <a href="/" class="btn btn-ghost text-xl">#{a.module_name}</a>
-              </div>
-            </nav>
-            <main class="max-w-4xl mx-auto px-4 py-8">
-              {raw(@inner_content)}
-            </main>
-          </body>
-        </html>
-        \"\"\"
-      end
-    end
-    """
+    build_layouts(a, frontend_script, "")
   end
 
   def datastar_index(a) do
@@ -699,6 +643,40 @@ defmodule Nex.New.Legacy do
           _ ->
             Nex.json(%{error: "Unknown action"}, status: 400)
         end
+      end
+    end
+    """
+  end
+
+  defp build_layouts(a, frontend_script, body_attrs) do
+    """
+    defmodule #{a.module_name}.Layouts do
+      use Nex
+
+      def render(assigns) do
+        ~H\"\"\"
+        <!DOCTYPE html>
+        <html lang="en" data-theme="light">
+          <head>
+            <meta charset="UTF-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            <title>{@title}</title>
+            <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio"></script>
+            <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.23/dist/full.min.css" rel="stylesheet" type="text/css" />
+            #{frontend_script}
+          </head>
+          <body class="min-h-screen bg-base-200"#{body_attrs}>
+            <nav class="navbar bg-base-100 shadow-sm">
+              <div class="max-w-4xl mx-auto w-full px-4">
+                <a href="/" class="btn btn-ghost text-xl">#{a.module_name}</a>
+              </div>
+            </nav>
+            <main class="max-w-4xl mx-auto px-4 py-8">
+              {raw(@inner_content)}
+            </main>
+          </body>
+        </html>
+        \"\"\"
       end
     end
     """

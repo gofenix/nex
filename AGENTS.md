@@ -17,6 +17,28 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/):
 - **No Config Files**: Use `.env` only, never `config/*.exs`
 - **Cursor Rules**: If project has `.cursorrules`, follow it (see `bestof_ex/.cursorrules`)
 
+---
+
+## 9. Nex Request Contract
+
+- **Canonical Request Type**: Page Actions in `src/pages/` receive `Nex.Req`.
+- **API Consistency**: API Handlers in `src/api/` also receive `Nex.Req`.
+- **Comparison Target**: Model Nex request handling after **Next.js Pages Router API Routes**.
+- **Parameter Access**: Read path params and query string values from `req.query`. Read request body values from `req.body`.
+- **Do Not Model After**: Do not model Page Actions after App Router Route Handlers, Server Actions, `FormData`-first handlers, or a flat merged params map.
+- **Keep The Contract Visible**: When the request argument is unused, prefer `_req`, not `_params`.
+
+Example:
+
+```elixir
+def save(req) do
+  id = req.query["id"]
+  name = req.body["name"]
+
+  {:ok, %{id: id, name: name}}
+end
+```
+
 <!-- opensrc:start -->
 
 ## Source Code Reference
