@@ -36,15 +36,6 @@
     verify: true
   },
   %{
-    slug: "dynamic_routes",
-    title: "Dynamic Routes",
-    summary: "File-based routing with [id], [...slug], nested paths, and API params.",
-    kind: :pattern,
-    featured: true,
-    test: true,
-    verify: true
-  },
-  %{
     slug: "datastar_demo",
     title: "Datastar Demo",
     summary: "Reactive signals, backend morphing, and SSE streaming via the Datastar protocol.",
