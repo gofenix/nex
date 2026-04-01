@@ -17,8 +17,8 @@ Open http://localhost:4000
 bestof_ex/
 ├── src/
 │   ├── application.ex      # Application supervision tree
-│   ├── layouts.ex          # HTML layout template
 │   ├── pages/              # Page components (routes)
+│   │   ├── _document.ex    # HTML shell
 │   │   └── index.ex        # Homepage (/)
 │   ├── api/                # API endpoints (Next.js style)
 │   │   └── hello.ex        # Example: GET/POST /api/hello
@@ -57,7 +57,7 @@ defmodule BestofEx.Api.Users do
   end
 
   def post(req) do
-    # req.body - request body (always a Map)
+    # req.body - request body (nil when the request has no body params)
     name = req.body["name"]
     Nex.json(%{created: true}, status: 201)
   end

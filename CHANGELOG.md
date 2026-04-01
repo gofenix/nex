@@ -13,9 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **Handler organization**: Refactored the request pipeline into smaller delegated modules without changing public routing or response behavior.
+- **Route matching precedence**: Optional catch-all routes (`[[...param]]`) now sort behind static, dynamic, and required catch-all routes so sibling dynamic routes keep winning for concrete paths.
+- **Single-segment page actions**: Short action paths now resolve against the current page module when a referer page is available, instead of falling back to homepage actions with the same name.
+- **Convention error pages**: `src/pages/404.ex` and `src/pages/500.ex` now render through the shared `_app.ex` / `_document.ex` shell when present.
+- **Request contract docs**: Public docs, templates, and examples now consistently document page actions as receiving `Nex.Req`, with `req.query` / `req.body` access and `nil` bodies for requests without payloads.
 
 ### Fixed
 - **WebSocket initial state**: WebSocket handlers now receive merged query string parameters in the initial request context, aligning `initial_state/1` with Nex request semantics for query access.
+- **Convention error page lookup**: Convention-based error pages now resolve correctly even when `:app_module` is configured as a module atom.
 
 ### Removed
 - **God-module pressure**: Removed the single-file concentration of handler responsibilities by moving private implementation details out of `Nex.Handler`.

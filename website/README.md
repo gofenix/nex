@@ -35,8 +35,8 @@ iex -S mix
 website/
 ├── src/
 │   ├── application.ex       # Application entry point
-│   ├── layouts.ex           # Main layout with Claude styling
 │   ├── pages/               # Page modules
+│   │   ├── _document.ex     # Main document shell with Claude styling
 │   │   ├── index.ex         # Homepage
 │   │   ├── features.ex      # Features page
 │   │   └── getting_started.ex # Getting started guide

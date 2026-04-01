@@ -46,9 +46,10 @@ defmodule Counter.Pages.Index do
     """
   end
 
-  def increment(_params) do
+  def increment(_req) do
     count = Nex.Store.update(:count, 0, &(&1 + 1))
     assigns = %{count: count}
+
     ~H"""
     <div id="counter-display" data-testid="counter-value" class="text-6xl font-bold mb-8">
       {@count}
@@ -57,9 +58,10 @@ defmodule Counter.Pages.Index do
     |> trigger("counter-updated", %{new_count: count})
   end
 
-  def decrement(_params) do
+  def decrement(_req) do
     count = Nex.Store.update(:count, 0, &max(&1 - 1, 0))
     assigns = %{count: count}
+
     ~H"""
     <div id="counter-display" data-testid="counter-value" class="text-6xl font-bold mb-8">
       {@count}
@@ -67,9 +69,10 @@ defmodule Counter.Pages.Index do
     """
   end
 
-  def reset(_params) do
+  def reset(_req) do
     Nex.Store.put(:count, 0)
     assigns = %{count: 0}
+
     ~H"""
     <div id="counter-display" data-testid="counter-value" class="text-6xl font-bold mb-8">
       {@count}

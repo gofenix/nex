@@ -29,6 +29,28 @@ defmodule Nex.Utils do
   end
 
   @doc """
+  Normalizes a module name into a dotted Elixir module string.
+
+  ## Examples
+
+      iex> Nex.Utils.normalize_module_name(MyApp.Pages.Index)
+      "MyApp.Pages.Index"
+
+      iex> Nex.Utils.normalize_module_name("Elixir.MyApp.Pages.Index")
+      "MyApp.Pages.Index"
+  """
+  @spec normalize_module_name(module() | String.t()) :: String.t()
+  def normalize_module_name(module_name) when is_atom(module_name) do
+    module_name
+    |> Module.split()
+    |> Enum.join(".")
+  end
+
+  def normalize_module_name(module_name) when is_binary(module_name) do
+    String.trim_leading(module_name, "Elixir.")
+  end
+
+  @doc """
   Safely converts a module name string to an existing module.
 
   Returns `{:ok, module}` if the module is loaded, or `:error` if not.
@@ -41,9 +63,11 @@ defmodule Nex.Utils do
       iex> Nex.Utils.safe_to_existing_module("Non.Existent")
       :error
   """
-  @spec safe_to_existing_module(String.t()) :: {:ok, module()} | :error
+  @spec safe_to_existing_module(module() | String.t()) :: {:ok, module()} | :error
   def safe_to_existing_module(module_name) do
-    case safe_to_existing_atom("Elixir.#{module_name}") do
+    normalized_name = normalize_module_name(module_name)
+
+    case safe_to_existing_atom("Elixir.#{normalized_name}") do
       {:ok, module} ->
         if Code.ensure_loaded?(module), do: {:ok, module}, else: :error
 

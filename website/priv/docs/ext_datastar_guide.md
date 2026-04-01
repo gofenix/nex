@@ -18,11 +18,11 @@ The heart of Datastar lies in **Signals**. It doesn't use a Virtual DOM; instead
 
 *   **Zero Build**: No Node.js required, included directly via CDN.
 *   **Extreme Transparency**: State is declared directly on HTML tags.
-*   **Nex Synergy**: Use `@get` and `@post` expressions to call Nex Actions directly for partial DOM updates (Morphing).
+*   **Nex Synergy**: Use `@get` and `@post` expressions to call Nex Actions directly for partial DOM updates (Morphing). Those Actions receive `Nex.Req`, so read route and query params from `req.query` and submitted data from `req.body`.
 
 ## 2. Integration Method
 
-Include the Datastar script in your `src/layouts.ex`:
+Include the Datastar script in your `src/pages/_document.ex`:
 
 ```html
 <script type="module" src="https://cdn.jsdelivr.net/gh/starfederation/datastar/dist/datastar.js"></script>

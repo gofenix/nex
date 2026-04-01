@@ -14,7 +14,10 @@ defmodule Nex.Session do
       end
 
       # In an action — write session state
-      def login(%{"email" => email, "password" => password}) do
+      def login(req) do
+        email = req.body["email"]
+        password = req.body["password"]
+
         case authenticate(email, password) do
           {:ok, user} ->
             Nex.Session.put(:user_id, user.id)
@@ -26,7 +29,7 @@ defmodule Nex.Session do
         end
       end
 
-      def logout(_params) do
+      def logout(_req) do
         Nex.Session.clear()
         {:redirect, "/"}
       end

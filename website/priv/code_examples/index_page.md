@@ -15,7 +15,7 @@ defmodule MyApp.Pages.Index do
     """
   end
 
-  def increment(_params) do
+  def increment(_req) do
     count = Nex.Store.update(:count, 0, &(&1 + 1))
     assigns = %{count: count}
     ~H"<h1>Count: {@count}</h1>"

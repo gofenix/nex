@@ -9,7 +9,7 @@ defmodule NexWebsite.Pages.GettingStarted do
       %{count: Nex.Store.get(:count, 0)}
     end
 
-    def increment(_params) do
+    def increment(_req) do
       count = Nex.Store.update(:count, 0, &amp;(&amp;1 + 1))
       ~H"&lt;span id=\\"count\\"&gt;{count}&lt;/span&gt;"
     end
@@ -29,12 +29,13 @@ defmodule NexWebsite.Pages.GettingStarted do
   <div style="background: #1C1C1E; padding: 1rem 1.5rem; overflow-x: auto;"><pre><code style="color: #E8E8E8; font-family: monospace; font-size: 0.8rem; line-height: 1.7;">my_app/
   |-- src/
   |   |-- pages/           # Page modules (auto-routed)
+  |   |   |-- _app.ex      # Optional shared wrapper
+  |   |   |-- _document.ex # HTML shell
   |   |   |-- index.ex     # GET /
   |   |   `-- [id].ex      # GET /:id (dynamic)
   |   |-- api/             # JSON API endpoints
   |   |   `-- todos.ex     # GET/POST /api/todos
   |   |-- components/      # Reusable UI components
-  |   `-- layouts.ex       # Global HTML layout
   |-- priv/                # Static assets, migrations
   |-- mix.exs
   `-- .env                 # Environment variables</code></pre></div>

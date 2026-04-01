@@ -70,7 +70,7 @@ end
 
 ## 3. Layout Contract
 
-`src/layouts.ex` is the top-level container for your application. It must follow a set of "contracts" to ensure framework functionality works correctly.
+`src/pages/_document.ex` is the HTML shell for your application. It must follow a set of "contracts" to ensure framework functionality works correctly. Use `src/pages/_app.ex` when you want a shared page wrapper around `@inner_content`.
 
 ### Core Variables
 *   **`@inner_content`**: Must be rendered, representing the core HTML of the page. Use `{raw(@inner_content)}` to render it.
@@ -78,7 +78,7 @@ end
 
 ### Layout Example
 ```elixir
-defmodule MyApp.Layouts do
+defmodule MyApp.Pages.Document do
   use Nex
 
   def render(assigns) do

@@ -8,12 +8,13 @@ defmodule Nex.Cookie do
   ## Usage
 
       # In a page action
-      def login(%{"token" => token}) do
+      def login(req) do
+        token = req.body["token"]
         Nex.Cookie.put(:session_id, token, max_age: 86_400, http_only: true)
         Nex.redirect("/dashboard")
       end
 
-      def logout(_params) do
+      def logout(_req) do
         Nex.Cookie.delete(:session_id)
         Nex.redirect("/")
       end

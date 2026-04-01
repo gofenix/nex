@@ -74,7 +74,7 @@ Choose `saas` when you want auth, SQLite via NexBase, a protected dashboard, and
         """
       end
 
-      def say_hi(_params) do
+      def say_hi(_req) do
         "Hello! This is an HTML fragment returned via declarative interaction."
       end
     end
@@ -96,7 +96,8 @@ Nex's directory structure follows "convention over configuration," aiming to eli
     *   `pages/`: Page modules (GET requests, automatically mapped to URLs).
     *   `api/`: JSON API modules.
     *   `components/`: Reusable UI components.
-    *   `layouts.ex`: Global HTML template.
+    *   `pages/_document.ex`: Global HTML shell.
+    *   `pages/_app.ex`: Optional shared page wrapper.
     *   `application.ex`: OTP application entry point.
 *   `.env`: Environment configuration file (automatically loaded).
 *   `mix.exs`: Project dependency management.

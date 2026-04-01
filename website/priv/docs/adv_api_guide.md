@@ -15,7 +15,7 @@ In Nex, to unify response formats, we have established the following enforced ru
 
 1.  **Must Return `Nex.Response` Struct**: Action functions can no longer return raw Maps or Lists.
 2.  **Use Helper Functions**: You must use helper functions like `Nex.json/2`, `Nex.text/2`, `Nex.redirect/2` to build responses.
-3.  **Function Signature**: API handler functions receive a `Nex.Req` struct, which is designed to be fully aligned with Next.js API Routes.
+3.  **Function Signature**: API handler functions receive a `Nex.Req` struct with a request shape modeled after Next.js Pages Router API Routes.
 
 ### Correct Example
 
@@ -44,7 +44,7 @@ end
 
 ## 3. Nex.Req Struct Analysis
 
-The `req` parameter provides unified access to request data, behaving highly consistent with Next.js:
+The `req` parameter provides unified access to request data, following the same high-level request shape as Next.js Pages Router API Routes:
 
 *   **`req.query`**: Contains both URL path parameters (e.g., `[id]`) and query string parameters. Path parameters take precedence on key conflicts.
 *   **`req.body`**: Body content of POST/PUT requests (usually a parsed Map). Completely independent of `query`.

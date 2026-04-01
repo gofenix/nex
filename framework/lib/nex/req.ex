@@ -2,7 +2,8 @@ defmodule Nex.Req do
   @moduledoc """
   Standardized Request object for API handlers.
 
-  Fully mimics Next.js API Routes behavior with minimal additions.
+  Normalizes incoming requests toward Next.js Pages Router API Route semantics
+  while keeping Nex-specific additions available for framework internals.
 
   ## Next.js Standard Fields
 
@@ -44,11 +45,11 @@ defmodule Nex.Req do
 
   | Next.js | Nex | Notes |
   |---------|-----|-------|
-  | `req.query` | `req.query` | Identical behavior |
-  | `req.body` | `req.body` | Identical behavior |
-  | `req.headers` | `req.headers` | Identical behavior |
-  | `req.cookies` | `req.cookies` | Identical behavior |
-  | `req.method` | `req.method` | Identical behavior |
+  | `req.query` | `req.query` | Same merged path + query semantics |
+  | `req.body` | `req.body` | `nil` when the request has no body params |
+  | `req.headers` | `req.headers` | Same access pattern |
+  | `req.cookies` | `req.cookies` | Same access pattern |
+  | `req.method` | `req.method` | Same uppercase method string |
   """
 
   # Types
@@ -112,7 +113,7 @@ defmodule Nex.Req do
     query = Map.merge(conn.query_params, path_params)
 
     %__MODULE__{
-      # Next.js standard - exactly the same behavior
+      # Next.js-style public request surface
       query: query,
       body: body_params,
       headers: headers,

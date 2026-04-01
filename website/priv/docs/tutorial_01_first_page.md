@@ -49,7 +49,7 @@ end
 
 ## 3. Layout Constraints
 
-Nex automatically wraps your page content in the layout defined in `src/layouts.ex`.
+Nex automatically wraps your page content in `src/pages/_document.ex`, and optionally in `src/pages/_app.ex` when you define one.
 
 **Important Rule**:
 The Layout template must contain `<head>` and `<body>` tags. Nex automatically injects:

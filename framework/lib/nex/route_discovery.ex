@@ -64,10 +64,11 @@ defmodule Nex.RouteDiscovery do
 
     # Special case: "index" at the end means it matches the parent path
     # e.g., "index" -> [], "users/index" -> ["users"]
-    segments = case List.last(segments) do
-      "index" -> List.delete_at(segments, -1)
-      _ -> segments
-    end
+    segments =
+      case List.last(segments) do
+        "index" -> List.delete_at(segments, -1)
+        _ -> segments
+      end
 
     # Parse each segment into route parts
     {pattern, param_names} = parse_segments(segments)
@@ -80,11 +81,12 @@ defmodule Nex.RouteDiscovery do
       pattern: pattern,
       param_names: param_names,
       module_parts: module_parts,
-      has_catchall: Enum.any?(pattern, fn
-        {:catchall, _} -> true
-        {:optional_catchall, _} -> true
-        _ -> false
-      end),
+      has_catchall:
+        Enum.any?(pattern, fn
+          {:catchall, _} -> true
+          {:optional_catchall, _} -> true
+          _ -> false
+        end),
       segment_count: length(pattern)
     }
   end
@@ -208,17 +210,17 @@ defmodule Nex.RouteDiscovery do
   end
 
   # Route priority for sorting (lower = higher priority)
-  # 1. Static routes first
-  # 2. Routes with fewer dynamic segments
-  # 3. Routes without catch-all before routes with catch-all
-  # 4. Longer routes before shorter routes (more specific)
+  # Segment precedence: static > dynamic > catch-all > optional catch-all
   defp route_priority(route) do
-    static_count = Enum.count(route.pattern, &match?({:static, _}, &1))
-    dynamic_count = Enum.count(route.pattern, &match?({:dynamic, _}, &1))
-    catchall_penalty = if route.has_catchall, do: 1000, else: 0
+    specificity =
+      Enum.map(route.pattern, fn
+        {:static, _} -> 0
+        {:dynamic, _} -> 1
+        {:catchall, _} -> 2
+        {:optional_catchall, _} -> 3
+      end)
 
-    # Lower score = higher priority
-    {-static_count, dynamic_count, catchall_penalty, -route.segment_count}
+    {specificity, -route.segment_count}
   end
 
   @doc """
@@ -256,6 +258,7 @@ defmodule Nex.RouteDiscovery do
       :undefined -> :ok
       _table -> :ets.delete_all_objects(:nex_route_cache)
     end
+
     :ok
   end
 
@@ -311,23 +314,11 @@ defmodule Nex.RouteDiscovery do
         end
 
       [action] ->
-        # POST /action_name → resolve to Index page (single-segment actions come from root)
-        # For non-root pages, the nex_script auto-prefixes the page path
-        # (e.g., hx-post="/increment" on /todos becomes POST /todos/increment)
+        # POST /action_name → resolve against the current page when available.
+        # Root-page actions still resolve to Pages.Index.
         case safe_to_existing_atom(action) do
           {:ok, action_atom} ->
-            case safe_to_existing_module("#{app_module}.Pages.Index") do
-              {:ok, module} ->
-                if function_exported?(module, action_atom, 1) do
-                  {:ok, module, action, %{}}
-                else
-                  # Fallback: try referer-based resolution for backward compat
-                  resolve_action_via_referer(app_module, action, action_atom, referer_path)
-                end
-
-              :error ->
-                :error
-            end
+            resolve_single_segment_action(app_module, action, action_atom, referer_path)
 
           :error ->
             :error
@@ -356,7 +347,31 @@ defmodule Nex.RouteDiscovery do
     String.starts_with?(filename, "_") or filename in ["404.ex", "500.ex"]
   end
 
-  defp resolve_action_via_referer(app_module, action, action_atom, referer_path) do
+  defp resolve_single_segment_action(app_module, action, action_atom, referer_path) do
+    case referer_path do
+      [] ->
+        resolve_index_action(app_module, action, action_atom)
+
+      _path ->
+        resolve_action_in_current_page(app_module, action, action_atom, referer_path)
+    end
+  end
+
+  defp resolve_index_action(app_module, action, action_atom) do
+    case safe_to_existing_module("#{app_module}.Pages.Index") do
+      {:ok, module} ->
+        if function_exported?(module, action_atom, 1) do
+          {:ok, module, action, %{}}
+        else
+          :error
+        end
+
+      :error ->
+        :error
+    end
+  end
+
+  defp resolve_action_in_current_page(app_module, action, action_atom, referer_path) do
     case get_current_page_module(app_module, referer_path) do
       {:ok, module} ->
         if function_exported?(module, action_atom, 1) do
@@ -397,9 +412,10 @@ defmodule Nex.RouteDiscovery do
           :error ->
             # Fallback: try to construct module name directly from path
             # e.g., ["requests"] -> "Pages.Requests"
-            module_name = path
+            module_name =
+              path
               |> Enum.map(&Macro.camelize/1)
-              |> then(&([app_module, "Pages" | &1]))
+              |> then(&[app_module, "Pages" | &1])
               |> Enum.join(".")
 
             safe_to_existing_module(module_name)

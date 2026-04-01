@@ -37,6 +37,11 @@ defmodule Mix.Tasks.Nex.NewTest do
     doc = File.read!(Path.join(project_path, "src/pages/_document.ex"))
     assert doc =~ "BasicApp.Pages.Document"
     assert doc =~ "htmx.org"
+
+    readme = File.read!(Path.join(project_path, "README.md"))
+    assert readme =~ "_document.ex"
+    assert readme =~ "_app.ex"
+    refute readme =~ "src/layouts.ex"
   end
 
   test "generates the basic starter with datastar frontend", %{tmp_dir: tmp_dir} do
@@ -53,6 +58,11 @@ defmodule Mix.Tasks.Nex.NewTest do
 
     index = File.read!(Path.join(project_path, "src/pages/index.ex"))
     assert index =~ "data-signals"
+
+    readme = File.read!(Path.join(project_path, "README.md"))
+    assert readme =~ "_document.ex"
+    assert readme =~ "_app.ex"
+    refute readme =~ "src/layouts.ex"
   end
 
   test "generates the saas starter with auth, data, and req-based actions", %{tmp_dir: tmp_dir} do
@@ -102,6 +112,7 @@ defmodule Mix.Tasks.Nex.NewTest do
     agents = File.read!(Path.join(project_path, "AGENTS.md"))
     assert agents =~ "def save(req) do"
     assert agents =~ "name = req.body[\"name\"]"
+    refute agents =~ "def save(_params)"
 
     env_example = File.read!(Path.join(project_path, ".env.example"))
     assert env_example =~ "DATABASE_URL=sqlite://db/saas_app_dev.db"

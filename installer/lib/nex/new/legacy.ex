@@ -211,7 +211,8 @@ defmodule Nex.New.Legacy do
     [
       {"mix.exs", mix_exs(assigns)},
       {"src/application.ex", application(assigns)},
-      {"src/layouts.ex", layouts(assigns)},
+      {"src/pages/_app.ex", app_template(assigns)},
+      {"src/pages/_document.ex", document_template(assigns)},
       {"src/pages/index.ex", index(assigns)},
       {"src/api/hello.ex", api_hello(assigns)},
       {"src/components/card.ex", component_card(assigns)},
@@ -229,7 +230,8 @@ defmodule Nex.New.Legacy do
     [
       {"mix.exs", saas_mix_exs(assigns)},
       {"src/application.ex", saas_application(assigns)},
-      {"src/layouts.ex", saas_layouts(assigns)},
+      {"src/pages/_app.ex", saas_app_template(assigns)},
+      {"src/pages/_document.ex", saas_document_template(assigns)},
       {"src/data.ex", saas_data(assigns)},
       {"src/accounts.ex", saas_accounts(assigns)},
       {"src/workspace.ex", saas_workspace(assigns)},
@@ -445,7 +447,7 @@ defmodule Nex.New.Legacy do
 
       # --- Actions (Intent-Driven) ---
 
-      def increment(_params) do
+      def increment(_req) do
         # 1. Update Truth
         new_count = Nex.Store.update(:count, 0, &(&1 + 1))
 
@@ -457,7 +459,7 @@ defmodule Nex.New.Legacy do
         \"\"\"
       end
 
-      def reset(_params) do
+      def reset(_req) do
         Nex.Store.put(:count, 0)
 
         assigns = %{count: 0}
@@ -480,7 +482,7 @@ defmodule Nex.New.Legacy do
       - GET /api/hello?name=World
       - POST /api/hello with body: {"name": "Alice"}
 
-      ## Next.js API Routes Alignment
+      ## Request Shape Inspiration
       - `req.query` - Path params + query string (path params take precedence)
       - `req.body` - Request body (Map for POST/PUT/PATCH, nil for GET/DELETE)
       - `Nex.json/2` - JSON response helper
@@ -488,7 +490,7 @@ defmodule Nex.New.Legacy do
       use Nex
 
       def get(req) do
-        # Access query parameters - Next.js style
+        # Access query parameters from req.query
         name = req.query["name"] || "World"
 
         Nex.json(%{
@@ -498,7 +500,7 @@ defmodule Nex.New.Legacy do
       end
 
       def post(req) do
-        # Access request body - Next.js style
+        # Access request body from req.body
         name = req.body["name"]
 
         cond do
@@ -2177,6 +2179,7 @@ defmodule Nex.New.Legacy do
       end
     end
     ```
+    Convention error pages render inside `Pages.Document` and, unless `layout/0` returns `:none`, inside `Pages.App`.
 
     ---
 
@@ -2200,7 +2203,8 @@ defmodule Nex.New.Legacy do
         \"\"\"
       end
 
-      # Page Action — called via hx-post="/action_name"
+      # Page Action — short paths like hx-post="/save" stay page-scoped
+      # and are expanded to the current page path when needed.
       def save(req) do
         name = req.body["name"]
 

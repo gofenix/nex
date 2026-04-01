@@ -16,11 +16,11 @@ Nex enforces the coupling of logic and UI. Within a single `.ex` file, you can s
 
 ### Function Signature Standards (CRITICAL)
 **Value to AI**: AI often confuses parameter signatures between Page Actions and API Handlers.
-*   **Page Action** (in `src/pages/`): Receives a flat **Map** (merged path, query, and body params).
-    *   *Example*: `def add_item(%{"id" => id})`
-*   **API Handler** (in `src/api/`): Receives a **`Nex.Req` struct** (accessible via `req.query` or `req.body`).
+*   **Page Action** (in `src/pages/`): Receives a **`Nex.Req` struct**. Read path and query params from `req.query`; read request body params from `req.body`.
+    *   *Example*: `def add_item(req)` then `id = req.query["id"]`
+*   **API Handler** (in `src/api/`): Also receives a **`Nex.Req` struct**.
     *   *Example*: `def get(req)`
-Defining this distinction prevents the AI from generating uncompilable code.
+Using the same request contract for Actions and API Handlers prevents the AI from generating stale or uncompilable code.
 
 ### State Management & One-Way Flow of Truth
 AI should follow: **Receive Intent -> Mutate Store/DB -> Render latest state**.
@@ -65,7 +65,7 @@ When AI behaves as if it's writing traditional Phoenix or React, correct it prom
 
 *   **Correction 1**: "Nex doesn't need a Router file; create files directly under `src/pages`."
 *   **Correction 2**: "Do not introduce extra JavaScript libraries; prefer using the built-in HTMX."
-*   **Correction 3**: "This is an API module; use the `def get(req)` signature. For Page Actions, use the `def action_name(params)` signature."
+*   **Correction 3**: "This is an API module; use `def get(req)`. For Page Actions, use `def action_name(req)` or `def action_name(_req)`."
 
 ## 5. Conclusion
 

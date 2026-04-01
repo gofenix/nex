@@ -32,7 +32,7 @@ This example demonstrates:
 ## Code Structure
 
 - `src/pages/index.ex` - Main page with counter display and button handlers
-- `src/layouts.ex` - HTML layout with Tailwind and HTMX scripts
+- `src/pages/_document.ex` - HTML document shell with Tailwind and HTMX scripts
 - `src/application.ex` - Application supervisor setup
 
 ## Deployment

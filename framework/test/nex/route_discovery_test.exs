@@ -1,6 +1,19 @@
 defmodule Nex.RouteDiscoveryTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
   alias Nex.RouteDiscovery
+
+  setup do
+    original_src_path = Application.get_env(:nex_core, :src_path)
+    original_app_module = Application.get_env(:nex_core, :app_module)
+
+    on_exit(fn ->
+      restore_env(:src_path, original_src_path)
+      restore_env(:app_module, original_app_module)
+      RouteDiscovery.clear_cache()
+    end)
+
+    :ok
+  end
 
   describe "discover_routes/2" do
     test "returns empty list for non-existent directory" do
@@ -181,6 +194,30 @@ defmodule Nex.RouteDiscoveryTest do
 
       File.rm_rf!(tmp_dir)
     end
+
+    test "dynamic routes take priority over optional catch-all siblings" do
+      with_tmp_src_path(fn tmp_dir ->
+        File.mkdir_p!(Path.join(tmp_dir, "pages/docs"))
+        File.write!(Path.join(tmp_dir, "pages/docs/[id].ex"), "")
+        File.write!(Path.join(tmp_dir, "pages/docs/[[...slug]].ex"), "")
+
+        routes = RouteDiscovery.discover_routes(tmp_dir, :pages)
+        result = RouteDiscovery.match_route(routes, ["docs", "123"], "MyApp", "Pages")
+        assert result == {:ok, "MyApp.Pages.Docs.Id", %{"id" => "123"}}
+      end)
+    end
+
+    test "required catch-all takes priority over optional catch-all siblings for non-empty paths" do
+      with_tmp_src_path(fn tmp_dir ->
+        File.mkdir_p!(Path.join(tmp_dir, "pages/docs"))
+        File.write!(Path.join(tmp_dir, "pages/docs/[...slug].ex"), "")
+        File.write!(Path.join(tmp_dir, "pages/docs/[[...optional_slug]].ex"), "")
+
+        routes = RouteDiscovery.discover_routes(tmp_dir, :pages)
+        result = RouteDiscovery.match_route(routes, ["docs", "a", "b"], "MyApp", "Pages")
+        assert result == {:ok, "MyApp.Pages.Docs.Slug", %{"slug" => ["a", "b"]}}
+      end)
+    end
   end
 
   describe "get_routes/2" do
@@ -247,5 +284,79 @@ defmodule Nex.RouteDiscoveryTest do
       result = RouteDiscovery.resolve(:pages, [])
       assert result == :error or match?({:ok, _, _}, result)
     end
+
+    test "single-segment actions resolve to the current page before the index page" do
+      with_tmp_src_path(fn tmp_dir ->
+        File.mkdir_p!(Path.join(tmp_dir, "pages/users"))
+        File.write!(Path.join(tmp_dir, "pages/index.ex"), "")
+        File.write!(Path.join(tmp_dir, "pages/users/[id].ex"), "")
+
+        Application.put_env(:nex_core, :src_path, tmp_dir)
+        Application.put_env(:nex_core, :app_module, "RouteDiscoveryActionScope")
+        RouteDiscovery.clear_cache()
+
+        result = RouteDiscovery.resolve(:action, ["save"], ["users", "123"])
+        assert result == {:ok, RouteDiscoveryActionScope.Pages.Users.Id, "save", %{}}
+      end)
+    end
+
+    test "single-segment actions still resolve to Pages.Index when there is no referer page" do
+      with_tmp_src_path(fn tmp_dir ->
+        File.mkdir_p!(Path.join(tmp_dir, "pages"))
+        File.write!(Path.join(tmp_dir, "pages/index.ex"), "")
+
+        Application.put_env(:nex_core, :src_path, tmp_dir)
+        Application.put_env(:nex_core, :app_module, "RouteDiscoveryActionScope")
+        RouteDiscovery.clear_cache()
+
+        result = RouteDiscovery.resolve(:action, ["save"], [])
+        assert result == {:ok, RouteDiscoveryActionScope.Pages.Index, "save", %{}}
+      end)
+    end
+
+    test "single-segment actions return error when the current page does not define them" do
+      with_tmp_src_path(fn tmp_dir ->
+        File.mkdir_p!(Path.join(tmp_dir, "pages/users"))
+        File.write!(Path.join(tmp_dir, "pages/index.ex"), "")
+        File.write!(Path.join(tmp_dir, "pages/users/[id].ex"), "")
+
+        Application.put_env(:nex_core, :src_path, tmp_dir)
+        Application.put_env(:nex_core, :app_module, "RouteDiscoveryMissingAction")
+        RouteDiscovery.clear_cache()
+
+        result = RouteDiscovery.resolve(:action, ["save"], ["users", "123"])
+        assert result == :error
+      end)
+    end
   end
+
+  defp restore_env(key, nil), do: Application.delete_env(:nex_core, key)
+  defp restore_env(key, value), do: Application.put_env(:nex_core, key, value)
+
+  defp with_tmp_src_path(fun) do
+    tmp_dir = "/tmp/nex_test_routes_#{System.unique_integer([:positive])}"
+    File.mkdir_p!(tmp_dir)
+
+    try do
+      fun.(tmp_dir)
+    after
+      File.rm_rf!(tmp_dir)
+    end
+  end
+end
+
+defmodule RouteDiscoveryActionScope.Pages.Index do
+  def save(_req), do: :index
+end
+
+defmodule RouteDiscoveryActionScope.Pages.Users.Id do
+  def save(_req), do: :user
+end
+
+defmodule RouteDiscoveryMissingAction.Pages.Index do
+  def save(_req), do: :index
+end
+
+defmodule RouteDiscoveryMissingAction.Pages.Users.Id do
+  def show(_req), do: :user
 end

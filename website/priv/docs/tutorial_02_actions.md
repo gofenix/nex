@@ -10,9 +10,9 @@ In traditional Web development, handling button clicks or form submissions usual
 *   **Declarative Interaction**: Actions default to sending asynchronous requests via declarative tools like HTMX, without writing JavaScript.
 *   **No mount**: Actions are called directly and don't require re-executing the page's `mount` or a full-page render.
 
-## 2. Single-Path Action (Referer-based)
+## 2. Single-Path Action (Page-Scoped)
 
-This is the most common Action pattern. You simply specify `hx-post="/function_name"` in the HTML, and Nex automatically finds the corresponding page module based on the request source (Referer) and executes that function.
+This is the most common Action pattern. You specify `hx-post="/function_name"` in the HTML, and Nex treats it as a page-scoped Action. On non-root pages, the client runtime expands the short path to the current page path before sending the request, and the server resolves the Action against that page module.
 
 ### Example: Counter
 
@@ -43,7 +43,7 @@ defmodule MyApp.Pages.Counter do
   end
 
   # Define function with same name as hx-post path
-  def increment(_params) do
+  def increment(_req) do
     # Update server-side state
     new_count = Nex.Store.update(:count, 0, &(&1 + 1))
     
@@ -67,7 +67,9 @@ Nex resolves this as follows:
 3.  Call the `delete/1` function in that module.
 
 ```elixir
-def delete(%{"id" => id}) do
+def delete(req) do
+  id = req.query["id"]
+
   # Execute deletion logic
   # ...
   :empty  # Return :empty to indicate success without updating any DOM

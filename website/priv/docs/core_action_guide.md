@@ -6,19 +6,20 @@ Nex provides a set of extremely smart and minimalist Action routing solutions, a
 
 In Nex, functions that handle interactions (Actions) are tightly coupled with their corresponding UI (HEEx) within the same Elixir module. This design not only improves code maintainability but also makes AI-assisted programming much more efficient.
 
-## 2. Single-Path Action (Referer-based)
+## 2. Single-Path Action (Page-Scoped Short Path)
 
-This is Nex's default behavior and its most powerful feature.
+This is Nex's default behavior and its most ergonomic feature.
 
 ### How It Works
 When you send a POST/PUT/DELETE request to a specific Action path (e.g., `hx-post="/increment"`):
-1.  **Identify Source**: Nex looks at the `Referer` in the HTTP request header (e.g., `http://localhost:4000/todos`).
-2.  **Locate Module**: Based on the `Referer` path `/todos`, it finds the corresponding page module `MyApp.Pages.Todos.Index`.
-3.  **Execute Function**: Executes the function with the same name as the path, `increment/1`, within the found module.
+1.  **Keep the Template Short**: You can write `hx-post="/increment"` directly inside the current page template.
+2.  **Use Page Context**: Nex treats short action paths as page-scoped and resolves them against the current page module.
+3.  **Execute Function**: Nex executes the function with the same name as the path, `increment/1`, inside that page module.
 
 ### Advantages
 *   **Extreme Simplification**: You don't need to write out the full page path in `hx-post`.
-*   **Logic Reuse**: If you call the same `/add` on different pages, they automatically route to the `add` function defined on their respective pages.
+*   **Locality of Behavior**: The action stays attached to the page where the UI lives.
+*   **Deterministic Resolution**: A short path resolves to the current page, not to some other page with the same action name.
 
 ## 3. Multi-Path Action (Path-based)
 
@@ -30,7 +31,7 @@ Path: `POST /users/123/delete`
 ### Resolution Rules
 1.  **Path Prefix Resolution**: Nex resolves `/users/123` to the `MyApp.Pages.Users.Id` module (assuming the corresponding file is `src/pages/users/[id].ex`).
 2.  **Extract Parameters**: Automatically extracts `id: "123"`.
-3.  **Execute Action**: Resolves the last segment of the path, `delete`, and calls the `delete(%{"id" => "123"})` function in that module.
+3.  **Execute Action**: Resolves the last segment of the path, `delete`, and calls `delete(req)` in that module. Read the extracted path param from `req.query["id"]`.
 
 ## 4. Atomic Safety (Atom Safety)
 

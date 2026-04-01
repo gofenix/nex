@@ -53,14 +53,15 @@ mix nex.new my_app --starter saas
  ```
  my_app/
  ├── src/
- │   ├── pages/
- │   │   ├── index.ex
- │   │   └── [id].ex
  │   ├── api/
  │   │   └── todos/
  │   │       └── index.ex
  │   ├── components/
- │   └── layouts.ex
+ │   └── pages/
+ │       ├── _app.ex
+ │       ├── _document.ex
+ │       ├── index.ex
+ │       └── [id].ex
  ├── mix.exs
  └── Dockerfile
  ```
@@ -138,7 +139,7 @@ If you want the fastest path into Nex, use this sequence:
      """
    end
  
-   def increment(_params) do
+   def increment(_req) do
      count = Nex.Store.update(:count, 0, &(&1 + 1))
      ~H"<div id="counter-display">{count}</div>"
    end

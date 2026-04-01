@@ -65,14 +65,116 @@ defmodule Nex.Handler.Errors do
   end
 
   defp render_convention_error(module, status, message) do
-    assigns = %{status: status, message: message}
+    assigns = %{
+      status: status,
+      message: message,
+      title: "#{status} — #{message}"
+    }
 
     if function_exported?(module, :render, 1) do
-      module.render(assigns) |> Phoenix.HTML.Safe.to_iodata() |> IO.iodata_to_binary()
+      assigns
+      |> module.render()
+      |> to_html_binary()
+      |> wrap_with_error_shell(module, assigns)
     else
       raise "Convention error module missing render/1"
     end
   end
+
+  defp wrap_with_error_shell(content_html, module, assigns) do
+    content_html
+    |> wrap_with_app(module, assigns)
+    |> wrap_with_document(assigns)
+  end
+
+  defp wrap_with_app(content_html, error_module, assigns) do
+    case resolve_app_module(error_module) do
+      nil ->
+        content_html
+
+      layout_module ->
+        layout_assigns =
+          assigns
+          |> Map.put(:inner_content, content_html)
+          |> Map.put_new(:title, "Nex App")
+
+        layout_module.render(layout_assigns) |> to_html_binary()
+    end
+  end
+
+  defp wrap_with_document(inner_html, assigns) do
+    case resolve_document_module() do
+      nil ->
+        default_document(inner_html, Map.get(assigns, :title, "Nex App"))
+
+      document_module ->
+        document_assigns = %{
+          inner_content: inner_html,
+          title: Map.get(assigns, :title, "Nex App")
+        }
+
+        document_module.render(document_assigns) |> to_html_binary()
+    end
+  end
+
+  defp resolve_app_module(error_module) do
+    case layout_override(error_module) do
+      :none -> nil
+      nil -> resolve_default_app_module()
+      layout_module -> layout_module
+    end
+  end
+
+  defp layout_override(error_module) do
+    if function_exported?(error_module, :layout, 0) do
+      case error_module.layout() do
+        :none -> :none
+        module when is_atom(module) -> module
+        _ -> nil
+      end
+    else
+      nil
+    end
+  end
+
+  defp resolve_default_app_module do
+    app_module = Nex.Config.app_module()
+
+    with :error <- Nex.Utils.safe_to_existing_module("#{app_module}.Pages.App"),
+         :error <- Nex.Utils.safe_to_existing_module("#{app_module}.Layouts") do
+      nil
+    else
+      {:ok, module} -> module
+    end
+  end
+
+  defp resolve_document_module do
+    app_module = Nex.Config.app_module()
+
+    case Nex.Utils.safe_to_existing_module("#{app_module}.Pages.Document") do
+      {:ok, module} -> module
+      :error -> nil
+    end
+  end
+
+  defp default_document(inner_html, title) do
+    """
+    <!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>#{title}</title>
+      </head>
+      <body>
+        #{inner_html}
+      </body>
+    </html>
+    """
+  end
+
+  defp to_html_binary(html) when is_binary(html), do: html
+  defp to_html_binary(html), do: Phoenix.HTML.Safe.to_iodata(html) |> IO.iodata_to_binary()
 
   defp fallback_error_page(conn, status, message, error) do
     case Application.get_env(:nex_core, :error_page_module) do

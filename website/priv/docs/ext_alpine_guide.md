@@ -12,7 +12,7 @@ Nex handles **server communication**, while Alpine.js handles **local UI logic**
 
 ## 2. Integration Method
 
-Include it in the `<head>` tag of your `src/layouts.ex` (using `defer` is recommended):
+Include it in the `<head>` tag of your `src/pages/_document.ex` (using `defer` is recommended):
 
 ```html
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
@@ -24,7 +24,7 @@ Include it in the `<head>` tag of your `src/layouts.ex` (using `defer` is recomm
 You can define global state on the `<body>` tag and use `localStorage` for persistence (e.g., theme switching).
 
 ```elixir
-# src/layouts.ex
+# src/pages/_document.ex
 <body
   x-data="{ theme: localStorage.getItem('theme') || 'light' }"
   x-init="$watch('theme', val => localStorage.setItem('theme', val))"
@@ -103,7 +103,7 @@ To dive deeper into integrating Alpine.js with Nex, refer to the official galler
 **[GitHub: Alpine Demo](https://github.com/gofenix/nex/tree/main/examples/alpine_demo)**
 
 ### Features included in this example:
-*   **Theme Switching**: Managed via Alpine in `layouts.ex` with `localStorage` persistence.
+*   **Theme Switching**: Managed via Alpine in `_document.ex` with `localStorage` persistence.
 *   **Client-side Tabs**: Rapid view switching without server involvement.
 *   **Responsive Modals**: Includes auto-focusing (`$refs`) and click-outside-to-close interactions.
 *   **Global Toast System**: Cross-component notifications using Alpine's event system.

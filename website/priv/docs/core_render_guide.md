@@ -14,8 +14,8 @@ When you access a URL directly via the browser address bar (GET request), Nex pe
     *   Returns the `assigns` Map.
 4.  **Execute `render(assigns)`**:
     *   Renders the HEEx template using `assigns`.
-5.  **Inject Layout**:
-    *   Passes the rendered result as `@inner_content` to `src/layouts.ex`.
+5.  **Wrap the Page Shell**:
+    *   Passes the rendered result as `@inner_content` to `src/pages/_app.ex` when present, then to `src/pages/_document.ex`.
     *   **Automated Injection**: Automatically injects `<meta name="csrf-token">` before `</head>`, and injects a JS snippet (CSRF + Page ID configuration for HTMX) before `</body>`.
 6.  **Respond to Client**: Returns the full HTML document.
 
@@ -23,10 +23,10 @@ When you access a URL directly via the browser address bar (GET request), Nex pe
 
 When you initiate a request via HTMX (e.g., `hx-post`), the lifecycle changes:
 
-1.  **Action Matching**: Finds the target Action function based on the URL path or Referer.
+1.  **Action Matching**: Finds the target Action function based on the URL path and current page context.
 2.  **Execute Action**:
     *   **Skip mount**: For performance and locality, Actions do not re-execute the page's `mount`.
-    *   Receives request parameters.
+    *   Receives a `Nex.Req` struct.
     *   Returns an HTML fragment or control directives (e.g., `{:refresh}`).
 3.  **Partial Update**:
     *   HTMX receives the response and only updates part of the page according to `hx-target`.

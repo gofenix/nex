@@ -4,7 +4,11 @@ defmodule Nex.Config do
   """
 
   @doc "Returns the application module name."
-  def app_module, do: Application.get_env(:nex_core, :app_module, "MyApp")
+  def app_module do
+    :nex_core
+    |> Application.get_env(:app_module, "MyApp")
+    |> Nex.Utils.normalize_module_name()
+  end
 
   @doc "Returns the source path for routes."
   def src_path, do: Application.get_env(:nex_core, :src_path, "src")
