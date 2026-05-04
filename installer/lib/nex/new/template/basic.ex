@@ -5,7 +5,14 @@ defmodule Nex.New.Template.Basic do
   alias Nex.New.Template.Shared
 
   def project_dirs(path) do
-    [path, "#{path}/src", "#{path}/src/pages", "#{path}/src/api", "#{path}/src/components"]
+    [
+      path,
+      "#{path}/src",
+      "#{path}/src/pages",
+      "#{path}/src/api",
+      "#{path}/src/components"
+      | Shared.ai_onboarding_dirs(path)
+    ]
   end
 
   def project_files(%{frontend: :datastar} = assigns) do
@@ -23,8 +30,8 @@ defmodule Nex.New.Template.Basic do
       {"Dockerfile", Shared.dockerfile()},
       {".env.example", Shared.env_example()},
       {".formatter.exs", Shared.formatter_exs()},
-      {"AGENTS.md", Shared.agents_md(assigns)},
       {"README.md", Legacy.readme(assigns)}
+      | Shared.ai_onboarding_files(assigns)
     ]
   end
 
@@ -42,8 +49,8 @@ defmodule Nex.New.Template.Basic do
       {"Dockerfile", Shared.dockerfile()},
       {".env.example", Shared.env_example()},
       {".formatter.exs", Shared.formatter_exs()},
-      {"AGENTS.md", Shared.agents_md(assigns)},
       {"README.md", Legacy.readme(assigns)}
+      | Shared.ai_onboarding_files(assigns)
     ]
   end
 end

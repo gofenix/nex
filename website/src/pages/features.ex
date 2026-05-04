@@ -8,11 +8,11 @@ defmodule NexWebsite.Pages.Features do
       htmx_action_code: CodeExamples.get("htmx_action.md") |> CodeExamples.format_for_display(),
       sse_stream_code: CodeExamples.get("sse_stream.md") |> CodeExamples.format_for_display(),
       routing_example: """
-    <div style="background: #1C1C1E; padding: 1.25rem 1.5rem; overflow-x: auto;"><pre><code style="color: #E8E8E8; font-family: monospace; font-size: 0.8rem; line-height: 1.65;">src/pages/index.ex       GET /
-    src/pages/about.ex       GET /about
-    src/pages/blog/[id].ex   GET /blog/:id
-    src/pages/[...path].ex   GET /*</code></pre></div>
-    """
+      <div style="background: #1C1C1E; padding: 1.25rem 1.5rem; overflow-x: auto;"><pre><code style="color: #E8E8E8; font-family: monospace; font-size: 0.8rem; line-height: 1.65;">src/pages/index.ex       GET /
+      src/pages/about.ex       GET /about
+      src/pages/blog/[id].ex   GET /blog/:id
+      src/pages/[...path].ex   GET /*</code></pre></div>
+      """
     }
   end
 
@@ -42,7 +42,7 @@ defmodule NexWebsite.Pages.Features do
             </li>
             <li class="flex items-center gap-2.5 text-sm" style="color: #555;">
               <svg class="w-4 h-4 flex-shrink-0" style="color: #9B7EBD;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-              AGENTS.md support for AI coding assistants
+              AGENTS.md bootstrap plus project-local SKILL.md
             </li>
             <li class="flex items-center gap-2.5 text-sm" style="color: #555;">
               <svg class="w-4 h-4 flex-shrink-0" style="color: #9B7EBD;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>

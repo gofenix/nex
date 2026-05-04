@@ -192,7 +192,14 @@ defmodule Nex.New.Legacy do
   end
 
   def project_dirs(path, :basic) do
-    [path, "#{path}/src", "#{path}/src/pages", "#{path}/src/api", "#{path}/src/components"]
+    [
+      path,
+      "#{path}/src",
+      "#{path}/src/pages",
+      "#{path}/src/api",
+      "#{path}/src/components"
+      | ai_onboarding_dirs(path)
+    ]
   end
 
   def project_dirs(path, :saas) do
@@ -204,6 +211,7 @@ defmodule Nex.New.Legacy do
       "#{path}/src/components",
       "#{path}/src/pages",
       "#{path}/src/plugs"
+      | ai_onboarding_dirs(path)
     ]
   end
 
@@ -221,8 +229,8 @@ defmodule Nex.New.Legacy do
       {"Dockerfile", dockerfile()},
       {".env.example", env_example()},
       {".formatter.exs", formatter_exs()},
-      {"AGENTS.md", agents_md(assigns)},
       {"README.md", readme(assigns)}
+      | ai_onboarding_files(assigns)
     ]
   end
 
@@ -248,8 +256,25 @@ defmodule Nex.New.Legacy do
       {"Dockerfile", dockerfile()},
       {".env.example", saas_env_example(assigns)},
       {".formatter.exs", formatter_exs()},
-      {"AGENTS.md", agents_md(assigns)},
       {"README.md", saas_readme(assigns)}
+      | ai_onboarding_files(assigns)
+    ]
+  end
+
+  def ai_onboarding_dirs(path) do
+    [
+      "#{path}/.agents",
+      "#{path}/.agents/skills",
+      "#{path}/.agents/skills/nex-project",
+      "#{path}/.agents/skills/nex-project/agents"
+    ]
+  end
+
+  def ai_onboarding_files(assigns) do
+    [
+      {"AGENTS.md", agents_md(assigns)},
+      {".agents/skills/nex-project/SKILL.md", project_skill_md(assigns)},
+      {".agents/skills/nex-project/agents/openai.yaml", project_skill_openai_yaml(assigns)}
     ]
   end
 
@@ -439,7 +464,7 @@ defmodule Nex.New.Legacy do
 
           <div class="alert alert-info shadow-sm border-none bg-blue-50 text-blue-800">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-            <span>Check <code>AGENTS.md</code> to see how to pair Nex with AI agents.</span>
+            <span>Load <code>.agents/skills/nex-project/SKILL.md</code> for canonical AI rules. <code>AGENTS.md</code> points tools there.</span>
           </div>
         </div>
         \"\"\"
@@ -629,7 +654,7 @@ defmodule Nex.New.Legacy do
 
           <div class="alert alert-info shadow-sm border-none bg-blue-50 text-blue-800">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-            <span>Check <code>AGENTS.md</code> to see how to pair Nex with AI agents.</span>
+            <span>Load <code>.agents/skills/nex-project/SKILL.md</code> for canonical AI rules. <code>AGENTS.md</code> points tools there.</span>
           </div>
         </div>
         \"\"\"
@@ -1925,6 +1950,11 @@ defmodule Nex.New.Legacy do
 
     Open http://localhost:4000, create an account, and you are in.
 
+    ## AI Onboarding
+
+    - `AGENTS.md` — bootstrap file that points AI tools to the project skill
+    - `.agents/skills/nex-project/SKILL.md` — canonical AI rules for this project
+
     ## Starter Routes
 
     - `/` — landing page
@@ -1937,6 +1967,13 @@ defmodule Nex.New.Legacy do
 
     ```
     #{a.app_name}/
+    ├── .agents/
+    │   └── skills/
+    │       └── nex-project/
+    │           ├── SKILL.md       # Canonical AI rules for this project
+    │           └── agents/
+    │               └── openai.yaml
+    ├── AGENTS.md               # Bootstrap pointer for AI tools
     ├── db/                    # SQLite database files (default starter setup)
     ├── src/
     │   ├── accounts.ex        # Account registration + authentication
@@ -1986,7 +2023,35 @@ defmodule Nex.New.Legacy do
 
   def agents_md(a) do
     """
-    # #{a.module_name} — Nex Agent Guide
+    # #{a.module_name} — Nex AI Entry
+
+    This project uses a project-local skill as its canonical AI rule source.
+
+    ## Read First
+
+    - Canonical rules: `.agents/skills/nex-project/SKILL.md`
+    - Bootstrap file: `AGENTS.md`
+    - If this file and the skill disagree, the skill wins.
+
+    ## Tool Guidance
+
+    - Tools that auto-discover `.agents/skills/` should load `nex-project` before making changes.
+    - Tools that do not auto-discover skills should open `.agents/skills/nex-project/SKILL.md` directly and use it as the project instruction set.
+    - After loading the skill, follow its routing, page, API, HTMX, and NexBase rules for all code generation.
+    """
+  end
+
+  def project_skill_md(a) do
+    """
+    ---
+    name: nex-project
+    description: Canonical AI rules for working in the #{a.module_name} Nex application. Use when editing or generating code in this repository. Covers file-based routing, layouts, page modules, Page Actions, API handlers, HTMX and CSRF conventions, NexBase usage, and common anti-patterns.
+    ---
+
+    # #{a.module_name} — Nex Project Skill
+
+    This file is the canonical AI rule source for this project.
+    If `AGENTS.md` and this skill diverge, follow this skill.
 
     > Nex is a minimalist Elixir web framework. Folder structure = router. No config files. No asset pipeline. CDN-first.
 
@@ -2082,6 +2147,13 @@ defmodule Nex.New.Legacy do
 
     ```
     #{a.app_name}/
+      AGENTS.md            # Bootstrap pointer to the canonical skill
+      .agents/
+        skills/
+          nex-project/
+            SKILL.md       # Canonical AI rules for this project
+            agents/
+              openai.yaml
       src/
         application.ex      # App startup
         pages/              # File = route (index.ex → /)
@@ -2184,6 +2256,12 @@ defmodule Nex.New.Legacy do
     ---
 
     ## 4. Page Module Pattern
+
+    ### Request Contract
+    - Page Actions in `src/pages/` receive `Nex.Req`
+    - API handlers in `src/api/` also receive `Nex.Req`
+    - Read path and query params from `req.query`
+    - Read request body params from `req.body`
 
     ```elixir
     defmodule #{a.module_name}.Pages.Index do
@@ -2437,6 +2515,15 @@ defmodule Nex.New.Legacy do
     """
   end
 
+  def project_skill_openai_yaml(_a) do
+    """
+    interface:
+      display_name: "Nex Project"
+      short_description: "Canonical rules for editing this generated Nex application."
+      default_prompt: "Load the nex-project skill before editing code in this repository and follow its routing, page, API, HTMX, and NexBase rules."
+    """
+  end
+
   def readme(a) do
     """
     # #{a.module_name}
@@ -2452,10 +2539,22 @@ defmodule Nex.New.Legacy do
 
     Open http://localhost:4000
 
+    ## AI Onboarding
+
+    - `AGENTS.md` — bootstrap file that points AI tools to the project skill
+    - `.agents/skills/nex-project/SKILL.md` — canonical AI rules for this project
+
     ## Project Structure
 
     ```
     #{a.app_name}/
+    ├── .agents/
+    │   └── skills/
+    │       └── nex-project/
+    │           ├── SKILL.md       # Canonical AI rules for this project
+    │           └── agents/
+    │               └── openai.yaml
+    ├── AGENTS.md               # Bootstrap pointer for AI tools
     ├── src/
     │   ├── application.ex      # Application supervision tree
     │   ├── pages/              # Page components (routes)

@@ -8,16 +8,16 @@ defmodule DatastarDemo.E2ETest do
     assert_has_test_id(home.body, "datastar-signals-section")
     assert_has_test_id(home.body, "datastar-morph-section")
     assert_has_test_id(home.body, "datastar-stream-section")
+    assert_has_test_id(home.body, "datastar-todos-section")
     assert home.body =~ "data-signals"
     assert home.body =~ "data-bind:name"
+    assert home.body =~ "data-bind:newTodo"
     assert home.body =~ "data-text"
   end
 
   test "process endpoint returns HTML fragment", %{client: client} do
     {resp, _jar} =
-      HTTP.post(client, "/api/process",
-        json: %{"text" => "hello world"}
-      )
+      HTTP.post(client, "/api/process", json: %{"text" => "hello world"})
 
     assert_status(resp, 200)
     assert resp.body =~ "HELLO WORLD"
@@ -44,5 +44,30 @@ defmodule DatastarDemo.E2ETest do
     first_sig = hd(patch_signals)
     assert first_sig.data =~ "signals"
     assert first_sig.data =~ "streamCount"
+  end
+
+  test "todo endpoint stores todos and returns Datastar patches", %{client: client} do
+    page_id = "datastar-todos-test-#{System.unique_integer([:positive])}"
+
+    {resp, _jar} =
+      HTTP.post(client, "/api/todos", json: %{"text" => "ship the spike", "pageId" => page_id})
+
+    assert_status(resp, 200)
+    assert HTTP.header(resp, "content-type") =~ "text/event-stream"
+    assert resp.body =~ "event: datastar-patch-elements"
+    assert resp.body =~ "selector #todo-list"
+    assert resp.body =~ "mode append"
+    assert resp.body =~ "ship the spike"
+    assert resp.body =~ "event: datastar-patch-signals"
+    assert resp.body =~ ~s("todoCount":1)
+
+    {second_resp, _jar} =
+      HTTP.post(client, "/api/todos",
+        json: %{"text" => "write the forum update", "pageId" => page_id}
+      )
+
+    assert_status(second_resp, 200)
+    assert second_resp.body =~ "write the forum update"
+    assert second_resp.body =~ ~s("todoCount":2)
   end
 end

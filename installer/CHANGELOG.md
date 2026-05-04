@@ -9,9 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Generator submodules**: Added `Nex.New.*` helper modules for options, generation, messages, and starter templates behind the existing `mix nex.new` task interface.
+- **Project-local AI skill**: Generated apps now include `.agents/skills/nex-project/SKILL.md` and `.agents/skills/nex-project/agents/openai.yaml` alongside `AGENTS.md`.
 
 ### Changed
 - **Task organization**: Refactored `Mix.Tasks.Nex.New` into delegated modules so starter templates and generation logic are no longer concentrated in a single file.
+- **AI bootstrap docs**: Generated `AGENTS.md` now points to the project skill as the canonical rule source instead of duplicating the full rule set.
 
 ## [0.4.2] - 2026-03-27
 

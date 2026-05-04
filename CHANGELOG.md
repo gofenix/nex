@@ -10,9 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **`Nex.HTMX` helpers**: Added pipeline-friendly functions (`push_url/2`, `trigger/2`, `retarget/2`, etc.) to easily attach HTMX headers to HEEx templates and `%Nex.Response{}` structs. This allows seamless Out-of-Band updates and client-side event triggering.
 - **Handler submodules**: Added internal `Nex.Handler.*` modules to isolate lifecycle, dispatch, page, API, streaming, WebSocket, and error responsibilities behind the existing `Nex.Handler.handle/1` entry point.
+- **Datastar todo spike**: Extended the Datastar example with a store-backed todo flow that returns `patch_elements` and `patch_signals` events from a page action-style API endpoint.
 
 ### Changed
 - **Handler organization**: Refactored the request pipeline into smaller delegated modules without changing public routing or response behavior.
+- **AI onboarding for generated apps**: `mix nex.new` scaffolds now ship with a bootstrap `AGENTS.md` plus a canonical project-local skill at `.agents/skills/nex-project/`.
 - **Route matching precedence**: Optional catch-all routes (`[[...param]]`) now sort behind static, dynamic, and required catch-all routes so sibling dynamic routes keep winning for concrete paths.
 - **Single-segment page actions**: Short action paths now resolve against the current page module when a referer page is available, instead of falling back to homepage actions with the same name.
 - **Convention error pages**: `src/pages/404.ex` and `src/pages/500.ex` now render through the shared `_app.ex` / `_document.ex` shell when present.

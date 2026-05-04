@@ -41,6 +41,7 @@ mix nex.dev
 
 Then open `http://localhost:4000`.
 This default scaffold is the `basic` starter: the lightest way to learn Nex.
+Generated apps include `AGENTS.md` plus a project-local skill at `.agents/skills/nex-project/SKILL.md` for AI onboarding.
 
 If you want the product starter with auth, database wiring, and a protected dashboard:
 
@@ -52,6 +53,11 @@ mix nex.new my_app --starter saas
  
  ```
  my_app/
+ ├── .agents/
+ │   └── skills/
+ │       └── nex-project/
+ │           └── SKILL.md
+ ├── AGENTS.md
  ├── src/
  │   ├── api/
  │   │   └── todos/
@@ -89,9 +95,10 @@ mix nex.new my_app --starter saas
  - Shared request-time helpers for cookies, session, and flash
  
  ### Developer Experience
- 
+
  - Unified `use Nex` entry point
  - Low-boilerplate layouts and page modules
+ - `AGENTS.md` bootstrap plus a project-local `SKILL.md` for AI assistants
  - Built-in static file serving
  - Example gallery and product-shaped apps in the same repository
  

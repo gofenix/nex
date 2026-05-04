@@ -13,6 +13,7 @@ defmodule Nex.New.Template.Saas do
       "#{path}/src/components",
       "#{path}/src/pages",
       "#{path}/src/plugs"
+      | Shared.ai_onboarding_dirs(path)
     ]
   end
 
@@ -38,8 +39,8 @@ defmodule Nex.New.Template.Saas do
       {"Dockerfile", Shared.dockerfile()},
       {".env.example", Legacy.saas_env_example(assigns)},
       {".formatter.exs", Shared.formatter_exs()},
-      {"AGENTS.md", Shared.agents_md(assigns)},
       {"README.md", Legacy.saas_readme(assigns)}
+      | Shared.ai_onboarding_files(assigns)
     ]
   end
 end

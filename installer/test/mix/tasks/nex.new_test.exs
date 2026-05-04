@@ -29,6 +29,7 @@ defmodule Mix.Tasks.Nex.NewTest do
     refute File.exists?(Path.join(project_path, "src/layouts.ex"))
     refute File.exists?(Path.join(project_path, "src/pages/dashboard.ex"))
     refute File.exists?(Path.join(project_path, "db"))
+    assert_ai_onboarding_files(project_path)
 
     mix_exs = File.read!(Path.join(project_path, "mix.exs"))
     assert mix_exs =~ "{:nex_core,"
@@ -41,7 +42,17 @@ defmodule Mix.Tasks.Nex.NewTest do
     readme = File.read!(Path.join(project_path, "README.md"))
     assert readme =~ "_document.ex"
     assert readme =~ "_app.ex"
+    assert readme =~ ".agents/skills/nex-project/SKILL.md"
     refute readme =~ "src/layouts.ex"
+
+    agents = File.read!(Path.join(project_path, "AGENTS.md"))
+    assert agents =~ ".agents/skills/nex-project/SKILL.md"
+    refute agents =~ "Critical Anti-Patterns"
+
+    skill = File.read!(Path.join(project_path, ".agents/skills/nex-project/SKILL.md"))
+    assert skill =~ "name: nex-project"
+    assert skill =~ "Nex.Req"
+    assert skill =~ "req.body"
   end
 
   test "generates the basic starter with datastar frontend", %{tmp_dir: tmp_dir} do
@@ -51,6 +62,7 @@ defmodule Mix.Tasks.Nex.NewTest do
     assert File.exists?(Path.join(project_path, "src/pages/_document.ex"))
     assert File.exists?(Path.join(project_path, "src/api/counter.ex"))
     refute File.exists?(Path.join(project_path, "src/layouts.ex"))
+    assert_ai_onboarding_files(project_path)
 
     doc = File.read!(Path.join(project_path, "src/pages/_document.ex"))
     assert doc =~ "datastar"
@@ -62,6 +74,7 @@ defmodule Mix.Tasks.Nex.NewTest do
     readme = File.read!(Path.join(project_path, "README.md"))
     assert readme =~ "_document.ex"
     assert readme =~ "_app.ex"
+    assert readme =~ ".agents/skills/nex-project/SKILL.md"
     refute readme =~ "src/layouts.ex"
   end
 
@@ -75,6 +88,7 @@ defmodule Mix.Tasks.Nex.NewTest do
     assert File.exists?(Path.join(project_path, "src/pages/dashboard.ex"))
     assert File.exists?(Path.join(project_path, "src/plugs/require_auth.ex"))
     assert File.exists?(Path.join(project_path, "src/api/health.ex"))
+    assert_ai_onboarding_files(project_path)
 
     mix_exs = File.read!(Path.join(project_path, "mix.exs"))
     assert mix_exs =~ "{:nex_base,"
@@ -110,9 +124,14 @@ defmodule Mix.Tasks.Nex.NewTest do
     assert document =~ "Pages.Document"
 
     agents = File.read!(Path.join(project_path, "AGENTS.md"))
-    assert agents =~ "def save(req) do"
-    assert agents =~ "name = req.body[\"name\"]"
-    refute agents =~ "def save(_params)"
+    assert agents =~ ".agents/skills/nex-project/SKILL.md"
+    refute agents =~ "def save(req) do"
+    refute agents =~ "single source of truth"
+
+    skill = File.read!(Path.join(project_path, ".agents/skills/nex-project/SKILL.md"))
+    assert skill =~ "def save(req) do"
+    assert skill =~ "name = req.body[\"name\"]"
+    assert skill =~ "layout, do: :none"
 
     env_example = File.read!(Path.join(project_path, ".env.example"))
     assert env_example =~ "DATABASE_URL=sqlite://db/saas_app_dev.db"
@@ -134,6 +153,13 @@ defmodule Mix.Tasks.Nex.NewTest do
     end)
 
     Path.join(tmp_dir, name)
+  end
+
+  defp assert_ai_onboarding_files(project_path) do
+    assert File.exists?(Path.join(project_path, "AGENTS.md"))
+    assert File.exists?(Path.join(project_path, ".agents/skills/nex-project/SKILL.md"))
+
+    assert File.exists?(Path.join(project_path, ".agents/skills/nex-project/agents/openai.yaml"))
   end
 
   defp restore_env(key, nil), do: System.delete_env(key)

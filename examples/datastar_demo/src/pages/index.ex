@@ -2,7 +2,10 @@ defmodule DatastarDemo.Pages.Index do
   use Nex
 
   def mount(_params) do
-    %{title: "Datastar Demo — Nex Framework"}
+    %{
+      title: "Datastar Demo — Nex Framework",
+      todos: Nex.Store.get(:datastar_todos, [])
+    }
   end
 
   def render(assigns) do
@@ -97,6 +100,49 @@ defmodule DatastarDemo.Pages.Index do
             <div id="feed" data-testid="datastar-feed" class="space-y-2 p-4 bg-base-200 rounded-lg min-h-[80px]">
               <p class="text-base-content/40 italic">Stream events will appear here...</p>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 4: Store-backed Todos -->
+      <section data-testid="datastar-todos-section" class="card bg-base-100 shadow-sm border border-base-300">
+        <div class="card-body">
+          <h2 class="card-title text-xl mb-4">4. Store-backed Todos</h2>
+          <p class="text-base-content/60 mb-4">
+            Keep the page state in <code>Nex.Store</code>, then return Datastar patches for the changed DOM and signals.
+          </p>
+
+          <div data-signals={"{ \"newTodo\": \"\", \"todoCount\": #{length(@todos)}, \"pageId\": \"#{@_page_id}\" }"}>
+            <div class="flex gap-2 mb-4">
+              <input
+                type="text"
+                data-testid="datastar-todo-input"
+                data-bind:newTodo
+                class="input input-bordered flex-1"
+                placeholder="Add a store-backed todo..."
+              />
+              <button
+                data-testid="datastar-todo-btn"
+                data-on:click="@post('/api/todos', {text: $newTodo, pageId: $pageId})"
+                class="btn btn-accent"
+              >
+                Add
+              </button>
+            </div>
+
+            <div class="flex items-center gap-3 mb-4">
+              <span class="text-base-content/60">Stored todos:</span>
+              <span data-testid="datastar-todo-count" class="badge badge-lg badge-accent" data-text="$todoCount">{length(@todos)}</span>
+            </div>
+
+            <ul id="todo-list" data-testid="datastar-todo-list" class="space-y-2">
+              <li
+                :for={todo <- @todos}
+                class="rounded-lg bg-base-200 px-4 py-3 text-sm"
+              >
+                {todo.text}
+              </li>
+            </ul>
           </div>
         </div>
       </section>

@@ -35,11 +35,13 @@ defmodule Mix.Tasks.Nex.NewE2ETest do
         ".gitignore",
         "Dockerfile",
         "AGENTS.md",
+        ".agents/skills/nex-project/SKILL.md",
+        ".agents/skills/nex-project/agents/openai.yaml",
         "README.md"
       ])
 
       refute File.exists?(Path.join(p, "src/layouts.ex")),
-        "src/layouts.ex should not exist (replaced by _app.ex + _document.ex)"
+             "src/layouts.ex should not exist (replaced by _app.ex + _document.ex)"
 
       app = File.read!(Path.join(p, "src/pages/_app.ex"))
       assert app =~ "Pages.App"
@@ -90,6 +92,8 @@ defmodule Mix.Tasks.Nex.NewE2ETest do
       assert File.exists?(Path.join(p, "src/api/counter.ex"))
       assert File.exists?(Path.join(p, "src/pages/_app.ex"))
       assert File.exists?(Path.join(p, "src/pages/_document.ex"))
+      assert File.exists?(Path.join(p, ".agents/skills/nex-project/SKILL.md"))
+      assert File.exists?(Path.join(p, ".agents/skills/nex-project/agents/openai.yaml"))
       refute File.exists?(Path.join(p, "src/layouts.ex"))
 
       doc = File.read!(Path.join(p, "src/pages/_document.ex"))
@@ -141,6 +145,8 @@ defmodule Mix.Tasks.Nex.NewE2ETest do
         assert File.exists?(Path.join(p, file)), "missing: #{file}"
       end
 
+      assert File.exists?(Path.join(p, ".agents/skills/nex-project/SKILL.md"))
+      assert File.exists?(Path.join(p, ".agents/skills/nex-project/agents/openai.yaml"))
       refute File.exists?(Path.join(p, "src/layouts.ex"))
 
       # Verify auth-aware layout
@@ -173,48 +179,62 @@ defmodule Mix.Tasks.Nex.NewE2ETest do
   end
 
   # =========================================================================
-  # AGENTS.md content verification (all variants)
+  # AI onboarding content verification
   # =========================================================================
 
-  describe "AGENTS.md content" do
+  describe "AI onboarding files" do
     setup do
       project = generate("e2e_agents")
       on_exit(fn -> cleanup(project) end)
       {:ok, project: project}
     end
 
-    test "documents all framework features", %{project: p} do
+    test "keeps AGENTS.md lightweight and moves canonical rules into the project skill", %{
+      project: p
+    } do
       agents = File.read!(Path.join(p, "AGENTS.md"))
+      skill = File.read!(Path.join(p, ".agents/skills/nex-project/SKILL.md"))
+      openai_yaml = File.read!(Path.join(p, ".agents/skills/nex-project/agents/openai.yaml"))
+
+      assert agents =~ ".agents/skills/nex-project/SKILL.md"
+      assert agents =~ "nex-project"
+      refute agents =~ "Critical Anti-Patterns"
+      refute agents =~ "single source of truth"
 
       # Layout system
-      assert agents =~ "_app.ex"
-      assert agents =~ "_document.ex"
-      refute agents =~ "layouts.ex"
+      assert skill =~ "_app.ex"
+      assert skill =~ "_document.ex"
+      refute skill =~ "layouts.ex"
 
       # Routing
-      assert agents =~ "[[...path]]"
-      assert agents =~ "[id]"
+      assert skill =~ "[[...path]]"
+      assert skill =~ "[id]"
 
       # mount returns
-      assert agents =~ ":not_found"
-      assert agents =~ ~s({:redirect, "/path"})
+      assert skill =~ ":not_found"
+      assert skill =~ ~s({:redirect, "/path"})
 
       # Nex.Res pipeline
-      assert agents =~ "Nex.Res"
-      assert agents =~ "Nex.Res.json"
+      assert skill =~ "Nex.Res"
+      assert skill =~ "Nex.Res.json"
 
       # HTMX helpers
-      assert agents =~ "Nex.HTMX"
-      assert agents =~ "push_url"
+      assert skill =~ "Nex.HTMX"
+      assert skill =~ "push_url"
 
       # Convention error pages
-      assert agents =~ "Error404"
+      assert skill =~ "Error404"
 
       # Per-page layout
-      assert agents =~ "layout, do: :none"
+      assert skill =~ "layout, do: :none"
 
-      # req.body nil semantics
-      assert agents =~ "nil for GET"
+      # req/body contract
+      assert skill =~ "Nex.Req"
+      assert skill =~ "req.body"
+      assert skill =~ "nil for GET"
+
+      assert openai_yaml =~ "display_name: \"Nex Project\""
+      assert openai_yaml =~ "nex-project skill"
     end
   end
 
@@ -311,9 +331,7 @@ defmodule Mix.Tasks.Nex.NewE2ETest do
     end
 
     # Also kill any lingering BEAM processes on the port
-    System.cmd("lsof", ["-ti", ":4301,:4302,:4303"],
-      stderr_to_stdout: true
-    )
+    System.cmd("lsof", ["-ti", ":4301,:4302,:4303"], stderr_to_stdout: true)
     |> case do
       {pids, 0} ->
         pids

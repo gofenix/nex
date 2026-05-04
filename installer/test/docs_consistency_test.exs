@@ -38,6 +38,26 @@ defmodule Nex.DocsConsistencyTest do
     )
   end
 
+  test "public docs do not describe AGENTS.md as the single source of truth" do
+    assert_public_docs_do_not_match(
+      ~r/AGENTS\.md.*single source of truth|single source of truth.*AGENTS\.md/i,
+      "Found stale AGENTS.md single-source guidance"
+    )
+  end
+
+  test "key AI onboarding docs mention the project-local skill path" do
+    assert_files_match(
+      [
+        "README.md",
+        "installer/README.md",
+        "website/priv/docs/vibe_coding_guide.md",
+        "installer/lib/nex/new/legacy.ex"
+      ],
+      ~r/\.agents\/skills\/nex-project\/SKILL\.md/,
+      "Expected AI onboarding docs to mention the project-local skill path"
+    )
+  end
+
   defp assert_public_docs_do_not_match(pattern, message) do
     offenders =
       public_doc_files()
@@ -50,10 +70,25 @@ defmodule Nex.DocsConsistencyTest do
     assert offenders == [], format_failure(message, offenders)
   end
 
+  defp assert_files_match(files, pattern, message) do
+    offenders =
+      files
+      |> Enum.map(&Path.join(@repo_root, &1))
+      |> Enum.reject(fn path ->
+        path
+        |> File.read!()
+        |> String.match?(pattern)
+      end)
+
+    assert offenders == [], format_failure(message, offenders)
+  end
+
   defp public_doc_files do
     [
       "README.md",
+      "installer/README.md",
       "website/README.md",
+      "website/src/pages/features.ex",
       "website/src/pages/getting_started.ex",
       "website/priv/docs/**/*.md",
       "website/priv/code_examples/**/*.md",

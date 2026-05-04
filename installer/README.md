@@ -36,6 +36,7 @@ The generator creates a new Nex project with:
 
 - File-based routing structure
 - HTMX integration
+- `AGENTS.md` plus a project-local skill at `.agents/skills/nex-project/SKILL.md`
 - TailwindCSS and DaisyUI for styling
 - Hot reload in development
 - Example pages and components
