@@ -83,7 +83,7 @@ if [ $FAILED -gt 0 ]; then
     exit 1
 fi
 
-check_step "Installer template derives version from app metadata" "grep -q 'Application.spec(:nex_new, :vsn)' installer/lib/mix/tasks/nex.new.ex"
+check_step "Installer template derives version from app metadata" "grep -q 'Application.spec(:nex_new, :vsn)' installer/lib/nex/new/legacy.ex"
 
 echo ""
 echo -e "${BLUE}===========================================${NC}"
