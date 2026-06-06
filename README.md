@@ -108,7 +108,6 @@ mix nex.new my_app --starter saas
  
  - `framework/` — the core Nex framework published as `nex_core`
  - `installer/` — `mix nex.new` project generator
- - `nex_env/` — environment variable helper package
  - `nex_base/` — schema-less database layer and query builder
  - `examples/` — the Nex gallery, including focused patterns and larger app examples
  - `website/` — the official site built with Nex itself

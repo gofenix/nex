@@ -8,8 +8,13 @@ defmodule Nex.New.Legacy do
   end
 
   def run(args) do
-    {opts, parsed_args, _} =
-      OptionParser.parse(args, switches: [path: :string, starter: :string])
+    {opts, parsed_args, invalid} =
+      OptionParser.parse(args, strict: [path: :string, starter: :string])
+
+    unless invalid == [] do
+      invalid_opts = Enum.map_join(invalid, ", ", fn {k, _} -> "--#{k}" end)
+      Mix.raise("Unknown option(s): #{invalid_opts}. Valid options: --path, --starter")
+    end
 
     name =
       case parsed_args do
@@ -32,8 +37,8 @@ defmodule Nex.New.Legacy do
     project_path = Path.expand(Path.join(base_path, name))
     starter = normalize_starter(opts[:starter])
 
-    if File.dir?(project_path) do
-      Mix.raise("Directory #{project_path} already exists")
+    if File.exists?(project_path) do
+      Mix.raise("Path #{project_path} already exists")
     end
 
     module_name = Macro.camelize(name)
@@ -57,20 +62,21 @@ defmodule Nex.New.Legacy do
     Mix.shell().info("\n📦 Installing dependencies...\n")
 
     if skip_deps_install?() do
-      Mix.shell().info(success_message(name, starter, false))
+      Mix.shell().info(success_message(name, starter, false, base_path))
     else
       case System.cmd("mix", ["deps.get"], cd: project_path, stderr_to_stdout: true) do
         {_, 0} ->
-          Mix.shell().info(success_message(name, starter, true))
+          Mix.shell().info(success_message(name, starter, true, base_path))
 
         {error, _} ->
+          display_path = cd_instructions(name, base_path)
           Mix.raise("""
           Dependencies installation failed!
 
           Error: #{error}
 
           You can try installing manually:
-              cd #{name}
+              cd #{display_path}
               mix deps.get
           """)
       end
@@ -103,21 +109,31 @@ defmodule Nex.New.Legacy do
     System.get_env("NEX_NEW_SKIP_DEPS") == "1"
   end
 
-  def success_message(name, :basic, true) do
+  defp cd_instructions(name, base_path) when base_path in [".", nil] do
+    name
+  end
+  defp cd_instructions(name, base_path) do
+    Path.join(base_path, name)
+  end
+
+  def success_message(name, starter, deps_installed, base_path \\ ".")
+  def success_message(name, :basic, true, base_path) do
+    cd = cd_instructions(name, base_path)
     """
 
     ✅ Project created successfully!
 
     Next steps:
 
-        cd #{name}
+        cd #{cd}
         mix nex.dev
 
     Then open http://localhost:4000 in your browser.
     """
   end
 
-  def success_message(name, :basic, false) do
+  def success_message(name, :basic, false, base_path) do
+    cd = cd_instructions(name, base_path)
     """
 
     ✅ Project created successfully!
@@ -126,7 +142,7 @@ defmodule Nex.New.Legacy do
 
     Next steps:
 
-        cd #{name}
+        cd #{cd}
         mix deps.get
         mix nex.dev
 
@@ -134,14 +150,15 @@ defmodule Nex.New.Legacy do
     """
   end
 
-  def success_message(name, :saas, true) do
+  def success_message(name, :saas, true, base_path) do
+    cd = cd_instructions(name, base_path)
     """
 
     ✅ SaaS starter created successfully!
 
     Next steps:
 
-        cd #{name}
+        cd #{cd}
         mix nex.dev
 
     The starter will bootstrap its SQLite schema on first run.
@@ -149,7 +166,8 @@ defmodule Nex.New.Legacy do
     """
   end
 
-  def success_message(name, :saas, false) do
+  def success_message(name, :saas, false, base_path) do
+    cd = cd_instructions(name, base_path)
     """
 
     ✅ SaaS starter created successfully!
@@ -158,7 +176,7 @@ defmodule Nex.New.Legacy do
 
     Next steps:
 
-        cd #{name}
+        cd #{cd}
         mix deps.get
         mix nex.dev
 
@@ -841,7 +859,6 @@ defmodule Nex.New.Legacy do
         [
           {:nex_core, "~> #{nex_version}"},
           {:nex_base, "~> #{nex_version}"},
-          {:nex_env, "~> #{nex_version}"},
           {:ecto_sqlite3, "~> 0.17"},
           {:pbkdf2_elixir, "~> 2.3"}
         ]

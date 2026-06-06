@@ -98,6 +98,9 @@ defmodule Nex.DocsConsistencyTest do
       "framework/lib/nex/session.ex"
     ]
     |> Enum.flat_map(&Path.wildcard(Path.join(@repo_root, &1)))
+    |> Enum.reject(&String.contains?(&1, "/deps/"))
+    |> Enum.reject(&String.contains?(&1, "/_build/"))
+    |> Enum.reject(&(not File.exists?(&1)))
     |> Enum.sort()
   end
 

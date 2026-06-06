@@ -13,7 +13,6 @@ Even if only one package is modified, all packages will upgrade their version nu
 | Package | Directory | Hex Name | Current Version |
 |--------|-----------|----------|-----------------|
 | nex_core | framework/ | nex_core | 0.4.2 |
-| nex_env | nex_env/ | nex_env | 0.4.2 |
 | nex_base | nex_base/ | nex_base | 0.4.2 |
 | nex_new | installer/ | nex_new | 0.4.2 |
 
@@ -21,11 +20,9 @@ Even if only one package is modified, all packages will upgrade their version nu
 
 - `/VERSION` - Master version number (shared by all packages)
 - `/framework/VERSION` - Framework version (synchronized)
-- `/nex_env/VERSION` - Environment version (synchronized)
 - `/nex_base/VERSION` - Database version (synchronized)
 - `/installer/VERSION` - Installer version (synchronized)
 - `/framework/mix.exs` - nex_core package version
-- `/nex_env/mix.exs` - nex_env package version
 - `/nex_base/mix.exs` - nex_base package version
 - `/installer/mix.exs` - nex_new package version
 

@@ -92,7 +92,6 @@ defmodule Mix.Tasks.Nex.NewTest do
 
     mix_exs = File.read!(Path.join(project_path, "mix.exs"))
     assert mix_exs =~ "{:nex_base,"
-    assert mix_exs =~ "{:nex_env,"
     assert mix_exs =~ "{:ecto_sqlite3,"
     assert mix_exs =~ "{:pbkdf2_elixir,"
 

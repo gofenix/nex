@@ -4,8 +4,13 @@ defmodule Nex.New.Options do
   alias Nex.New.Legacy
 
   def parse!(args) do
-    {opts, parsed_args, _} =
-      OptionParser.parse(args, switches: [path: :string, starter: :string, frontend: :string])
+    {opts, parsed_args, invalid} =
+      OptionParser.parse(args, strict: [path: :string, starter: :string, frontend: :string])
+
+    unless invalid == [] do
+      invalid_opts = Enum.map_join(invalid, ", ", fn {k, _} -> "--#{k}" end)
+      Mix.raise("Unknown option(s): #{invalid_opts}. Valid options: --path, --starter, --frontend")
+    end
 
     name =
       case parsed_args do
@@ -29,14 +34,15 @@ defmodule Nex.New.Options do
     base_path = opts[:path] || "."
     project_path = Path.expand(Path.join(base_path, name))
 
-    if File.dir?(project_path) do
-      Mix.raise("Directory #{project_path} already exists")
+    if File.exists?(project_path) do
+      Mix.raise("Path #{project_path} already exists")
     end
 
     %{
       name: name,
       starter: starter,
       frontend: frontend,
+      base_path: base_path,
       project_path: project_path,
       assigns: %{app_name: name, module_name: Macro.camelize(name), frontend: frontend}
     }

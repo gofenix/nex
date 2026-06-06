@@ -126,16 +126,10 @@ defmodule Nex.Validator do
         validate_format(field, value, ~r/^https?:\/\/.+/, "must be a valid URL")
 
       {:min, min} when is_number(min) ->
-        validate_min_number(field, value, min)
-
-      {:min, min} when is_integer(min) ->
-        validate_min_length(field, value, min)
+        validate_min(field, value, min)
 
       {:max, max} when is_number(max) ->
-        validate_max_number(field, value, max)
-
-      {:max, max} when is_integer(max) ->
-        validate_max_length(field, value, max)
+        validate_max(field, value, max)
 
       {:format, pattern} when is_binary(pattern) ->
         validate_format(field, value, Regex.compile!(pattern), "must match format")
@@ -180,45 +174,45 @@ defmodule Nex.Validator do
     end
   end
 
-  defp validate_min_number(_field, nil, _min), do: []
+  defp validate_min(_field, nil, _min), do: []
 
-  defp validate_min_number(field, value, min) do
-    if is_number(value) && value >= min do
+  defp validate_min(field, value, min) when is_number(value) do
+    if value >= min do
       []
     else
       [{field, "must be at least #{min}"}]
     end
   end
 
-  defp validate_min_length(_field, nil, _min), do: []
-
-  defp validate_min_length(field, value, min) do
-    if is_binary(value) && String.length(value) >= min do
+  defp validate_min(field, value, min) when is_binary(value) do
+    if String.length(value) >= min do
       []
     else
       [{field, "must be at least #{min} characters"}]
     end
   end
 
-  defp validate_max_number(_field, nil, _max), do: []
+  defp validate_min(_field, _value, _min), do: []
 
-  defp validate_max_number(field, value, max) do
-    if is_number(value) && value <= max do
+  defp validate_max(_field, nil, _max), do: []
+
+  defp validate_max(field, value, max) when is_number(value) do
+    if value <= max do
       []
     else
       [{field, "must be at most #{max}"}]
     end
   end
 
-  defp validate_max_length(_field, nil, _max), do: []
-
-  defp validate_max_length(field, value, max) do
-    if is_binary(value) && String.length(value) <= max do
+  defp validate_max(field, value, max) when is_binary(value) do
+    if String.length(value) <= max do
       []
     else
       [{field, "must be at most #{max} characters"}]
     end
   end
+
+  defp validate_max(_field, _value, _max), do: []
 
   defp validate_in(_field, nil, _values), do: []
 
@@ -233,7 +227,14 @@ defmodule Nex.Validator do
   defp validate_custom(_field, nil, _validator, _opts), do: []
 
   defp validate_custom(field, value, validator, opts) do
-    case validator.(value, opts) do
+    result =
+      if Function.info(validator, :arity) == {:arity, 1} do
+        validator.(value)
+      else
+        validator.(value, opts)
+      end
+
+    case result do
       :ok -> []
       {:ok, _} -> []
       {:error, msg} -> [{field, msg}]

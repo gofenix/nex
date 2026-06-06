@@ -31,17 +31,27 @@ defmodule Nex.Helpers do
   @spec format_number(integer() | float() | nil) :: String.t()
   def format_number(nil), do: "0"
 
+  def format_number(n) when is_integer(n) and n >= 1_000_000_000 do
+    "#{format_float(n / 1_000_000_000)}B"
+  end
+
   def format_number(n) when is_integer(n) and n >= 1_000_000 do
-    "#{Float.round(n / 1_000_000, 1)}M"
+    "#{format_float(n / 1_000_000)}M"
   end
 
   def format_number(n) when is_integer(n) and n >= 1_000 do
-    "#{Float.round(n / 1_000, 1)}k"
+    "#{format_float(n / 1_000)}k"
   end
 
   def format_number(n) when is_integer(n), do: "#{n}"
   def format_number(n) when is_float(n), do: format_number(round(n))
   def format_number(n), do: "#{n}"
+
+  # Avoid scientific notation for large floats.
+  defp format_float(n) do
+    rounded = Float.round(n, 1)
+    :io_lib.format("~.1f", [rounded]) |> to_string()
+  end
 
   @doc """
   Formats a date or datetime to a human-readable string.
@@ -156,6 +166,13 @@ defmodule Nex.Helpers do
   @spec time_ago(date_input()) :: String.t()
   def time_ago(nil), do: ""
 
+  def time_ago(%Date{} = d) do
+    d
+    |> NaiveDateTime.new!(~T[00:00:00])
+    |> DateTime.from_naive!("Etc/UTC")
+    |> time_ago()
+  end
+
   def time_ago(%NaiveDateTime{} = dt) do
     dt |> DateTime.from_naive!("Etc/UTC") |> time_ago()
   end
@@ -165,11 +182,21 @@ defmodule Nex.Helpers do
 
     cond do
       diff < 60 -> "just now"
-      diff < 3_600 -> "#{div(diff, 60)} minutes ago"
-      diff < 86_400 -> "#{div(diff, 3_600)} hours ago"
-      diff < 604_800 -> "#{div(diff, 86_400)} days ago"
-      diff < 2_592_000 -> "#{div(diff, 604_800)} weeks ago"
-      true -> "#{div(diff, 2_592_000)} months ago"
+      diff < 3_600 ->
+        minutes = div(diff, 60)
+        "#{minutes} #{pluralize_unit(minutes, "minute", "minutes")} ago"
+      diff < 86_400 ->
+        hours = div(diff, 3_600)
+        "#{hours} #{pluralize_unit(hours, "hour", "hours")} ago"
+      diff < 604_800 ->
+        days = div(diff, 86_400)
+        "#{days} #{pluralize_unit(days, "day", "days")} ago"
+      diff < 2_592_000 ->
+        weeks = div(diff, 604_800)
+        "#{weeks} #{pluralize_unit(weeks, "week", "weeks")} ago"
+      true ->
+        months = div(diff, 2_592_000)
+        "#{months} #{pluralize_unit(months, "month", "months")} ago"
     end
   end
 
@@ -181,6 +208,9 @@ defmodule Nex.Helpers do
   end
 
   def time_ago(_), do: ""
+
+  defp pluralize_unit(1, singular, _plural), do: singular
+  defp pluralize_unit(_count, _singular, plural), do: plural
 
   @doc """
   Builds CSS classes with template support.
@@ -204,7 +234,7 @@ defmodule Nex.Helpers do
     |> Enum.filter(& &1)
     |> Enum.map(fn val -> String.replace(template, "&", to_string(val)) end)
     |> Enum.join(" ")
-    |> String.replace(" ", " ")
+    |> String.replace(~r/\s+/, " ")
     |> String.trim()
   end
 
@@ -232,12 +262,22 @@ defmodule Nex.Helpers do
         "#{attr_key(key)}"
 
       {key, value} when is_binary(value) or is_number(value) ->
-        "#{attr_key(key)}=\"#{value}\""
+        escaped = value |> to_string() |> html_escape_attr()
+        "#{attr_key(key)}=\"#{escaped}\""
 
       {key, value} ->
-        "#{attr_key(key)}=\"#{inspect(value)}\""
+        escaped = value |> inspect() |> html_escape_attr()
+        "#{attr_key(key)}=\"#{escaped}\""
     end)
     |> Enum.join(" ")
+  end
+
+  defp html_escape_attr(text) when is_binary(text) do
+    text
+    |> String.replace("&", "&amp;")
+    |> String.replace("\"", "&quot;")
+    |> String.replace("<", "&lt;")
+    |> String.replace(">", "&gt;")
   end
 
   defp attr_key(key) when is_atom(key) do

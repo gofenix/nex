@@ -164,9 +164,18 @@ defmodule Nex.Handler.Page do
         send_resp(conn, status, html)
 
       is_function(body, 1) ->
-        conn = send_chunked(conn, 200)
-        body.(fn chunk -> Plug.Conn.chunk(conn, chunk) end)
-        conn
+        conn = send_chunked(conn, status)
+        Process.put(:nex_chunked_conn, conn)
+        body.(fn chunk ->
+          current = Process.get(:nex_chunked_conn)
+          case Plug.Conn.chunk(current, chunk) do
+            {:ok, new_conn} ->
+              Process.put(:nex_chunked_conn, new_conn)
+              new_conn
+            _ -> current
+          end
+        end)
+        Process.delete(:nex_chunked_conn) || conn
 
       true ->
         body_str = if is_binary(body), do: body, else: Jason.encode!(body)

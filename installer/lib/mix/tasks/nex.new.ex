@@ -35,13 +35,13 @@ defmodule Mix.Tasks.Nex.New do
   end
 
   def run(args) do
-    %{assigns: assigns, name: name, project_path: project_path, starter: starter} =
+    %{assigns: assigns, name: name, project_path: project_path, base_path: base_path, starter: starter} =
       Options.parse!(args)
 
     Mix.shell().info("\n🚀 Creating Nex project: #{name}#{Options.starter_label(starter)}\n")
     Generator.create_project(project_path, assigns, starter)
     maybe_init_git(project_path)
-    maybe_install_deps(project_path, name, starter)
+    maybe_install_deps(project_path, name, base_path, starter)
   end
 
   defp maybe_init_git(project_path) do
@@ -55,24 +55,25 @@ defmodule Mix.Tasks.Nex.New do
     end
   end
 
-  defp maybe_install_deps(project_path, name, starter) do
+  defp maybe_install_deps(project_path, name, base_path, starter) do
     Mix.shell().info("\n📦 Installing dependencies...\n")
 
     if Options.skip_deps_install?() do
-      Mix.shell().info(Messages.success_message(name, starter, false))
+      Mix.shell().info(Messages.success_message(name, starter, false, base_path))
     else
       case System.cmd("mix", ["deps.get"], cd: project_path, stderr_to_stdout: true) do
         {_, 0} ->
-          Mix.shell().info(Messages.success_message(name, starter, true))
+          Mix.shell().info(Messages.success_message(name, starter, true, base_path))
 
         {error, _} ->
+          display_path = if base_path == ".", do: name, else: Path.join(base_path, name)
           Mix.raise("""
           Dependencies installation failed!
 
           Error: #{error}
 
           You can try installing manually:
-              cd #{name}
+              cd #{display_path}
               mix deps.get
           """)
       end

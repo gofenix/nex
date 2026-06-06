@@ -40,6 +40,7 @@ doc/
 .claude/
 .coco/
 .codex/
+.omx/
 .gemini/
 .opencode/
 .trae/

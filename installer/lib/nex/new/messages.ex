@@ -3,7 +3,7 @@ defmodule Nex.New.Messages do
 
   alias Nex.New.Legacy
 
-  def success_message(name, starter, deps_installed) do
-    Legacy.success_message(name, starter, deps_installed)
+  def success_message(name, starter, deps_installed, base_path \\ ".") do
+    Legacy.success_message(name, starter, deps_installed, base_path)
   end
 end

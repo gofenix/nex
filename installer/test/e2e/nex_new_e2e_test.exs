@@ -280,10 +280,6 @@ defmodule Mix.Tasks.Nex.NewE2ETest do
         ~r/\{:nex_base, "~> [^"]+"\}/,
         "{:nex_base, path: \"#{Path.expand("../../../nex_base", __DIR__)}\"}"
       )
-      |> String.replace(
-        ~r/\{:nex_env, "~> [^"]+"\}/,
-        "{:nex_env, path: \"#{Path.expand("../../../nex_env", __DIR__)}\"}"
-      )
 
     File.write!(mix_path, patched)
   end

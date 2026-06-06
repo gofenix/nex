@@ -54,8 +54,6 @@ check_step "Framework CHANGELOG.md updated" "[ -f framework/CHANGELOG.md ] && gr
 # Check 5: Installer changelog updated
 check_step "Installer CHANGELOG.md updated" "[ -f installer/CHANGELOG.md ] && grep -q \"$VERSION\" installer/CHANGELOG.md"
 
-check_step "nex_env version synced" "grep -q \"version: \\\"$VERSION\\\"\" nex_env/mix.exs"
-
 check_step "nex_base version synced" "grep -q \"version: \\\"$VERSION\\\"\" nex_base/mix.exs"
 
 CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
@@ -97,11 +95,9 @@ echo ""
 echo "🔄 Syncing version numbers..."
 echo "$VERSION" > framework/VERSION
 echo "$VERSION" > installer/VERSION
-echo "$VERSION" > nex_env/VERSION
 echo "$VERSION" > nex_base/VERSION
 sed -i '' "s/version: \"[0-9.]*\"/version: \"$VERSION\"/" framework/mix.exs
 sed -i '' "s/version: \"[0-9.]*\"/version: \"$VERSION\"/" installer/mix.exs
-sed -i '' "s/version: \"[0-9.]*\"/version: \"$VERSION\"/" nex_env/mix.exs
 sed -i '' "s/version: \"[0-9.]*\"/version: \"$VERSION\"/" nex_base/mix.exs
 echo "✅ Version numbers synced"
 echo ""
@@ -122,13 +118,6 @@ cd ..
 echo "✅ nex_new published"
 echo ""
 
-echo "📤 Publishing nex_env v$VERSION..."
-cd nex_env
-HEX_HOME=~/.hex mix hex.publish --yes --replace
-cd ..
-echo "✅ nex_env published"
-echo ""
-
 echo "📤 Publishing nex_base v$VERSION..."
 cd nex_base
 HEX_HOME=~/.hex mix hex.publish --yes --replace
@@ -141,5 +130,4 @@ echo ""
 echo "Published packages:"
 echo "  - nex_core v$VERSION: https://hex.pm/packages/nex_core/$VERSION"
 echo "  - nex_new v$VERSION: https://hex.pm/packages/nex_new/$VERSION"
-echo "  - nex_env v$VERSION: https://hex.pm/packages/nex_env/$VERSION"
 echo "  - nex_base v$VERSION: https://hex.pm/packages/nex_base/$VERSION"

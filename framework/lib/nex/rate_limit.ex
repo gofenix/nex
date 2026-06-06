@@ -158,11 +158,19 @@ defmodule Nex.RateLimit.Plug do
   end
 
   defp client_ip(conn) do
-    forwarded = get_req_header(conn, "x-forwarded-for")
+    # Only trust X-Forwarded-For if explicitly configured via :trust_x_forwarded_for.
+    # Defaults to false to prevent IP spoofing via forged headers.
+    global_config = Application.get_env(:nex_core, :rate_limit, [])
+    trust_xff = Keyword.get(global_config, :trust_x_forwarded_for, false)
 
-    case forwarded do
-      [ip | _] -> ip |> String.split(",") |> hd() |> String.trim()
-      [] -> conn.remote_ip |> :inet.ntoa() |> to_string()
+    if trust_xff do
+      forwarded = get_req_header(conn, "x-forwarded-for")
+      case forwarded do
+        [ip | _] -> ip |> String.split(",") |> hd() |> String.trim()
+        [] -> conn.remote_ip |> :inet.ntoa() |> to_string()
+      end
+    else
+      conn.remote_ip |> :inet.ntoa() |> to_string()
     end
   end
 

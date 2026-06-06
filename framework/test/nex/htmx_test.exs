@@ -92,5 +92,36 @@ defmodule Nex.HTMXTest do
                "event-two" => %{"b" => 2}
              }
     end
+
+    test "trigger_after_swap/2 adds HX-Trigger-After-Swap header" do
+      assigns = %{}
+      resp = trigger_after_swap(~H"<div></div>", "after-swap-event")
+      assert resp.headers["hx-trigger-after-swap"] == "after-swap-event"
+    end
+
+    test "trigger_after_swap/3 with detail map encodes as JSON" do
+      assigns = %{}
+      resp = trigger_after_swap(~H"<div></div>", "after-swap-evt", %{x: 1})
+      assert Jason.decode!(resp.headers["hx-trigger-after-swap"]) == %{"after-swap-evt" => %{"x" => 1}}
+    end
+
+    test "trigger_after_settle/2 adds HX-Trigger-After-Settle header" do
+      assigns = %{}
+      resp = trigger_after_settle(~H"<div></div>", "after-settle-event")
+      assert resp.headers["hx-trigger-after-settle"] == "after-settle-event"
+    end
+
+    test "trigger_after_settle/3 merges with existing string trigger" do
+      assigns = %{}
+      resp =
+        ~H"<div></div>"
+        |> trigger_after_settle("evt-a")
+        |> trigger_after_settle("evt-b", %{data: true})
+
+      assert Jason.decode!(resp.headers["hx-trigger-after-settle"]) == %{
+               "evt-a" => %{},
+               "evt-b" => %{"data" => true}
+             }
+    end
   end
 end

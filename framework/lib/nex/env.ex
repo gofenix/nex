@@ -111,7 +111,11 @@ defmodule Nex.Env do
   def get_integer(key, default) when is_atom(key) do
     case get(key) do
       nil -> default
-      value -> String.to_integer(value)
+      value ->
+        case Integer.parse(value) do
+          {n, ""} -> n
+          _ -> default
+        end
     end
   end
 

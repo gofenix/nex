@@ -12,7 +12,7 @@ defmodule Nex.Handler do
     conn = Lifecycle.prepare(conn)
 
     try do
-      method = conn.method |> String.downcase() |> String.to_atom()
+      method = conn.method |> String.downcase() |> safe_to_method_atom()
       path = conn.path_info
       conn = Nex.Middleware.run(conn)
 
@@ -35,5 +35,16 @@ defmodule Nex.Handler do
         Process.put(:nex_last_stacktrace, __STACKTRACE__)
         Errors.send_error_page(conn, 500, "Internal Server Error", reason)
     end
+  end
+
+  @known_methods [:get, :post, :put, :patch, :delete, :head, :options, :connect, :trace]
+
+  defp safe_to_method_atom(method_str) do
+    case String.to_existing_atom(method_str) do
+      atom when atom in @known_methods -> atom
+      _ -> :get
+    end
+  rescue
+    ArgumentError -> :get
   end
 end

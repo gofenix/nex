@@ -526,4 +526,567 @@ defmodule NexBaseTest do
       end
     end
   end
+
+  describe "Supabase-like additional filters" do
+    test "not_filter adds negated filter" do
+      q = NexBase.from("users") |> NexBase.not_filter(:status, :eq, "banned")
+      assert length(q.not_filters) == 1
+      assert hd(q.not_filters) == {:eq, :status, "banned"}
+    end
+
+    test "not_filter supports different operators" do
+      q = NexBase.from("users") |> NexBase.not_filter(:age, :gt, 100)
+      assert hd(q.not_filters) == {:gt, :age, 100}
+    end
+
+    test "or_filter adds OR group" do
+      q =
+        NexBase.from("users")
+        |> NexBase.or_filter([{:eq, :status, "active"}, {:gt, :age, 65}])
+
+      assert length(q.or_filters) == 1
+      assert hd(q.or_filters) == [{:eq, :status, "active"}, {:gt, :age, 65}]
+    end
+
+    test "multiple or_filter calls accumulate" do
+      q =
+        NexBase.from("users")
+        |> NexBase.or_filter([{:eq, :status, "vip"}])
+        |> NexBase.or_filter([{:eq, :role, "admin"}])
+
+      assert length(q.or_filters) == 2
+    end
+
+    test "match builds AND equality filters from map" do
+      q = NexBase.from("users") |> NexBase.match(%{status: "active", role: "admin"})
+      assert length(q.filters) == 2
+      assert {:eq, :status, "active"} in q.filters
+      assert {:eq, :role, "admin"} in q.filters
+    end
+
+    test "filter dispatches to :not operator" do
+      q = NexBase.from("users") |> NexBase.filter(:role, :not, {:eq, "banned"})
+      assert length(q.not_filters) == 1
+    end
+
+    test "filter dispatches to :or operator" do
+      q = NexBase.from("users") |> NexBase.filter(:unused, :or, [{:eq, :a, 1}, {:eq, :b, 2}])
+      assert length(q.or_filters) == 1
+    end
+
+    test "filter normalizes operator aliases" do
+      q = NexBase.from("users") |> NexBase.filter(:age, :greater_than, 18)
+      assert hd(q.filters) == {:gt, :age, 18}
+
+      q2 = NexBase.from("users") |> NexBase.filter(:name, :equals, "Alice")
+      assert hd(q2.filters) == {:eq, :name, "Alice"}
+
+      q3 = NexBase.from("users") |> NexBase.filter(:tags, :contains, ["elixir"])
+      assert hd(q3.filters) == {:cs, :tags, ["elixir"]}
+    end
+
+    test "contains filter" do
+      q = NexBase.from("posts") |> NexBase.contains(:tags, ["elixir", "phoenix"])
+      assert hd(q.filters) == {:cs, :tags, ["elixir", "phoenix"]}
+    end
+
+    test "contained_in filter" do
+      q = NexBase.from("events") |> NexBase.contained_in(:time_range, [1, 10])
+      assert hd(q.filters) == {:cd, :time_range, [1, 10]}
+    end
+
+    test "overlaps filter" do
+      q = NexBase.from("events") |> NexBase.overlaps(:dates, [~D[2026-01-01]])
+      assert hd(q.filters) == {:ov, :dates, [~D[2026-01-01]]}
+    end
+
+    test "range filters" do
+      q = NexBase.from("events") |> NexBase.range_lt(:period, [10, 20])
+      assert hd(q.filters) == {:sl, :period, [10, 20]}
+
+      q = NexBase.from("events") |> NexBase.range_gt(:period, [10, 20])
+      assert hd(q.filters) == {:sr, :period, [10, 20]}
+
+      q = NexBase.from("events") |> NexBase.range_gte(:period, [10, 20])
+      assert hd(q.filters) == {:nxl, :period, [10, 20]}
+
+      q = NexBase.from("events") |> NexBase.range_lte(:period, [10, 20])
+      assert hd(q.filters) == {:nxr, :period, [10, 20]}
+
+      q = NexBase.from("events") |> NexBase.range_adjacent(:period, [10, 20])
+      assert hd(q.filters) == {:adj, :period, [10, 20]}
+    end
+
+    test "text_search / fts filter" do
+      q = NexBase.from("posts") |> NexBase.text_search(:body, "elixir phoenix")
+      assert {op, {_col, _cfg}, _query} = hd(q.filters)
+      # Default type :plain maps to :plfts (plainto_tsquery) — matches Supabase semantics
+      assert op in [:plfts, :fts, :phfts, :wfts]
+
+      q2 = NexBase.from("posts") |> NexBase.fts(:body, "elixir phoenix", "simple")
+      assert {op2, {_col2, cfg2}, _q2} = hd(q2.filters)
+      assert cfg2 == "simple"
+    end
+
+    test "plfts / phfts / wfts filters" do
+      q = NexBase.from("posts") |> NexBase.plfts(:body, "search query")
+      assert {op, _, _} = hd(q.filters)
+      assert op == :plfts
+
+      q = NexBase.from("posts") |> NexBase.phfts(:body, "search query")
+      assert {op, _, _} = hd(q.filters)
+      assert op == :phfts
+
+      q = NexBase.from("posts") |> NexBase.wfts(:body, "search query")
+      assert {op, _, _} = hd(q.filters)
+      assert op == :wfts
+    end
+  end
+
+  describe "count / ordering / execution helpers" do
+    test "count sets count mode" do
+      q = NexBase.from("users") |> NexBase.count(:exact)
+      assert q.count == :exact
+
+      q = NexBase.from("users") |> NexBase.count(:planned)
+      assert q.count == :planned
+
+      q = NexBase.from("users") |> NexBase.count(:estimated)
+      assert q.count == :estimated
+
+      q = NexBase.from("users") |> NexBase.count()
+      assert q.count == :exact
+    end
+
+    test "order with options (nulls_first)" do
+      q = NexBase.from("users") |> NexBase.order(:name, :asc, nulls_first: true)
+      assert hd(q.order_by) == {:asc, :name, [nulls_first: true]}
+    end
+
+    test "order with options (nulls_last)" do
+      q = NexBase.from("users") |> NexBase.order(:name, :desc, nulls_last: true)
+      assert hd(q.order_by) == {:desc, :name, [nulls_last: true]}
+    end
+
+    test "mixed old and new order formats" do
+      q =
+        NexBase.from("users")
+        |> NexBase.order(:name, :asc)
+        |> NexBase.order(:age, :desc, nulls_last: true)
+
+      assert length(q.order_by) == 2
+      assert elem(hd(q.order_by), 0) == :asc
+    end
+
+    test "Query struct backward compatible defaults" do
+      q = NexBase.from("users")
+      assert q.or_filters == []
+      assert q.not_filters == []
+      assert q.count == nil
+    end
+
+    test "run! returns data directly (bang variant)" do
+      conn = NexBase.init(url: "sqlite::memory:", start: true, pool_size: 1)
+      NexBase.query!(conn, "CREATE TABLE helpers_test (id INTEGER PRIMARY KEY, name TEXT)", [])
+      result = conn |> NexBase.from("helpers_test") |> NexBase.run!()
+      assert is_list(result)
+    end
+
+    test "maybe_one returns nil for empty result" do
+      conn = NexBase.init(url: "sqlite::memory:", start: true, pool_size: 1)
+      NexBase.query!(conn, "CREATE TABLE empty_test (id INTEGER PRIMARY KEY)", [])
+      assert conn |> NexBase.from("empty_test") |> NexBase.maybe_one() == nil
+    end
+
+    test "one! raises when no rows" do
+      conn = NexBase.init(url: "sqlite::memory:", start: true, pool_size: 1)
+      NexBase.query!(conn, "CREATE TABLE one_test (id INTEGER PRIMARY KEY)", [])
+
+      assert_raise RuntimeError, ~r/Expected exactly one row/, fn ->
+        conn |> NexBase.from("one_test") |> NexBase.one!()
+      end
+    end
+
+    test "stream returns rows as list" do
+      conn = NexBase.init(url: "sqlite::memory:", start: true, pool_size: 1)
+      NexBase.query!(conn, "CREATE TABLE stream_test (id INTEGER PRIMARY KEY, name TEXT)", [])
+      NexBase.query!(conn, "INSERT INTO stream_test (id, name) VALUES (1, 'a')", [])
+      result = conn |> NexBase.from("stream_test") |> NexBase.stream()
+      assert is_list(result)
+      assert length(result) == 1
+    end
+  end
+
+  describe "transaction" do
+    test "transaction exists and returns tuple" do
+      assert function_exported?(NexBase, :transaction, 1)
+      assert function_exported?(NexBase, :transaction, 2)
+    end
+  end
+
+  # -- Supabase API parity tests --
+
+  describe "Supabase parity: select with aliases" do
+    test "select default is * (no columns)" do
+      q = NexBase.from("users") |> NexBase.select()
+      assert q.select == []
+    end
+
+    test "select string parses comma-separated columns" do
+      q = NexBase.from("users") |> NexBase.select("id, name, email")
+      assert q.select == ["id", "name", "email"]
+    end
+
+    test "select string with alias syntax col:alias" do
+      q = NexBase.from("users") |> NexBase.select("id, display_name:name")
+      assert q.select == ["id", "name AS display_name"]
+    end
+
+    test "select list still works" do
+      q = NexBase.from("users") |> NexBase.select([:id, :name])
+      assert q.select == [:id, :name]
+    end
+
+    test "select after insert enables RETURNING" do
+      q = NexBase.from("users") |> NexBase.insert(%{name: "A"}) |> NexBase.select()
+      assert q.returning == true
+    end
+
+    test "select after update enables RETURNING" do
+      q = NexBase.from("users") |> NexBase.update(%{name: "B"}) |> NexBase.select()
+      assert q.returning == true
+    end
+
+    test "select after delete enables RETURNING" do
+      q = NexBase.from("users") |> NexBase.delete() |> NexBase.select()
+      assert q.returning == true
+    end
+
+    test "select after upsert enables RETURNING" do
+      q = NexBase.from("users") |> NexBase.upsert(%{id: 1}) |> NexBase.select()
+      assert q.returning == true
+    end
+  end
+
+  describe "Supabase parity: order/limit/range with referencedTable" do
+    test "order with opts map ascending: false" do
+      q = NexBase.from("users") |> NexBase.order(:name, ascending: false)
+      assert q.order_by == [{:desc, :name}]
+    end
+
+    test "order with opts map and nullsFirst" do
+      q = NexBase.from("users") |> NexBase.order(:name, nulls_first: true)
+      assert match?([{:asc, :name, _}], q.order_by)
+      opts = elem(hd(q.order_by), 2)
+      assert opts[:nulls_first] == true
+    end
+
+    test "order with referenced_table option" do
+      q = NexBase.from("users") |> NexBase.order(:title, ascending: false, referenced_table: "posts")
+      assert {_entry, [referenced_table: "posts"]} = hd(q.order_by)
+    end
+
+    test "order with deprecated foreign_table option" do
+      q = NexBase.from("users") |> NexBase.order(:title, foreign_table: "posts")
+      assert {_entry, [referenced_table: "posts"]} = hd(q.order_by)
+    end
+
+    test "limit with referenced_table option" do
+      q = NexBase.from("users") |> NexBase.limit(10, referenced_table: "posts")
+      assert q.limit == 10
+      assert q.limit_referenced_table == "posts"
+    end
+
+    test "offset with referenced_table option" do
+      q = NexBase.from("users") |> NexBase.offset(5, referenced_table: "posts")
+      assert q.offset == 5
+      assert q.offset_referenced_table == "posts"
+    end
+
+    test "range with referenced_table sets both ref tables" do
+      q = NexBase.from("users") |> NexBase.range(2, 6, referenced_table: "posts")
+      assert q.limit == 5
+      assert q.offset == 2
+      assert q.limit_referenced_table == "posts"
+      assert q.offset_referenced_table == "posts"
+    end
+  end
+
+  describe "Supabase parity: or_filter with referencedTable" do
+    test "or_filter with referenced_table option" do
+      q =
+        NexBase.from("users")
+        |> NexBase.or_filter([{:eq, :status, "active"}, {:eq, :role, "admin"}], referenced_table: "posts")
+
+      assert length(q.or_filters) == 1
+      {group, referenced_table: "posts"} = hd(q.or_filters)
+      assert group == [{:eq, :status, "active"}, {:eq, :role, "admin"}]
+    end
+  end
+
+  describe "Supabase parity: single / maybeSingle" do
+    test "single sets single flag and limit 1" do
+      q = NexBase.from("users") |> NexBase.single()
+      assert q.single == true
+      assert q.limit == 1
+    end
+
+    test "maybe_single sets maybe_single flag and limit 1" do
+      q = NexBase.from("users") |> NexBase.maybe_single()
+      assert q.maybe_single == true
+      assert q.limit == 1
+    end
+
+    test "single() unwraps a single row at run time" do
+      conn = NexBase.init(url: "sqlite::memory:", start: true, pool_size: 1)
+      NexBase.query!(conn, "CREATE TABLE single_test (id INTEGER PRIMARY KEY, name TEXT)", [])
+      NexBase.query!(conn, "INSERT INTO single_test (id, name) VALUES (1, 'alice')", [])
+      result = conn |> NexBase.from("single_test") |> NexBase.single() |> NexBase.run()
+      assert {:ok, %{"id" => 1, "name" => "alice"}} = result
+    end
+
+    test "single() returns error when 0 rows" do
+      conn = NexBase.init(url: "sqlite::memory:", start: true, pool_size: 1)
+      NexBase.query!(conn, "CREATE TABLE empty_single (id INTEGER PRIMARY KEY)", [])
+      result = conn |> NexBase.from("empty_single") |> NexBase.single() |> NexBase.run()
+      assert {:error, _} = result
+    end
+
+    test "maybe_single() returns nil when 0 rows" do
+      conn = NexBase.init(url: "sqlite::memory:", start: true, pool_size: 1)
+      NexBase.query!(conn, "CREATE TABLE empty_ms (id INTEGER PRIMARY KEY)", [])
+      result = conn |> NexBase.from("empty_ms") |> NexBase.maybe_single() |> NexBase.run()
+      assert {:ok, nil} = result
+    end
+
+    test "maybe_single() unwraps a single row" do
+      conn = NexBase.init(url: "sqlite::memory:", start: true, pool_size: 1)
+      NexBase.query!(conn, "CREATE TABLE ms_test (id INTEGER PRIMARY KEY, name TEXT)", [])
+      NexBase.query!(conn, "INSERT INTO ms_test (id, name) VALUES (1, 'bob')", [])
+      result = conn |> NexBase.from("ms_test") |> NexBase.maybe_single() |> NexBase.run()
+      assert {:ok, %{"id" => 1, "name" => "bob"}} = result
+    end
+  end
+
+  describe "Supabase parity: extended filters (nlike, nilike, is_null, not_in, like_*_of, ilike_*_of)" do
+    test "nlike adds NOT LIKE filter" do
+      q = NexBase.from("users") |> NexBase.nlike(:name, "%admin%")
+      assert {:nlike, :name, "%admin%"} in q.filters
+    end
+
+    test "nilike adds NOT ILIKE filter" do
+      q = NexBase.from("users") |> NexBase.nilike(:email, "%@spam%")
+      assert {:nilike, :email, "%@spam%"} in q.filters
+    end
+
+    test "is_null adds IS NULL filter" do
+      q = NexBase.from("users") |> NexBase.is_null(:deleted_at)
+      assert {:is, :deleted_at, nil} in q.filters
+    end
+
+    test "is_not_null adds NOT IS NULL filter (via not_filters)" do
+      q = NexBase.from("users") |> NexBase.is_not_null(:email)
+      assert {:is, :email, nil} in q.not_filters
+    end
+
+    test "not_in_list adds NOT IN filter (via not_filters)" do
+      q = NexBase.from("users") |> NexBase.not_in_list(:role, ["admin", "mod"])
+      assert {:in, :role, ["admin", "mod"]} in q.not_filters
+    end
+
+    test "like_all_of adds multiple LIKE filters" do
+      q = NexBase.from("users") |> NexBase.like_all_of(:name, ["a%", "%z"])
+      assert length(q.filters) == 2
+      assert {:like, :name, "a%"} in q.filters
+      assert {:like, :name, "%z"} in q.filters
+    end
+
+    test "like_any_of adds or-group of LIKE filters" do
+      q = NexBase.from("users") |> NexBase.like_any_of(:name, ["a%", "%z"])
+      assert length(q.or_filters) == 1
+      [group] = q.or_filters
+      assert {:like, :name, "a%"} in group
+      assert {:like, :name, "%z"} in group
+    end
+
+    test "ilike_all_of adds multiple ILIKE filters" do
+      q = NexBase.from("users") |> NexBase.ilike_all_of(:email, ["A%", "%Z"])
+      assert length(q.filters) == 2
+      assert {:ilike, :email, "A%"} in q.filters
+      assert {:ilike, :email, "%Z"} in q.filters
+    end
+
+    test "ilike_any_of adds or-group of ILIKE filters" do
+      q = NexBase.from("users") |> NexBase.ilike_any_of(:email, ["A%", "%Z"])
+      assert length(q.or_filters) == 1
+      [group] = q.or_filters
+      assert {:ilike, :email, "A%"} in group
+      assert {:ilike, :email, "%Z"} in group
+    end
+  end
+
+  describe "Supabase parity: text_search opts form" do
+    test "text_search with opts list uses config and defaults to plain" do
+      q = NexBase.from("docs") |> NexBase.text_search(:body, "hello", config: "english")
+      # Default type :plain maps to :plfts (plainto_tsquery)
+      assert [{op, {:body, "english"}, "hello"}] = q.filters
+      assert op in [:plfts, :fts]
+    end
+
+    test "text_search with type: :phrase uses phfts (phraseto_tsquery)" do
+      q = NexBase.from("docs") |> NexBase.text_search(:body, "hello world", type: :phrase)
+      assert [{:phfts, {:body, "english"}, "hello world"}] = q.filters
+    end
+
+    test "text_search with type: :websearch uses wfts" do
+      q = NexBase.from("docs") |> NexBase.text_search(:body, "hello OR world", type: :websearch)
+      assert [{:wfts, {:body, "english"}, "hello OR world"}] = q.filters
+    end
+
+    test "text_search with string config (backward compat)" do
+      q = NexBase.from("docs") |> NexBase.text_search(:body, "hello", "simple")
+      assert [{:fts, {:body, "simple"}, "hello"}] = q.filters
+    end
+
+    test "fts, plfts, phfts, wfts accept opts list" do
+      q1 = NexBase.from("d") |> NexBase.fts(:b, "q", config: "simple")
+      assert [{:fts, {:b, "simple"}, "q"}] = q1.filters
+
+      q2 = NexBase.from("d") |> NexBase.plfts(:b, "q", config: "simple")
+      assert [{:plfts, {:b, "simple"}, "q"}] = q2.filters
+
+      q3 = NexBase.from("d") |> NexBase.phfts(:b, "q", config: "simple")
+      assert [{:phfts, {:b, "simple"}, "q"}] = q3.filters
+
+      q4 = NexBase.from("d") |> NexBase.wfts(:b, "q", config: "simple")
+      assert [{:wfts, {:b, "simple"}, "q"}] = q4.filters
+    end
+  end
+
+  describe "Supabase parity: explain / csv / rollback" do
+    test "explain sets explain_opts with defaults" do
+      q = NexBase.from("users") |> NexBase.explain()
+      assert q.explain_opts == [analyze: false, verbose: false, settings: false, buffers: false, wal: false, format: :text]
+    end
+
+    test "explain with all options" do
+      q = NexBase.from("users") |> NexBase.explain(analyze: true, format: :json, wal: true)
+      assert q.explain_opts[:analyze] == true
+      assert q.explain_opts[:format] == :json
+      assert q.explain_opts[:wal] == true
+    end
+
+    test "csv sets csv flag" do
+      q = NexBase.from("users") |> NexBase.csv()
+      assert q.csv == true
+    end
+
+    test "geojson sets geojson flag" do
+      q = NexBase.from("users") |> NexBase.geojson()
+      assert q.geojson == true
+    end
+
+    test "throw_on_error sets flag" do
+      q = NexBase.from("users") |> NexBase.throw_on_error()
+      assert q.throw_on_error == true
+    end
+
+    test "rollback sets rollback flag" do
+      q = NexBase.from("users") |> NexBase.rollback()
+      assert q.rollback == true
+    end
+  end
+
+  describe "Supabase parity: schema / max_affected" do
+    test "schema/2 sets schema on query" do
+      q = NexBase.from("users") |> NexBase.schema("private")
+      assert q.schema == "private"
+    end
+
+    test "schema/1 returns a conn-scoped builder" do
+      conn = NexBase.init(url: "sqlite::memory:", start: true, pool_size: 1)
+      scoped = conn |> NexBase.schema("private")
+      assert is_function(scoped, 1)
+      q = scoped.("users")
+      assert q.schema == "private"
+    end
+
+    test "max_affected sets max_affected" do
+      q = NexBase.from("users") |> NexBase.max_affected(100)
+      assert q.max_affected == 100
+    end
+  end
+
+  describe "Supabase parity: insert / update / delete / upsert options" do
+    test "insert with count option sets count" do
+      q = NexBase.from("users") |> NexBase.insert(%{name: "A"}, count: :exact)
+      assert q.count == :exact
+    end
+
+    test "insert with default_to_null: false sets flag" do
+      q = NexBase.from("users") |> NexBase.insert([%{name: "A"}], default_to_null: false)
+      assert q.default_to_null == false
+    end
+
+    test "update with count option sets count" do
+      q = NexBase.from("users") |> NexBase.update(%{name: "B"}, count: :exact)
+      assert q.count == :exact
+    end
+
+    test "delete with count option sets count" do
+      q = NexBase.from("users") |> NexBase.delete(count: :exact)
+      assert q.count == :exact
+    end
+
+    test "upsert sets ignore_duplicates and on_conflict" do
+      q =
+        NexBase.from("users")
+        |> NexBase.upsert(%{id: 1, name: "A"}, on_conflict: :id, ignore_duplicates: true)
+
+      assert q.upsert_opts[:on_conflict] == :id
+      assert q.upsert_opts[:ignore_duplicates] == true
+    end
+
+    test "upsert with default_to_null: false sets flag" do
+      q =
+        NexBase.from("users")
+        |> NexBase.upsert([%{id: 1}], default_to_null: false)
+
+      assert q.default_to_null == false
+    end
+
+    test "upsert with count option" do
+      q = NexBase.from("users") |> NexBase.upsert(%{id: 1}, count: :estimated)
+      assert q.count == :estimated
+    end
+  end
+
+  describe "Supabase parity: insert + select returns rows" do
+    test "insert with .select() returns the inserted row" do
+      conn = NexBase.init(url: "sqlite::memory:", start: true, pool_size: 1)
+      NexBase.query!(conn, "CREATE TABLE ins_ret (id INTEGER PRIMARY KEY, name TEXT)", [])
+
+      result =
+        conn
+        |> NexBase.from("ins_ret")
+        |> NexBase.insert(%{id: 1, name: "Alice"})
+        |> NexBase.select()
+        |> NexBase.run()
+
+      assert {:ok, res} = result
+      assert %{count: 1, data: [%{id: 1, name: "Alice"}]} = res
+    end
+  end
+
+  describe "Supabase parity: head / count on select" do
+    test "select with head: true sets head flag" do
+      q = NexBase.from("users") |> NexBase.select("*", head: true)
+      assert q.head == true
+    end
+
+    test "select with count option sets count" do
+      q = NexBase.from("users") |> NexBase.select("*", count: :exact)
+      assert q.count == :exact
+    end
+  end
 end

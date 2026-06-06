@@ -4,7 +4,7 @@
 
 The Nex repository is a disciplined monorepo with four top-level concerns:
 
-- Published packages: `framework/`, `installer/`, `nex_env/`, `nex_base/`
+- Published packages: `framework/`, `installer/`, `nex_base/`
 - First-party apps: `examples/`, `website/`
 - Tooling: `scripts/`, `.github/workflows/`
 - Isolated internal assets: `internal/`

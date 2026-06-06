@@ -6,7 +6,6 @@ Security reports are welcome for issues affecting any maintained part of this re
 
 - `Nex`
 - `nex_base`
-- `nex_env`
 - `installer`
 - example and showcase applications when the issue represents a framework-level risk
 

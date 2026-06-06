@@ -155,11 +155,13 @@ defmodule Nex do
   @spec text(String.t(), response_options()) :: Response.t()
   def text(text, opts \\ []) do
     status = Keyword.get(opts, :status, 200)
+    headers = Keyword.get(opts, :headers, %{})
 
     %Response{
       status: status,
       body: text,
-      content_type: "text/plain"
+      content_type: "text/plain",
+      headers: headers
     }
   end
 
@@ -185,11 +187,13 @@ defmodule Nex do
   @spec html(String.t(), response_options()) :: Response.t()
   def html(html, opts \\ []) do
     status = Keyword.get(opts, :status, 200)
+    headers = Keyword.get(opts, :headers, %{})
 
     %Response{
       status: status,
       body: html,
-      content_type: "text/html"
+      content_type: "text/html",
+      headers: headers
     }
   end
 

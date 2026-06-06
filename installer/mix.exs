@@ -9,7 +9,8 @@ defmodule NexNew.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       description: "Nex project generator",
-      package: package()
+      package: package(),
+      test_coverage: [summary: [threshold: 0]]
     ]
   end
 

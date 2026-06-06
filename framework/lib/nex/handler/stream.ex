@@ -25,20 +25,25 @@ defmodule Nex.Handler.Stream do
       end)
 
     conn = send_chunked(conn, response.status)
+    Process.put(:nex_sse_conn, conn)
     callback = response.body
 
     send_fn = fn data ->
       chunk = format_sse_chunk(data)
+      current_conn = Process.get(:nex_sse_conn)
 
-      case Plug.Conn.chunk(conn, chunk) do
-        {:ok, conn} -> conn
-        {:error, :closed} -> throw(:connection_closed)
+      case Plug.Conn.chunk(current_conn, chunk) do
+        {:ok, new_conn} ->
+          Process.put(:nex_sse_conn, new_conn)
+          new_conn
+        {:error, :closed} ->
+          throw(:connection_closed)
       end
     end
 
     try do
       callback.(send_fn)
-      conn
+      Process.get(:nex_sse_conn)
     rescue
       error ->
         Logger.error(
@@ -67,7 +72,13 @@ defmodule Nex.Handler.Stream do
       end
 
     conn
-    |> put_resp_content_type(response.content_type)
+    |> then(fn conn ->
+      if response.content_type do
+        put_resp_content_type(conn, response.content_type)
+      else
+        conn
+      end
+    end)
     |> send_resp(response.status, body)
   end
 

@@ -158,4 +158,72 @@ defmodule Nex.StoreTest do
       assert Nex.Store.get(:key2) == nil
     end
   end
+
+  describe "GenServer cleanup" do
+    test "handle_info :cleanup runs without crashing", %{page_id: page_id} do
+      pid = Process.whereis(Nex.Store)
+      assert is_pid(pid)
+
+      send(pid, :cleanup)
+      Process.sleep(50)
+      assert Process.alive?(pid)
+
+      # Ensure the store still works after cleanup
+      Nex.Store.set_page_id(page_id)
+      Nex.Store.put(:after_cleanup, "ok")
+      assert Nex.Store.get(:after_cleanup) == "ok"
+    end
+
+    test "handle_info ignores unknown messages" do
+      pid = Process.whereis(Nex.Store)
+      send(pid, {:some, :unknown, :message})
+      Process.sleep(50)
+      assert Process.alive?(pid)
+    end
+
+    test "get/2 returns default for expired entries (TTL check on read)" do
+      page_id = "ttl_check_#{:rand.uniform(10000)}"
+      Nex.Store.set_page_id(page_id)
+      Nex.Store.put(:my_key, :my_value)
+
+      # Simulate expiry by writing a record with past expiration directly
+      past = System.system_time(:millisecond) - 1_000_000
+      :ets.insert(:nex_store, {{page_id, :expired_key}, :stale_value, past})
+
+      assert Nex.Store.get(:expired_key, :default) == :default
+      # Non-expired value still works
+      assert Nex.Store.get(:my_key, :default) == :my_value
+    end
+
+    test "get/2 works when Store GenServer is not running (ensure_table on read)" do
+      # Trap exits so killing the GenServer doesn't kill the test process
+      old_trap = Process.flag(:trap_exit, true)
+
+      if pid = Process.whereis(Nex.Store) do
+        ref = Process.monitor(pid)
+        Process.exit(pid, :kill)
+        assert_receive {:DOWN, ^ref, :process, ^pid, _}, 1_000
+      end
+
+      # Delete the orphan ETS table so ensure_table has to recreate it
+      if :ets.whereis(:nex_store) != :undefined do
+        :ets.delete(:nex_store)
+      end
+
+      # Set a page_id and try to read — should not crash (ensure_table creates table)
+      Nex.Store.set_page_id("orphan_test_page")
+      assert Nex.Store.get(:any_key, :fallback) == :fallback
+      # Writing should also work
+      assert Nex.Store.put(:new_key, :new_value) == :new_value
+      assert Nex.Store.get(:new_key) == :new_value
+
+      # Restore trap flag
+      Process.flag(:trap_exit, old_trap)
+
+      # Clean up: restart the GenServer for subsequent tests
+      if Process.whereis(Nex.Store) == nil do
+        Nex.Store.start_link()
+      end
+    end
+  end
 end

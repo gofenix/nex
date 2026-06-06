@@ -4,6 +4,18 @@ defmodule Nex.SessionTest do
   setup do
     Nex.Session.ensure_table()
     Process.delete(:nex_session_id)
+    # Provide a secret for session signing. Preserve original SECRET_KEY_BASE across tests.
+    original_secret = System.get_env("SECRET_KEY_BASE")
+    System.put_env("SECRET_KEY_BASE", "test_secret_key_base_long_enough_for_phoenix_token_32chars")
+
+    on_exit(fn ->
+      if original_secret do
+        System.put_env("SECRET_KEY_BASE", original_secret)
+      else
+        System.delete_env("SECRET_KEY_BASE")
+      end
+    end)
+
     :ok
   end
 
@@ -90,4 +102,90 @@ defmodule Nex.SessionTest do
       assert :ets.whereis(:nex_session_store) != :undefined
     end
   end
+
+  describe "load_from_conn/1" do
+    test "stores session ID from signed cookie in process dictionary" do
+      signed = Phoenix.Token.sign(test_secret(), "nex.session", "loaded_sess_123")
+
+      conn =
+        Plug.Test.conn(:get, "/")
+        |> Plug.Test.put_req_cookie("_nex_session", signed)
+        |> Nex.Session.load_from_conn()
+
+      assert Process.get(:nex_session_id) == "loaded_sess_123"
+      assert is_struct(conn, Plug.Conn)
+    end
+
+    test "stores nil when no session cookie present" do
+      conn = Plug.Test.conn(:get, "/") |> Nex.Session.load_from_conn()
+      assert Process.get(:nex_session_id) == nil
+      assert is_struct(conn, Plug.Conn)
+    end
+
+    test "stores nil for invalid session cookie" do
+      _conn =
+        Plug.Test.conn(:get, "/")
+        |> Plug.Test.put_req_cookie("_nex_session", "not-a-valid-token")
+        |> Nex.Session.load_from_conn()
+
+      assert Process.get(:nex_session_id) == nil
+    end
+  end
+
+  describe "persist_to_conn/1" do
+    test "writes signed session cookie to pending cookies and applies it" do
+      Process.put(:nex_session_id, "persist_session_abc")
+      conn = Plug.Test.conn(:get, "/") |> Nex.Session.persist_to_conn()
+
+      # Cookie goes to pending dict (Nex.Cookie.put), then apply_to_conn writes to conn.
+      conn = Nex.Cookie.apply_to_conn(conn)
+
+      assert is_map_key(conn.resp_cookies, "_nex_session")
+      assert conn.resp_cookies["_nex_session"].value != ""
+      assert conn.resp_cookies["_nex_session"].http_only == true
+    end
+
+    test "does not set cookie when no session exists" do
+      Process.delete(:nex_session_id)
+      conn = Plug.Test.conn(:get, "/") |> Nex.Session.persist_to_conn()
+      conn = Nex.Cookie.apply_to_conn(conn)
+      assert map_size(conn.resp_cookies) == 0
+    end
+  end
+
+  describe "clear_process_state/0" do
+    test "clears session ID from process dictionary" do
+      Process.put(:nex_session_id, "about_to_clear")
+      Nex.Session.clear_process_state()
+      assert Process.get(:nex_session_id) == nil
+    end
+  end
+
+  describe "load_from_conn with TTL expiry" do
+    test "expired session cookie results in nil session ID" do
+      original_ttl = Application.get_env(:nex_core, :session_ttl)
+      Application.put_env(:nex_core, :session_ttl, 1)
+
+      on_exit(fn ->
+        if original_ttl do
+          Application.put_env(:nex_core, :session_ttl, original_ttl)
+        else
+          Application.delete_env(:nex_core, :session_ttl)
+        end
+      end)
+
+      signed = Phoenix.Token.sign(test_secret(), "nex.session", "old_session")
+      :timer.sleep(1100)
+
+      conn =
+        Plug.Test.conn(:get, "/")
+        |> Plug.Test.put_req_cookie("_nex_session", signed)
+        |> Nex.Session.load_from_conn()
+
+      assert Process.get(:nex_session_id) == nil
+      assert is_struct(conn, Plug.Conn)
+    end
+  end
+
+  defp test_secret, do: System.get_env("SECRET_KEY_BASE")
 end

@@ -67,9 +67,17 @@ defmodule Nex.Store do
   @doc "Get value from page store"
   def get(key, default \\ nil) do
     page_id = get_page_id()
+    ensure_table()
 
     case :ets.lookup(@table, {page_id, key}) do
-      [{_, value, _expires_at}] -> value
+      [{_, value, expires_at}] ->
+        now = System.system_time(:millisecond)
+        if expires_at > now do
+          value
+        else
+          :ets.delete(@table, {page_id, key})
+          default
+        end
       [] -> default
     end
   end
@@ -77,6 +85,7 @@ defmodule Nex.Store do
   @doc "Put value into page store"
   def put(key, value) do
     page_id = get_page_id()
+    ensure_table()
     expires_at = System.system_time(:millisecond) + @default_ttl
     :ets.insert(@table, {{page_id, key}, value, expires_at})
     value
@@ -92,12 +101,14 @@ defmodule Nex.Store do
   @doc "Delete value from page store"
   def delete(key) do
     page_id = get_page_id()
+    ensure_table()
     :ets.delete(@table, {page_id, key})
     :ok
   end
 
   @doc "Delete all state for a page"
   def clear_page(page_id) do
+    ensure_table()
     :ets.match_delete(@table, {{page_id, :_}, :_, :_})
     :ok
   end
@@ -106,16 +117,9 @@ defmodule Nex.Store do
 
   @impl true
   def init(_opts) do
-    # Use read_concurrency for better read performance since we have many readers
-    table = :ets.new(@table, [
-      :named_table,
-      :public,
-      :set,
-      read_concurrency: true,
-      write_concurrency: true
-    ])
+    ensure_table()
     schedule_cleanup()
-    {:ok, %{table: table}}
+    {:ok, %{table: @table}}
   end
 
   @impl true
@@ -125,9 +129,15 @@ defmodule Nex.Store do
     {:noreply, state}
   end
 
+  @impl true
+  def handle_info(_msg, state) do
+    {:noreply, state}
+  end
+
   ## Private
 
   defp touch_page(page_id) do
+    ensure_table()
     # Update expiry for all keys of this page
     # Optimized: use :ets.match to only scan matching records instead of full table
     expires_at = System.system_time(:millisecond) + @default_ttl
@@ -165,5 +175,18 @@ defmodule Nex.Store do
     if length(expired) > 0 do
       Logger.debug("[Nex.Store] Cleaned up #{length(expired)} expired entries")
     end
+  end
+
+  defp ensure_table do
+    unless :ets.whereis(@table) != :undefined do
+      :ets.new(@table, [
+        :named_table,
+        :public,
+        :set,
+        read_concurrency: true,
+        write_concurrency: true
+      ])
+    end
+    :ok
   end
 end

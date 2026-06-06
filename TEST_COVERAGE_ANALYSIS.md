@@ -4,7 +4,6 @@
 
 | Package | Real Coverage | Status |
 |---------|--------------|--------|
-| nex_env | 96.15% | ✅ |
 | framework | 56.40% | ❌ |
 | nex_base | 64.57% | ❌ |
 
@@ -134,9 +133,8 @@ Define a realistic target:
 
 For a project like Nex Framework:
 
-1. **Keep nex_env at 96%** - Pure functions, easy to test
-2. **Accept framework at ~75%** - Core is testable, handlers need integration tests
-3. **Accept nex_base at ~65%** - DB-dependent by design
+1. **Accept framework at ~75%** - Core is testable, handlers need integration tests
+2. **Accept nex_base at ~65%** - DB-dependent by design
 
 This is **normal** for Elixir web frameworks. Even Phoenix core has modules that are integration-tested rather than unit-tested.
 
@@ -155,7 +153,6 @@ If you want to refactor for better testability:
 
 ```bash
 # Real coverage (no ignore_modules)
-cd nex_env && mix test --cover
 cd framework && mix test --cover
 cd nex_base && mix test --cover
 

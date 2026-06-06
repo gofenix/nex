@@ -1,6 +1,7 @@
 defmodule Nex.RateLimitTest do
   # Rate limit uses ETS, needs to be async: false
   use ExUnit.Case, async: false
+  import Plug.Conn
   alias Nex.RateLimit
 
   setup do
@@ -80,6 +81,28 @@ defmodule Nex.RateLimitTest do
     test "creates table if not exists" do
       # Table should exist from setup
       assert :ets.whereis(:nex_rate_limit) != :undefined
+    end
+  end
+
+  describe "Regression: bug fixes" do
+    test "X-Forwarded-For header is NOT trusted by default (prevents IP spoofing)" do
+      # Without trust_x_forwarded_for config, client_ip should use remote_ip
+      Application.delete_env(:nex_core, :rate_limit)
+
+      conn = %Plug.Conn{
+        remote_ip: {192, 168, 1, 1},
+        req_headers: [{"x-forwarded-for", "10.0.0.99"}]
+      }
+
+      # Run through the Plug module (not RateLimit.call)
+      result = Nex.RateLimit.Plug.call(conn, max: 10, window: 60)
+      assert is_struct(result, Plug.Conn)
+      # X-ratelimit-remaining should be set and valid
+      remaining = get_resp_header(result, "x-ratelimit-remaining")
+      assert length(remaining) == 1
+      assert String.to_integer(hd(remaining)) in 0..10
+    after
+      Application.delete_env(:nex_core, :rate_limit)
     end
   end
 end

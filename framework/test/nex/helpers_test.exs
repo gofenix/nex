@@ -35,7 +35,8 @@ defmodule Nex.HelpersTest do
     end
 
     test "handles very large numbers" do
-      assert Helpers.format_number(1_000_000_000) == "1.0e3M"
+      assert Helpers.format_number(1_000_000_000) == "1.0B"
+      assert Helpers.format_number(1_500_000_000) == "1.5B"
     end
   end
 
@@ -131,7 +132,7 @@ defmodule Nex.HelpersTest do
 
     test "handles weeks" do
       dt = DateTime.add(DateTime.utc_now(), -7 * 86400, :second)
-      assert Helpers.time_ago(dt) == "1 weeks ago"
+      assert Helpers.time_ago(dt) == "1 week ago"
     end
 
     test "handles months" do
@@ -142,6 +143,66 @@ defmodule Nex.HelpersTest do
     test "handles binary string input" do
       result = Helpers.time_ago("2026-01-01T00:00:00Z")
       assert is_binary(result)
+    end
+
+    test "handles Date struct input" do
+      # Date from 3 days ago should produce a "days ago" string
+      date = Date.utc_today() |> Date.add(-3)
+      assert Helpers.time_ago(date) =~ "day"
+    end
+  end
+
+  describe "class/2" do
+    test "replaces & placeholder with values" do
+      assert Helpers.class("btn &", ["primary", "large"]) == "btn primary btn large"
+    end
+
+    test "collapses multiple spaces" do
+      assert Helpers.class("btn  &", ["primary"]) == "btn primary"
+      result = Helpers.class("&  &", ["a", "b"])
+      assert result == "a  a b  b" |> String.replace(~r/\s+/, " ")
+      refute result =~ "  "
+    end
+
+    test "filters out falsy values" do
+      assert Helpers.class("btn &", ["primary", nil, false, "active"]) == "btn primary btn active"
+    end
+
+    test "trims whitespace" do
+      assert Helpers.class("  &  ", ["test"]) == "test"
+    end
+  end
+
+  describe "attrs/1" do
+    test "builds HTML attributes from keyword list" do
+      assert Helpers.attrs(class: "btn", id: "my-btn") == "class=\"btn\" id=\"my-btn\""
+    end
+
+    test "handles boolean true as bare attribute" do
+      assert Helpers.attrs(disabled: true, class: "btn") == "disabled class=\"btn\""
+    end
+
+    test "filters out nil and false values" do
+      assert Helpers.attrs(class: "btn", disabled: false, id: nil) == "class=\"btn\""
+    end
+
+    test "converts snake_case keys to kebab-case" do
+      assert Helpers.attrs(data_action: "submit", aria_label: "Close") ==
+               "data-action=\"submit\" aria-label=\"Close\""
+    end
+
+    test "escapes HTML special characters in values to prevent XSS" do
+      assert Helpers.attrs(class: "\"><script>alert(1)</script>") ==
+               "class=\"&quot;&gt;&lt;script&gt;alert(1)&lt;/script&gt;\""
+    end
+
+    test "escapes double quotes in attribute values" do
+      assert Helpers.attrs(title: "Say \"hello\"") ==
+               "title=\"Say &quot;hello&quot;\""
+    end
+
+    test "escapes ampersands in attribute values" do
+      assert Helpers.attrs(class: "a&b") == "class=\"a&amp;b\""
     end
   end
 end

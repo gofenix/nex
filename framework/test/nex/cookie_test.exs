@@ -111,4 +111,59 @@ defmodule Nex.CookieTest do
       assert Process.get(:nex_incoming_cookies) == nil
     end
   end
+
+  describe "load_from_conn/1" do
+    test "stores incoming cookies from conn into process dictionary" do
+      conn =
+        Plug.Test.conn(:get, "/")
+        |> Plug.Test.put_req_cookie("user_id", "42")
+        |> Plug.Test.put_req_cookie("theme", "dark")
+        |> Cookie.load_from_conn()
+
+      assert Process.get(:nex_incoming_cookies) == %{"user_id" => "42", "theme" => "dark"}
+      assert is_struct(conn, Plug.Conn)
+    end
+
+    test "handles conns with no cookies" do
+      conn = Plug.Test.conn(:get, "/") |> Cookie.load_from_conn()
+      assert Process.get(:nex_incoming_cookies) == %{}
+      assert is_struct(conn, Plug.Conn)
+    end
+  end
+
+  describe "apply_to_conn/1" do
+    test "applies pending put cookies to the response" do
+      Cookie.put(:session, "abc123", max_age: 3600)
+      Cookie.put(:theme, "light")
+
+      conn = Plug.Test.conn(:get, "/") |> Cookie.apply_to_conn()
+
+      assert map_size(conn.resp_cookies) == 2
+      assert conn.resp_cookies["session"].value == "abc123"
+      assert conn.resp_cookies["session"].max_age == 3600
+      assert conn.resp_cookies["theme"].value == "light"
+    end
+
+    test "applies pending delete cookies with max_age=0" do
+      Cookie.delete(:session)
+
+      conn = Plug.Test.conn(:get, "/") |> Cookie.apply_to_conn()
+
+      assert conn.resp_cookies["session"].value == ""
+      assert conn.resp_cookies["session"].max_age == 0
+    end
+
+    test "returns conn unchanged when no pending cookies" do
+      conn = Plug.Test.conn(:get, "/")
+      result = Cookie.apply_to_conn(conn)
+      assert map_size(result.resp_cookies) == 0
+    end
+
+    test "includes domain option when provided" do
+      Cookie.put(:c, "v", domain: "example.com")
+
+      conn = Plug.Test.conn(:get, "/") |> Cookie.apply_to_conn()
+      assert conn.resp_cookies["c"].domain == "example.com"
+    end
+  end
 end

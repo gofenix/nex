@@ -57,5 +57,39 @@ defmodule Nex.SessionCleanerTest do
       assert function_exported?(Nex.SessionCleaner, :init, 1)
       assert function_exported?(Nex.SessionCleaner, :handle_info, 2)
     end
+
+    test "cleanup removes expired session entries" do
+      Nex.Session.ensure_table()
+
+      # Insert an expired session entry directly into ETS
+      past = System.system_time(:millisecond) - 1_000_000
+      :ets.insert(:nex_session_store, {{"expired_sess", :key}, "value", past})
+
+      # Insert a non-expired session entry
+      future = System.system_time(:millisecond) + 1_000_000
+      :ets.insert(:nex_session_store, {{"fresh_sess", :key}, "value", future})
+
+      send(Nex.SessionCleaner, :cleanup)
+      Process.sleep(100)
+
+      assert :ets.lookup(:nex_session_store, {"expired_sess", :key}) == []
+      assert :ets.lookup(:nex_session_store, {"fresh_sess", :key}) != []
+    end
+
+    test "handles missing session table gracefully" do
+      # Delete the table if it exists, send cleanup, verify no crash
+      case :ets.whereis(:nex_session_store) do
+        :undefined -> :ok
+        tid -> :ets.delete(tid)
+      end
+
+      send(Nex.SessionCleaner, :cleanup)
+      Process.sleep(50)
+
+      assert Process.alive?(Process.whereis(Nex.SessionCleaner))
+
+      # Re-create table for other tests
+      Nex.Session.ensure_table()
+    end
   end
 end

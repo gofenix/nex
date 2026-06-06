@@ -35,25 +35,12 @@ defmodule Nex.Handler.Api do
       end
     rescue
       error in FunctionClauseError ->
-        if error.function == method and error.arity == 1 and error.module == module do
-          Logger.error("""
-          [Nex] API Breaking Change Detected!
-          The API signature for #{inspect(module)}.#{method}/1 has changed.
-          It now expects a `Nex.Req` struct instead of a map.
-
-          Please update your code:
-
-              def #{method}(req) do
-                id = req.query["id"]
-                name = req.body["name"]
-                Nex.json(%{data: ...})
-              end
-          """)
-
-          Errors.send_json_error(conn, 500, "Internal Server Error: API signature mismatch")
-        else
-          reraise error, __STACKTRACE__
-        end
+        # Narrow check: this is a signature mismatch only when every clause
+        # of the exported function rejects the %Nex.Req{} argument based on
+        # its primary pattern (the arity-1 head). Since we cannot reliably
+        # distinguish "wrong first-argument type" from "pattern match failure
+        # inside the handler body", re-raise to surface the real error.
+        reraise error, __STACKTRACE__
     end
   end
 
@@ -89,7 +76,7 @@ defmodule Nex.Handler.Api do
           error: "Internal Server Error: Invalid Response Type",
           details: %{
             message: "Your API handler returned an invalid response type",
-            received_type: other.__struct__ || "unknown",
+            received_type: Map.get(other, :__struct__, "unknown"),
             hint: "Return a `%Nex.Response{}` struct using helper functions like `Nex.json/2`"
           }
         })

@@ -8,7 +8,7 @@ defmodule Nex.ValidatorTest do
                {:ok, %{"name" => "John"}}
     end
 
-    test "passes when required field is empty string" do
+    test "fails when required field is empty string" do
       assert Validator.validate(%{"name" => ""}, %{"name" => [:required]}) ==
                {:error, [{"name", "is required"}]}
     end
@@ -142,6 +142,38 @@ defmodule Nex.ValidatorTest do
     end
   end
 
+  describe "validate/2 - min/max for string length" do
+    test "min length passes when equal" do
+      assert Validator.validate(%{"name" => "ab"}, %{"name" => [:string, {:min, 2}]}) ==
+               {:ok, %{"name" => "ab"}}
+    end
+
+    test "min length passes when above" do
+      assert Validator.validate(%{"name" => "John"}, %{"name" => [:string, {:min, 2}]}) ==
+               {:ok, %{"name" => "John"}}
+    end
+
+    test "min length fails when below" do
+      assert Validator.validate(%{"name" => "a"}, %{"name" => [:string, {:min, 2}]}) ==
+               {:error, [{"name", "must be at least 2 characters"}]}
+    end
+
+    test "max length passes when equal" do
+      assert Validator.validate(%{"name" => "abcd"}, %{"name" => [:string, {:max, 4}]}) ==
+               {:ok, %{"name" => "abcd"}}
+    end
+
+    test "max length passes when below" do
+      assert Validator.validate(%{"name" => "ab"}, %{"name" => [:string, {:max, 4}]}) ==
+               {:ok, %{"name" => "ab"}}
+    end
+
+    test "max length fails when above" do
+      assert Validator.validate(%{"name" => "abcdef"}, %{"name" => [:string, {:max, 4}]}) ==
+               {:error, [{"name", "must be at most 4 characters"}]}
+    end
+  end
+
   describe "validate/2 - format" do
     test "format passes when matches" do
       assert Validator.validate(%{"code" => "ABC123"}, %{"code" => [format: ~r/^[A-Z]+[0-9]+$/]}) ==
@@ -177,17 +209,31 @@ defmodule Nex.ValidatorTest do
 
   describe "validate/2 - custom validator" do
     test "custom validator with 2-arity function passes with :ok" do
-      custom = fn value, _opts -> :ok end
+      custom = fn _value, _opts -> :ok end
 
       assert Validator.validate(%{"code" => "test"}, %{"code" => [{custom, [arg: "value"]}]}) ==
                {:ok, %{"code" => "test"}}
     end
 
     test "custom validator with 2-arity function passes with {:ok, _}" do
-      custom = fn value, _opts -> {:ok, "processed"} end
+      custom = fn _value, _opts -> {:ok, "processed"} end
 
       assert Validator.validate(%{"code" => "test"}, %{"code" => [{custom, []}]}) ==
                {:ok, %{"code" => "test"}}
+    end
+
+    test "custom validator with 1-arity function passes with :ok" do
+      custom = fn _value -> :ok end
+
+      assert Validator.validate(%{"code" => "test"}, %{"code" => [{custom, []}]}) ==
+               {:ok, %{"code" => "test"}}
+    end
+
+    test "custom validator with 1-arity function fails with {:error, _}" do
+      custom = fn value -> {:error, "invalid: #{value}"} end
+
+      assert Validator.validate(%{"code" => "bad"}, %{"code" => [{custom, []}]}) ==
+               {:error, [{"code", "invalid: bad"}]}
     end
 
     test "custom validator with 2-arity function fails with {:error, msg}" do
